@@ -1,6 +1,7 @@
 import Dexie, { Table } from 'dexie';
 import {
-  Conversation, DayPlan, FocusSession, Habit, Memory, Message, Note, Reminder, Review, Settings, Task,
+  Conversation, DayPlan, FocusSession, Goal, Habit, JournalEntry, Memory, Message, Note, ProgressState, Reminder, Review, Settings, Task,
+  TaskTemplate, XpEvent,
 } from './models';
 
 export class JarvisDb extends Dexie {
@@ -15,6 +16,11 @@ export class JarvisDb extends Dexie {
   messages!: Table<Message, string>;
   reminders!: Table<Reminder, string>;
   settings!: Table<Settings, string>;
+  goals!: Table<Goal, string>;
+  journal!: Table<JournalEntry, string>;
+  templates!: Table<TaskTemplate, string>;
+  xp!: Table<XpEvent, string>;
+  progress!: Table<ProgressState, string>;
 
   constructor() {
     super('jarvis');
@@ -30,6 +36,14 @@ export class JarvisDb extends Dexie {
       messages: 'id, conversationId, createdAt, [conversationId+createdAt]',
       reminders: 'id, at, done',
       settings: 'id',
+    });
+    this.version(2).stores({
+      tasks: 'id, status, due, isMit, inbox, createdAt, doneAt, goalId, project',
+      goals: 'id, status, createdAt',
+      journal: 'id, date, createdAt',
+      templates: 'id',
+      xp: 'id, ref, date, kind, at',
+      progress: 'id',
     });
   }
 

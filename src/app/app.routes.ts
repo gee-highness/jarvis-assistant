@@ -11,6 +11,8 @@ export const routes: Routes = [
   { path: 'review', loadComponent: () => import('./pages/review.page').then(m => m.ReviewPage) },
   { path: 'memory', loadComponent: () => import('./pages/memory.page').then(m => m.MemoryPage) },
   { path: 'voices', loadComponent: () => import('./pages/voices.page').then(m => m.VoicesPage) },
+  { path: 'progress', loadComponent: () => import('./pages/progress.page').then(m => m.ProgressPage) },
+  { path: 'brain', loadComponent: () => import('./pages/brain.page').then(m => m.BrainPage) },
   { path: 'settings', loadComponent: () => import('./pages/settings.page').then(m => m.SettingsPage) },
   { path: '**', redirectTo: 'briefing' },
 ];

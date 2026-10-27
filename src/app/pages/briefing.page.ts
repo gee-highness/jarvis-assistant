@@ -2,8 +2,10 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } 
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FocusService } from '../core/focus.service';
 import { JarvisService } from '../core/jarvis.service';
+import { LlmService } from '../core/llm.service';
 import { OllamaService } from '../core/ollama.service';
 import { PlannerService } from '../core/planner.service';
+import { ProgressService } from '../core/progress.service';
 import { StoreService } from '../core/store.service';
 import { greeting, prettyDate } from '../core/util';
 import { MdPipe } from '../ui/md.pipe';
@@ -28,7 +30,15 @@ import { OrbComponent } from '../ui/orb.component';
       </div>
 
       @if (ollama.state() === 'offline' && !cloudOn()) {
-        <div class="banner">Engine offline. Open Termux and run <span class="mono">ollama serve</span>, or set up auto-wake in <a routerLink="/settings">Settings</a>.</div>
+        @if (store.settings().engine === 'device') {
+          @if (!llm.activeInstalled()) {
+            <a class="banner cta" routerLink="/brain">⬇ Give Jarvis a brain: download a model once and everything runs offline. <b>Open Brain →</b></a>
+          } @else {
+            <div class="banner">{{ llm.loadError() || 'The brain is not loaded yet.' }} <a routerLink="/brain">Brain settings</a></div>
+          }
+        } @else {
+          <div class="banner">Engine offline. Open Termux and run <span class="mono">ollama serve</span>, or set up auto-wake in <a routerLink="/settings">Settings</a>.</div>
+        }
       }
 
       <div class="grid3">
@@ -36,6 +46,12 @@ import { OrbComponent } from '../ui/orb.component';
         <div class="card stat"><div class="mono big">{{ store.doneToday().length }}</div><div class="small muted">done today</div></div>
         <div class="card stat"><div class="mono big" [style.color]="store.overdue().length ? 'var(--red)' : ''">{{ store.overdue().length }}</div><div class="small muted">overdue</div></div>
       </div>
+
+      <a class="card" routerLink="/progress" style="display:block;color:inherit;text-decoration:none">
+        <div class="row between"><b>★ Lv {{ progress.level() }} · {{ progress.title() }}</b><span>🔥 {{ progress.streak() }}</span></div>
+        <div style="height:6px;border-radius:4px;background:rgba(34,211,238,.12);margin:8px 0;overflow:hidden"><i style="display:block;height:100%;background:linear-gradient(90deg,#22d3ee,#4ade80)" [style.width.%]="progress.levelProgress().pct"></i></div>
+        <div class="small muted">{{ questsDone() }}/{{ progress.quests().length }} quests done today · {{ progress.xpToday() }} XP</div>
+      </a>
 
       <div class="card">
         <div class="card-head">
@@ -118,6 +134,9 @@ export class BriefingPage implements OnInit {
   store = inject(StoreService);
   jarvis = inject(JarvisService);
   ollama = inject(OllamaService);
+  llm = inject(LlmService);
+  progress = inject(ProgressService);
+  questsDone = computed(() => this.progress.quests().filter(q => q.progress >= q.target).length);
   planner = inject(PlannerService);
   private focus = inject(FocusService);
   private router = inject(Router);
@@ -133,7 +152,8 @@ export class BriefingPage implements OnInit {
   readonly engineLabel = computed(() => {
     const st = this.ollama.state();
     const s = this.store.settings();
-    const local = st === 'online' ? `On-device · ${s.chatModel.split('/').pop()}` : st === 'waking' ? 'Waking the engine…' : st === 'offline' ? 'Engine offline' : 'Checking engine…';
+    const name = s.engine === 'device' ? (this.llm.active()?.name.split(' · ')[0] ?? 'no model') : s.chatModel.split('/').pop();
+    const local = this.llm.loading() ? 'Loading the brain…' : st === 'online' ? `On-device · ${name}` : st === 'waking' ? 'Waking the engine…' : st === 'offline' ? (s.engine === 'device' && !this.llm.activeInstalled() ? 'No brain installed' : 'Engine offline') : 'Checking engine…';
     return this.cloudOn() ? `${local} · Cloud: ${s.cloud.model}` : local;
   });
   readonly current = computed(() => this.planner.currentBlock());

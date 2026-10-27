@@ -17,7 +17,7 @@ if (!existsSync(join(root, 'dist/jarvis/browser/index.html'))) {
   console.error('Web build missing: run `npm run build` first.');
   process.exit(1);
 }
-if (!existsSync(android)) run('npx cap add android');
+if (!existsSync(join(android, 'app/build.gradle'))) run('npx cap add android');
 
 // ---- llama.cpp (on-device engine), pinned for reproducible builds ----
 export const LLAMA_TAG = 'b11936';
@@ -80,15 +80,17 @@ if (!m.includes('android:scheme="jarvis"')) {
             <meta-data android:name="android.app.shortcuts" android:resource="@xml/jarvis_shortcuts" />`);
 }
 
-// widgets
-if (!m.includes('JarvisMicWidget')) {
-  m = m.replace('</application>', `    <receiver android:name=".JarvisMicWidget" android:exported="true" android:label="@string/jarvis_widget_mic">
+// widgets (each receiver added once)
+const widgets = [
+  ['JarvisMicWidget', 'jarvis_widget_mic', 'jarvis_widget_mic_info'],
+  ['JarvisWideWidget', 'jarvis_widget_wide', 'jarvis_widget_wide_info'],
+  ['JarvisChatWidget', 'jarvis_widget_chat', 'jarvis_widget_chat_info'],
+];
+for (const [cls, label, info] of widgets) {
+  if (m.includes(`.${cls}"`)) continue;
+  m = m.replace('</application>', `    <receiver android:name=".${cls}" android:exported="true" android:label="@string/${label}">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/jarvis_widget_mic_info" />
-        </receiver>
-        <receiver android:name=".JarvisWideWidget" android:exported="true" android:label="@string/jarvis_widget_wide">
-            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/jarvis_widget_wide_info" />
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/${info}" />
         </receiver>
     </application>`);
 }
@@ -123,6 +125,7 @@ android {
         cmake {
             path file('../../native/cpp/CMakeLists.txt')
             version '3.31.6'
+            buildStagingDirectory file('../../native/.cxx')
         }
     }
     packaging {

@@ -1,10 +1,22 @@
 export type ID = string;
 
+export interface Repeat {
+  every: 'daily' | 'weekdays' | 'weekly' | 'monthly';
+  /** Every N units (default 1). */
+  interval?: number;
+}
+
 export interface Task {
   id: ID;
   title: string;
   notes?: string;
   project?: string;
+  goalId?: ID;
+  repeat?: Repeat;
+  /** Checklist inside a task. */
+  subtasks?: { id: ID; title: string; done: boolean }[];
+  /** For repeating tasks: id of the next occurrence once it has been created. */
+  nextId?: ID;
   urgent: boolean;
   important: boolean;
   due?: string;          // YYYY-MM-DD
@@ -80,6 +92,81 @@ export interface Message {
   toolCalls?: ToolCallRecord[];
   toolName?: string;
   createdAt: number;
+}
+
+// ---------------- goals ----------------
+export interface Milestone { id: ID; title: string; done: boolean; doneAt?: number; }
+export interface Goal {
+  id: ID;
+  title: string;
+  why?: string;
+  area: 'career' | 'health' | 'money' | 'learning' | 'relationships' | 'personal' | 'project';
+  targetDate?: string;          // YYYY-MM-DD
+  /** Optional numeric target, e.g. "run 100 km": unit km, target 100, current 12. */
+  metric?: { unit: string; target: number; current: number };
+  milestones: Milestone[];
+  status: 'active' | 'done' | 'archived';
+  createdAt: number;
+  doneAt?: number;
+}
+
+// ---------------- journal ----------------
+export interface JournalEntry {
+  id: ID;
+  date: string;                 // YYYY-MM-DD
+  mood: number;                 // 1..5
+  energy: number;               // 1..5
+  text: string;
+  gratitude?: string;
+  tags: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ---------------- templates ----------------
+export interface TaskTemplate {
+  id: ID;
+  name: string;
+  icon: string;
+  description?: string;
+  items: { title: string; estimateMin?: number; offsetDays?: number }[];
+  builtin?: boolean;
+}
+
+// ---------------- progression ----------------
+export type XpKind = 'task' | 'mit' | 'focus' | 'habit' | 'review' | 'journal' | 'plan' | 'goal' | 'milestone' | 'quest' | 'perfect' | 'inbox' | 'achievement' | 'streak';
+export interface XpEvent {
+  id: ID;
+  /** Unique key so one action is rewarded once (e.g. "task:<id>"). */
+  ref: string;
+  kind: XpKind;
+  xp: number;
+  label: string;
+  date: string;
+  at: number;
+}
+export interface Quest {
+  id: string;
+  kind: string;
+  title: string;
+  icon: string;
+  target: number;
+  xp: number;
+  claimed: boolean;
+}
+export interface ProgressState {
+  id: 'main';
+  /** Days with real progress (YYYY-MM-DD). */
+  activeDays: string[];
+  /** Days saved by a streak freeze. */
+  frozenDays: string[];
+  freezes: number;
+  bestStreak: number;
+  lastChecked: string;
+  unlocked: Record<string, number>;   // achievement id -> unlocked at
+  questDate: string;
+  quests: Quest[];
+  perfectDays: string[];
 }
 
 export interface Reminder { id: ID; title: string; at: number; notificationId: number; done: boolean; }
@@ -279,3 +366,32 @@ export function recommendedModel(ramTotalMb: number): DeviceModel {
   if (gb < 7.5 && fits.some(m => m.id === 'hermes3-3b')) return DEVICE_MODELS.find(m => m.id === 'hermes3-3b')!;
   return fits[fits.length - 1] ?? DEVICE_MODELS[0];
 }
+
+export const BUILTIN_TEMPLATES: TaskTemplate[] = [
+  { id: 'tpl-morning', name: 'Morning launch', icon: '🌅', builtin: true, description: 'Start the day on purpose.',
+    items: [{ title: 'Review calendar and MITs', estimateMin: 5 }, { title: 'Clear inbox to zero', estimateMin: 15 }, { title: 'First deep-work block on MIT #1', estimateMin: 50 }] },
+  { id: 'tpl-weekly', name: 'Weekly review', icon: '🗓', builtin: true, description: 'GTD-style weekly reset.',
+    items: [{ title: 'Collect loose papers, notes and screenshots', estimateMin: 10 }, { title: 'Process inbox to zero', estimateMin: 20 },
+      { title: 'Review last week: wins and lessons', estimateMin: 10 }, { title: 'Review goals and pick next milestones', estimateMin: 15 },
+      { title: 'Plan next week: 3 outcomes', estimateMin: 15 }] },
+  { id: 'tpl-deep', name: 'Deep-work prep', icon: '🎧', builtin: true, description: 'Get ready to focus for real.',
+    items: [{ title: 'Phone on Do Not Disturb', estimateMin: 1 }, { title: 'Close unrelated tabs and apps', estimateMin: 2 },
+      { title: 'Write the single outcome for this block', estimateMin: 3 }, { title: 'Water and snacks ready', estimateMin: 3 }] },
+  { id: 'tpl-month-money', name: 'Monthly money check', icon: '💰', builtin: true, description: 'Stay on top of finances.',
+    items: [{ title: 'Reconcile bank and card statements', estimateMin: 20 }, { title: 'Pay or schedule bills', estimateMin: 15 },
+      { title: 'Review subscriptions and cancel unused', estimateMin: 10 }, { title: 'Move money to savings', estimateMin: 5 }, { title: 'Update budget for next month', estimateMin: 15 }] },
+  { id: 'tpl-trip', name: 'Trip prep', icon: '🧳', builtin: true, description: 'Leave nothing behind.',
+    items: [{ title: 'Book transport and accommodation', offsetDays: 0 }, { title: 'Check passport/ID validity', offsetDays: 0 },
+      { title: 'Packing list: clothes, chargers, meds, documents', offsetDays: 1 }, { title: 'Arrange house/pet care', offsetDays: 1 }, { title: 'Download offline maps and tickets', offsetDays: 2 }] },
+  { id: 'tpl-launch', name: 'Project kickoff', icon: '🚀', builtin: true, description: 'Turn an idea into a moving project.',
+    items: [{ title: 'Write the outcome in one sentence', estimateMin: 10 }, { title: 'List the milestones', estimateMin: 15 },
+      { title: 'Identify the very next physical action', estimateMin: 5 }, { title: 'Block time for the first work session', estimateMin: 5 }] },
+  { id: 'tpl-health', name: 'Health reset', icon: '💪', builtin: true, description: 'Small wins for body and mind.',
+    items: [{ title: 'Drink 2 L water', estimateMin: 1 }, { title: '20-minute walk', estimateMin: 20 }, { title: 'Prep a healthy meal', estimateMin: 30 }, { title: 'Lights out by 23:00', estimateMin: 1 }] },
+];
+
+export const GOAL_AREAS: { id: Goal['area']; label: string; icon: string }[] = [
+  { id: 'career', label: 'Career', icon: '💼' }, { id: 'health', label: 'Health', icon: '💪' }, { id: 'money', label: 'Money', icon: '💰' },
+  { id: 'learning', label: 'Learning', icon: '📚' }, { id: 'relationships', label: 'People', icon: '❤️' }, { id: 'personal', label: 'Personal', icon: '🌱' },
+  { id: 'project', label: 'Project', icon: '🚀' },
+];

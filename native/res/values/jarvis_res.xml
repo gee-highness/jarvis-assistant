@@ -3,6 +3,18 @@
     <color name="jarvis_bg">#05080D</color>
     <string name="jarvis_widget_mic">Jarvis mic</string>
     <string name="jarvis_widget_wide">Jarvis · next priority</string>
+    <string name="jarvis_widget_chat">Jarvis · chat</string>
+    <style name="JarvisWidgetChip">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">30dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:background">@drawable/jarvis_widget_pill</item>
+        <item name="android:gravity">center</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:textColor">#BFEFF7</item>
+        <item name="android:textSize">11sp</item>
+    </style>
     <string name="jarvis_sc_talk">Talk</string>
     <string name="jarvis_sc_talk_long">Talk to Jarvis</string>
     <string name="jarvis_sc_task">New task</string>

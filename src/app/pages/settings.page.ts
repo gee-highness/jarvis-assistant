@@ -6,6 +6,7 @@ import { McpService } from '../core/mcp.service';
 import { CLOUD_PRESETS, CloudProvider, CloudSettings, DEFAULT_PERSONA, McpServer, RECOMMENDED_MODELS, Settings } from '../core/models';
 import { JarvisDevice, isNative } from '../core/native';
 import { NotifyService } from '../core/notify.service';
+import { LlmService } from '../core/llm.service';
 import { OllamaService } from '../core/ollama.service';
 import { StoreService } from '../core/store.service';
 import { uid } from '../core/util';
@@ -23,26 +24,38 @@ import { VoiceService } from '../core/voice.service';
       @if (setup() || !s().onboarded) {
         <div class="card glow col">
           <div class="upper">Setup checklist</div>
-          <div class="step" [class.ok]="ollama.state() === 'online'">
-            <b>1. AI engine on this phone</b>
-            <p class="small muted">Install <b>Termux</b> from F-Droid, open it and paste:</p>
-            <pre class="mono small cmd">{{ termuxCmd }}</pre>
-            <div class="row wrap"><button class="small" (click)="copy(termuxCmd)">⧉ Copy</button><button class="small" (click)="test()">Test connection</button>
-              @if (isNative) { <button class="small" (click)="wake()">Wake engine</button> }</div>
-          </div>
-          <div class="step" [class.ok]="hasChat()">
-            <b>2. Download the brain</b>
-            <p class="small muted">Downloads <span class="mono">{{ s().chatModel }}</span> (~2 GB) and <span class="mono">{{ s().embedModel }}</span>. Use Wi-Fi; after this everything works offline.</p>
-            <button class="small" [disabled]="!!pulling() || ollama.state() !== 'online'" (click)="pullDefaults()">⬇ Download models</button>
-          </div>
+          @if (s().engine === 'device') {
+            <div class="step" [class.ok]="llm.activeInstalled()">
+              <b>1. Download a brain</b>
+              <p class="small muted">Jarvis runs a private AI model on this phone: no internet, no account. One download, then fully offline. Best fit for your phone: <b>{{ llm.recommended().name }}</b> ({{ llm.recommended().sizeMb >= 1000 ? (llm.recommended().sizeMb / 1024).toFixed(1) + ' GB' : llm.recommended().sizeMb + ' MB' }}).</p>
+              <div class="row wrap">
+                @if (!llm.activeInstalled() && !llm.downloads()[llm.recommended().id]) { <button class="small primary" [disabled]="!llm.available()" (click)="quickDownload()">⬇ Download {{ llm.recommended().name }}</button> }
+                @if (llm.downloads()[llm.recommended().id]; as d) { <span class="small muted">{{ d.status }} · {{ (d.received / 1048576).toFixed(0) }} / {{ (d.total / 1048576).toFixed(0) }} MB</span> }
+                <button class="small" (click)="go('/brain')">Choose another</button>
+              </div>
+            </div>
+          } @else {
+            <div class="step" [class.ok]="ollama.state() === 'online'">
+              <b>1. AI engine (Ollama in Termux)</b>
+              <p class="small muted">Install <b>Termux</b> from F-Droid, open it and paste:</p>
+              <pre class="mono small cmd">{{ termuxCmd }}</pre>
+              <div class="row wrap"><button class="small" (click)="copy(termuxCmd)">⧉ Copy</button><button class="small" (click)="test()">Test connection</button>
+                @if (isNative) { <button class="small" (click)="wake()">Wake engine</button> }</div>
+            </div>
+            <div class="step" [class.ok]="hasChat()">
+              <b>2. Download the brain</b>
+              <p class="small muted">Downloads <span class="mono">{{ s().chatModel }}</span> (~2 GB) and <span class="mono">{{ s().embedModel }}</span>. Use Wi-Fi; after this everything works offline.</p>
+              <button class="small" [disabled]="!!pulling() || ollama.state() !== 'online'" (click)="pullDefaults()">⬇ Download models</button>
+            </div>
+          }
           <div class="step" [class.ok]="micOk()">
-            <b>3. Microphone and offline speech</b>
+            <b>{{ s().engine === 'device' ? 2 : 3 }}. Microphone and offline speech</b>
             <p class="small muted">Allow the microphone. In Android Settings → Google → Speech, download the offline pack for {{ s().voice.language }}.</p>
             <button class="small" (click)="mic()">Allow microphone</button>
           </div>
           <div class="step">
-            <b>4. Pick a voice, add the widget</b>
-            <p class="small muted">Choose an offline voice in Voices. Long-press your home screen → Widgets → Jarvis mic.</p>
+            <b>{{ s().engine === 'device' ? 3 : 4 }}. Pick a voice, add the widgets</b>
+            <p class="small muted">Choose an offline voice in Voices. Long-press your home screen → Widgets → Jarvis (mic, priority bar and chat).</p>
             <button class="small" (click)="go('/voices')">Open Voices</button>
           </div>
           <label class="field">What should Jarvis call you?<input [ngModel]="s().userName" (ngModelChange)="save({ userName: $event })" placeholder="Your name"></label>
@@ -52,64 +65,78 @@ import { VoiceService } from '../core/voice.service';
 
       <!-- ============ ENGINE & MODELS ============ -->
       <div class="card col">
-        <div class="card-head"><h2>Engine & models</h2><button class="small" (click)="refreshModels()">↻</button></div>
-        <label class="field">Ollama URL
-          <div class="row"><input [ngModel]="s().ollamaUrl" (ngModelChange)="save({ ollamaUrl: $event })"><button class="small" (click)="test()">Test</button></div>
-        </label>
-        <p class="small dim" style="margin:0">On-phone: http://127.0.0.1:11434 · PC on Wi-Fi: http://&lt;pc-ip&gt;:11434 (start it with OLLAMA_HOST=0.0.0.0 OLLAMA_ORIGINS=*). {{ ollama.version() ? 'Version ' + ollama.version() : '' }}</p>
-        <label class="row small"><input type="checkbox" [ngModel]="s().autoWakeTermux" (ngModelChange)="save({ autoWakeTermux: $event })"> Auto-wake Ollama in Termux when needed</label>
+        <div class="card-head"><h2>Engine</h2>
+          <div class="tabs small-tabs">
+            <button [class.on]="s().engine === 'device'" (click)="save({ engine: 'device' })">Built-in</button>
+            <button [class.on]="s().engine === 'ollama'" (click)="save({ engine: 'ollama' }); refreshModels()">Ollama</button>
+          </div>
+        </div>
+        @if (s().engine === 'device') {
+          <div class="row between">
+            <div class="small"><b>{{ llm.active()?.name ?? 'No model selected' }}</b><div class="dim">{{ llm.activeInstalled() ? (llm.info()?.loaded ? 'Loaded and ready' : 'Installed') : 'Not downloaded' }}</div></div>
+            <button class="small primary" (click)="go('/brain')">Manage brain →</button>
+          </div>
+        } @else {
+          <label class="field">Ollama URL
+            <div class="row"><input [ngModel]="s().ollamaUrl" (ngModelChange)="save({ ollamaUrl: $event })"><button class="small" (click)="test()">Test</button></div>
+          </label>
+          <p class="small dim" style="margin:0">On-phone: http://127.0.0.1:11434 · PC on Wi-Fi: http://&lt;pc-ip&gt;:11434 (start it with OLLAMA_HOST=0.0.0.0 OLLAMA_ORIGINS=*). {{ ollama.version() ? 'Version ' + ollama.version() : '' }}</p>
+          <label class="row small"><input type="checkbox" [ngModel]="s().autoWakeTermux" (ngModelChange)="save({ autoWakeTermux: $event })"> Auto-wake Ollama in Termux when needed</label>
 
-        <div class="grid2">
-          <label class="field">Chat model
-            <select [ngModel]="s().chatModel" (ngModelChange)="save({ chatModel: $event })">
+          <div class="grid2">
+            <label class="field">Chat model
+              <select [ngModel]="s().chatModel" (ngModelChange)="save({ chatModel: $event })">
+                @for (m of modelNames(); track m) { <option [value]="m">{{ m }}</option> }
+              </select>
+            </label>
+            <label class="field">Memory (embedding) model
+              <select [ngModel]="s().embedModel" (ngModelChange)="save({ embedModel: $event })">
+                <option value="">Off (keyword memory)</option>
+                @for (m of modelNames(); track m) { <option [value]="m">{{ m }}</option> }
+              </select>
+            </label>
+          </div>
+          <label class="field">Background model (summaries, memory extraction)
+            <select [ngModel]="s().utilityModel" (ngModelChange)="save({ utilityModel: $event })">
+              <option value="">Same as chat model</option>
               @for (m of modelNames(); track m) { <option [value]="m">{{ m }}</option> }
             </select>
           </label>
-          <label class="field">Memory (embedding) model
-            <select [ngModel]="s().embedModel" (ngModelChange)="save({ embedModel: $event })">
-              <option value="">Off (keyword memory)</option>
-              @for (m of modelNames(); track m) { <option [value]="m">{{ m }}</option> }
-            </select>
-          </label>
-        </div>
-        <label class="field">Background model (summaries, memory extraction)
-          <select [ngModel]="s().utilityModel" (ngModelChange)="save({ utilityModel: $event })">
-            <option value="">Same as chat model</option>
-            @for (m of modelNames(); track m) { <option [value]="m">{{ m }}</option> }
-          </select>
-        </label>
-        <div class="grid2">
-          <label class="field">Context (tokens)<input type="number" step="1024" [ngModel]="s().numCtx" (ngModelChange)="save({ numCtx: +$event })"></label>
-          <label class="field">Temperature {{ s().temperature }}<input type="range" min="0" max="1.2" step="0.05" [ngModel]="s().temperature" (ngModelChange)="save({ temperature: +$event })"></label>
-        </div>
-        <label class="row small"><input type="checkbox" [ngModel]="s().deepThink" (ngModelChange)="save({ deepThink: $event })"> Deep think (for reasoning models; slower)</label>
-        <div class="row"><button class="small" [disabled]="speedBusy()" (click)="speed()">⏱ Speed test</button><span class="small muted">{{ speedResult() }}</span></div>
+          <div class="grid2">
+            <label class="field">Context (tokens)<input type="number" step="1024" [ngModel]="s().numCtx" (ngModelChange)="save({ numCtx: +$event })"></label>
+          </div>
+          <div class="row"><button class="small" [disabled]="speedBusy()" (click)="speed()">⏱ Speed test</button><span class="small muted">{{ speedResult() }}</span></div>
 
-        <div class="upper" style="margin-top:6px">Installed</div>
-        <div class="list">
-          @for (m of ollama.models(); track m.name) {
-            <div class="item small">
-              <div class="grow"><div class="mono">{{ m.name }}</div><div class="dim">{{ gb(m.size) }} · {{ m.details?.parameter_size }} {{ m.details?.quantization_level }}</div></div>
-              <button class="small danger" (click)="remove(m.name)">Delete</button>
-            </div>
-          } @empty { <div class="dim small">None found (engine offline?).</div> }
-        </div>
+          <div class="upper" style="margin-top:6px">Installed</div>
+          <div class="list">
+            @for (m of ollama.models(); track m.name) {
+              <div class="item small">
+                <div class="grow"><div class="mono">{{ m.name }}</div><div class="dim">{{ gb(m.size) }} · {{ m.details?.parameter_size }} {{ m.details?.quantization_level }}</div></div>
+                <button class="small danger" (click)="remove(m.name)">Delete</button>
+              </div>
+            } @empty { <div class="dim small">None found (engine offline?).</div> }
+          </div>
 
-        <div class="upper" style="margin-top:6px">Recommended</div>
-        <div class="list">
-          @for (r of recommended; track r.name) {
-            <div class="item small">
-              <div class="grow"><div class="mono">{{ r.name }}</div><div class="dim">{{ r.size }} · {{ r.note }}</div></div>
-              @if (ollama.hasModel(r.name)) { <span class="chip green">installed</span> }
-              @else { <button class="small" [disabled]="!!pulling()" (click)="pull(r.name)">⬇</button> }
-            </div>
+          <div class="upper" style="margin-top:6px">Recommended</div>
+          <div class="list">
+            @for (r of recommended; track r.name) {
+              <div class="item small">
+                <div class="grow"><div class="mono">{{ r.name }}</div><div class="dim">{{ r.size }} · {{ r.note }}</div></div>
+                @if (ollama.hasModel(r.name)) { <span class="chip green">installed</span> }
+                @else { <button class="small" [disabled]="!!pulling()" (click)="pull(r.name)">⬇</button> }
+              </div>
+            }
+          </div>
+          <div class="row"><input [(ngModel)]="customModel" placeholder="Any Ollama model, e.g. huihui_ai/…"><button [disabled]="!customModel.trim() || !!pulling()" (click)="pull(customModel.trim())">⬇ Pull</button></div>
+          @if (pulling(); as p) {
+            <div class="progress"><div [style.width.%]="p.pct ?? 0"></div></div>
+            <div class="row between small"><span class="muted">{{ p.name }} · {{ p.status }} {{ p.pct !== null ? p.pct + '%' : '' }}</span><button class="small" (click)="cancelPull()">Cancel</button></div>
           }
-        </div>
-        <div class="row"><input [(ngModel)]="customModel" placeholder="Any Ollama model, e.g. huihui_ai/…"><button [disabled]="!customModel.trim() || !!pulling()" (click)="pull(customModel.trim())">⬇ Pull</button></div>
-        @if (pulling(); as p) {
-          <div class="progress"><div [style.width.%]="p.pct ?? 0"></div></div>
-          <div class="row between small"><span class="muted">{{ p.name }} · {{ p.status }} {{ p.pct !== null ? p.pct + '%' : '' }}</span><button class="small" (click)="cancelPull()">Cancel</button></div>
         }
+        <div class="grid2">
+          <label class="field">Temperature {{ s().temperature }}<input type="range" min="0" max="1.2" step="0.05" [ngModel]="s().temperature" (ngModelChange)="save({ temperature: +$event })"></label>
+          <label class="row small" style="align-self:end"><input type="checkbox" [ngModel]="s().deepThink" (ngModelChange)="save({ deepThink: $event })"> Deep think (slower, smarter)</label>
+        </div>
         @if (msg()) { <div class="banner" [class.err]="msgErr()">{{ msg() }}</div> }
       </div>
 
@@ -214,12 +241,14 @@ import { VoiceService } from '../core/voice.service';
     .cmd { white-space: pre-wrap; word-break: break-all; background: rgba(0,0,0,.45); border: 1px solid var(--line); border-radius: 8px; padding: 8px; margin: 0; }
     .progress { height: 6px; border-radius: 3px; background: rgba(34,211,238,.12); overflow: hidden; }
     .progress div { height: 100%; background: var(--cyan); transition: width .3s; }
+    .small-tabs button { padding: 4px 10px; font-size: .78rem; }
     label.btn { cursor: pointer; }
   `],
 })
 export class SettingsPage implements OnInit {
   store = inject(StoreService);
   ollama = inject(OllamaService);
+  llm = inject(LlmService);
   mcp = inject(McpService);
   private jarvis = inject(JarvisService);
   private voice = inject(VoiceService);
@@ -263,7 +292,8 @@ OLLAMA_ORIGINS=* ollama serve &`;
 
   async ngOnInit() {
     this.setup.set(!!this.route.snapshot.queryParamMap.get('setup'));
-    await this.refreshModels();
+    await this.llm.init();
+    if (this.s().engine === 'ollama') await this.refreshModels();
   }
 
   save(p: Partial<Settings>) { this.store.updateSettings(p); }
@@ -311,6 +341,16 @@ OLLAMA_ORIGINS=* ollama serve &`;
     try { const t = await this.ollama.speedTest(); this.speedResult.set(`${t} tokens/sec ${t >= 8 ? '· smooth' : t >= 4 ? '· usable' : '· slow, consider a smaller model'}`); }
     catch (e: any) { this.speedResult.set(e?.message ?? 'Failed'); }
     finally { this.speedBusy.set(false); }
+  }
+
+  async quickDownload() {
+    const m = this.llm.recommended();
+    try {
+      this.save({ deviceModel: m.id });
+      await this.llm.download(m);
+      if (this.s().deviceEmbed && !this.llm.embedInstalled()) this.llm.downloadEmbed().catch(() => undefined);
+      this.note(`Downloading ${m.name}. You can keep setting up meanwhile.`);
+    } catch (e: any) { this.note(`Download failed: ${e?.message ?? e}`, true); }
   }
 
   async mic() { this.micOk.set(await this.voice.ensurePermission()); }

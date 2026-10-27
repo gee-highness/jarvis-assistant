@@ -512,6 +512,44 @@ public class JarvisDevicePlugin extends Plugin {
         call.resolve();
     }
 
+    @PluginMethod
+    public void updateChatWidget(PluginCall call) {
+        JarvisChatWidget.save(getContext(), call.getString("question"), call.getString("answer"), call.getString("status"));
+        call.resolve();
+    }
+
+    // =====================================================================
+    // HAPTICS
+    // =====================================================================
+    @PluginMethod
+    public void haptic(PluginCall call) {
+        String kind = call.getString("kind", "light");
+        try {
+            android.os.Vibrator vib;
+            if (Build.VERSION.SDK_INT >= 31) {
+                android.os.VibratorManager vm = (android.os.VibratorManager) getContext().getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+                vib = vm.getDefaultVibrator();
+            } else {
+                vib = (android.os.Vibrator) getContext().getSystemService(Context.VIBRATOR_SERVICE);
+            }
+            if (vib == null || !vib.hasVibrator()) { call.resolve(); return; }
+            android.os.VibrationEffect fx;
+            if (Build.VERSION.SDK_INT >= 29 && ("tick".equals(kind) || "light".equals(kind) || "medium".equals(kind))) {
+                int id = "tick".equals(kind) ? android.os.VibrationEffect.EFFECT_TICK
+                       : "light".equals(kind) ? android.os.VibrationEffect.EFFECT_CLICK : android.os.VibrationEffect.EFFECT_HEAVY_CLICK;
+                fx = android.os.VibrationEffect.createPredefined(id);
+            } else if ("success".equals(kind)) {
+                fx = android.os.VibrationEffect.createWaveform(new long[] { 0, 14, 70, 28 }, -1);
+            } else if ("warning".equals(kind)) {
+                fx = android.os.VibrationEffect.createWaveform(new long[] { 0, 30, 90, 30 }, -1);
+            } else {
+                fx = android.os.VibrationEffect.createOneShot("medium".equals(kind) ? 25 : 12, android.os.VibrationEffect.DEFAULT_AMPLITUDE);
+            }
+            vib.vibrate(fx);
+        } catch (Exception ignored) { }
+        call.resolve();
+    }
+
     // =====================================================================
     // TERMUX / OLLAMA ENGINE
     // =====================================================================
