@@ -8,3 +8,4 @@ android/
 native/cpp/llama.cpp/
 build.log
 native/.cxx/
+package-lock.json
