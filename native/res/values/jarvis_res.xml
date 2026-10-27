@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="jarvis_bg">#05080D</color>
+    <string name="jarvis_widget_mic">Jarvis mic</string>
+    <string name="jarvis_widget_wide">Jarvis · next priority</string>
+    <string name="jarvis_sc_talk">Talk</string>
+    <string name="jarvis_sc_talk_long">Talk to Jarvis</string>
+    <string name="jarvis_sc_task">New task</string>
+    <string name="jarvis_sc_task_long">Capture a task</string>
+    <string name="jarvis_sc_focus">Focus</string>
+    <string name="jarvis_sc_focus_long">Start a focus session</string>
+    <string name="jarvis_sc_brief">Brief me</string>
+    <string name="jarvis_sc_brief_long">Morning briefing</string>
+</resources>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="talk" android:enabled="true" android:icon="@drawable/jarvis_ic_mic"
+        android:shortcutShortLabel="@string/jarvis_sc_talk" android:shortcutLongLabel="@string/jarvis_sc_talk_long">
+        <intent android:action="android.intent.action.VIEW" android:data="jarvis://voice"
+            android:targetPackage="com.jarvis.assistant" android:targetClass="com.jarvis.assistant.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="task" android:enabled="true" android:icon="@drawable/ic_stat_jarvis"
+        android:shortcutShortLabel="@string/jarvis_sc_task" android:shortcutLongLabel="@string/jarvis_sc_task_long">
+        <intent android:action="android.intent.action.VIEW" android:data="jarvis://task"
+            android:targetPackage="com.jarvis.assistant" android:targetClass="com.jarvis.assistant.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="focus" android:enabled="true" android:icon="@drawable/ic_stat_jarvis"
+        android:shortcutShortLabel="@string/jarvis_sc_focus" android:shortcutLongLabel="@string/jarvis_sc_focus_long">
+        <intent android:action="android.intent.action.VIEW" android:data="jarvis://focus"
+            android:targetPackage="com.jarvis.assistant" android:targetClass="com.jarvis.assistant.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="brief" android:enabled="true" android:icon="@drawable/ic_stat_jarvis"
+        android:shortcutShortLabel="@string/jarvis_sc_brief" android:shortcutLongLabel="@string/jarvis_sc_brief_long">
+        <intent android:action="android.intent.action.VIEW" android:data="jarvis://brief"
+            android:targetPackage="com.jarvis.assistant" android:targetClass="com.jarvis.assistant.MainActivity" />
+    </shortcut>
+</shortcuts>

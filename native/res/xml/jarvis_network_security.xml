@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Ollama runs over plain HTTP on the phone (127.0.0.1) or on a PC on your LAN. -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors><certificates src="system" /></trust-anchors>
+    </base-config>
+</network-security-config>

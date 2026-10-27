@@ -1,0 +1,35 @@
+{
+  "name": "jarvis",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "ng serve",
+    "build": "ng build",
+    "android:prepare": "ng build && node scripts/prepare-android.mjs",
+    "android:apk": "npm run android:prepare && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@angular/common": "^20.0.0",
+    "@angular/compiler": "^20.0.0",
+    "@angular/core": "^20.0.0",
+    "@angular/forms": "^20.0.0",
+    "@angular/platform-browser": "^20.0.0",
+    "@angular/router": "^20.0.0",
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/local-notifications": "^8.0.0",
+    "@capgo/capacitor-speech-recognition": "^8.1.0",
+    "dexie": "^4.0.10",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.8.0",
+    "zone.js": "~0.15.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^20.0.0",
+    "@angular/cli": "^20.0.0",
+    "@angular/compiler-cli": "^20.0.0",
+    "@capacitor/cli": "^8.0.0",
+    "typescript": "~5.8.2"
+  }
+}
