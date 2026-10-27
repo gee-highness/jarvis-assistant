@@ -18,27 +18,25 @@ jobs:
         with:
           node-version: 22
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
 
-      - uses: android-actions/setup-android@v3
-
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm install --no-audit --no-fund 2>&1 | tee -a build.log; exit ${PIPESTATUS[0]}
 
       - name: Build web app
-        run: npx ng build --configuration production
+        run: npx ng build --configuration production 2>&1 | tee -a build.log; exit ${PIPESTATUS[0]}
 
       - name: Prepare Android project
-        run: node scripts/prepare-android.mjs
+        run: node scripts/prepare-android.mjs 2>&1 | tee -a build.log; exit ${PIPESTATUS[0]}
 
       - name: Build APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee -a ../build.log; exit ${PIPESTATUS[0]}
 
       - name: Rename APK
         run: |
@@ -58,3 +56,14 @@ jobs:
           name: Jarvis build ${{ github.run_number }}
           files: out/jarvis.apk
           make_latest: true
+
+      - name: Push build log
+        if: always()
+        run: |
+          git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
+          git checkout --orphan build-logs
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          tail -c 200000 build.log > BUILD_LOG.txt || echo "no log" > BUILD_LOG.txt
+          git add -f BUILD_LOG.txt
+          git commit -qm "build log ${{ github.run_number }}"
+          git push -f origin build-logs
