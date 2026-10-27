@@ -5,3 +5,5 @@ out/
 android/
 *.log
 .DS_Store
+native/cpp/llama.cpp/
+build.log

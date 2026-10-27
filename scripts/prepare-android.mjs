@@ -19,6 +19,13 @@ if (!existsSync(join(root, 'dist/jarvis/browser/index.html'))) {
 }
 if (!existsSync(android)) run('npx cap add android');
 
+// ---- llama.cpp (on-device engine), pinned for reproducible builds ----
+export const LLAMA_TAG = 'b11936';
+const llamaDir = join(root, 'native/cpp/llama.cpp');
+if (!existsSync(join(llamaDir, 'CMakeLists.txt'))) {
+  run(`git clone --depth 1 --branch ${LLAMA_TAG} https://github.com/ggml-org/llama.cpp "${llamaDir}"`);
+}
+
 // ---- java sources ----
 const pkgDir = join(android, 'app/src/main/java/com/jarvis/assistant');
 mkdirSync(pkgDir, { recursive: true });
@@ -91,6 +98,40 @@ m = m.replace(/android:launchMode="[^"]*"/, 'android:launchMode="singleTask"');
 if (!/android:launchMode=/.test(m)) m = m.replace(/(android:name="\.?MainActivity")/, '$1\n            android:launchMode="singleTask"');
 
 writeFileSync(manifestPath, m);
+
+// native libs must be extracted to disk: ggml loads its CPU backend variants with dlopen()
+if (!m.includes('extractNativeLibs')) m = m.replace('<application', '<application\n        android:extractNativeLibs="true"');
+writeFileSync(manifestPath, m);
+
+// ---- gradle: build llama.cpp + JNI engine with the NDK ----
+const gradlePath = join(android, 'app/build.gradle');
+let g = readFileSync(gradlePath, 'utf8');
+if (!g.includes('jarvis-native')) {
+  g += `
+// jarvis-native: on-device LLM engine (llama.cpp) built from native/cpp
+android {
+    ndkVersion "29.0.13113456"
+    defaultConfig {
+        ndk { abiFilters 'arm64-v8a' }
+        externalNativeBuild {
+            cmake {
+                arguments '-DCMAKE_BUILD_TYPE=Release', '-DANDROID_STL=c++_shared'
+            }
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            path file('../../native/cpp/CMakeLists.txt')
+            version '3.31.6'
+        }
+    }
+    packaging {
+        jniLibs { useLegacyPackaging true }
+    }
+}
+`;
+  writeFileSync(gradlePath, g);
+}
 
 // ---- app name ----
 const stringsPath = join(android, 'app/src/main/res/values/strings.xml');

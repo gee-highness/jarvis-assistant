@@ -5,43 +5,83 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   apk:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    timeout-minutes: 40
+    timeout-minutes: 75
+    env:
+      NDK_VERSION: "29.0.13113456"
+      CMAKE_VERSION: "3.31.6"
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: package.json
 
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
 
+      - name: Install NDK and CMake
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" --install "ndk;${NDK_VERSION}" "cmake;${CMAKE_VERSION}" 2>&1 | tail -n 3 | tee -a build.log
+
+      - name: Cache native build
+        uses: actions/cache@v4
+        with:
+          path: |
+            native/cpp/llama.cpp
+            android/app/.cxx
+          key: native-${{ hashFiles('scripts/prepare-android.mjs', 'native/cpp/**/*.txt', 'native/cpp/*.cpp') }}
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('package.json', 'scripts/prepare-android.mjs') }}
+
       - name: Install dependencies
-        run: npm install --no-audit --no-fund 2>&1 | tee -a build.log; exit ${PIPESTATUS[0]}
+        run: |
+          set -o pipefail
+          npm install --no-audit --no-fund 2>&1 | tee -a build.log
 
       - name: Build web app
-        run: npx ng build --configuration production 2>&1 | tee -a build.log; exit ${PIPESTATUS[0]}
+        run: |
+          set -o pipefail
+          npx ng build --configuration production 2>&1 | tee -a build.log
 
       - name: Prepare Android project
-        run: node scripts/prepare-android.mjs 2>&1 | tee -a build.log; exit ${PIPESTATUS[0]}
+        run: |
+          set -o pipefail
+          node scripts/prepare-android.mjs 2>&1 | tee -a build.log
 
       - name: Build APK
         working-directory: android
         run: |
+          set -o pipefail
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee -a ../build.log; exit ${PIPESTATUS[0]}
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee -a ../build.log
 
       - name: Rename APK
         run: |
           mkdir -p out
           cp android/app/build/outputs/apk/debug/app-debug.apk out/jarvis.apk
+          ls -la out
+          unzip -l out/jarvis.apk | grep -E "\.so$" | tee -a build.log
 
       - uses: actions/upload-artifact@v4
         with:
@@ -57,13 +97,19 @@ jobs:
           files: out/jarvis.apk
           make_latest: true
 
-      - name: Push build log
+      # Build logs go to the `build-logs` branch so they can be read without Actions log access.
+      - name: Publish build log
         if: always()
         run: |
-          git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
-          git checkout --orphan build-logs
-          git rm -rf --cached . >/dev/null 2>&1 || true
-          tail -c 200000 build.log > BUILD_LOG.txt || echo "no log" > BUILD_LOG.txt
-          git add -f BUILD_LOG.txt
+          cp build.log /tmp/build.log 2>/dev/null || echo "no log captured" > /tmp/build.log
+          cd "$(mktemp -d)"
+          git init -q
+          git config user.name "jarvis-ci"
+          git config user.email "jarvis-ci@users.noreply.github.com"
+          git checkout -q -b build-logs
+          tail -c 400000 /tmp/build.log > BUILD_LOG.txt
+          grep -nE "error|Error|ERROR|FAILED|failed" /tmp/build.log | head -400 > ERRORS.txt || true
+          echo "run=${{ github.run_number }} status=${{ job.status }} sha=${{ github.sha }}" > STATUS.txt
+          git add BUILD_LOG.txt ERRORS.txt STATUS.txt
           git commit -qm "build log ${{ github.run_number }}"
-          git push -f origin build-logs
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" build-logs
