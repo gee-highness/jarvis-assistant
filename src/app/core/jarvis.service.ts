@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { db } from './db';
 import { MemoryService } from './memory.service';
 import { Conversation, Message, ToolCallRecord } from './models';
+import { LlmService } from './llm.service';
 import { JarvisDevice, isNative } from './native';
 import { OllamaMessage, OllamaService, OllamaTool } from './ollama.service';
 import { StoreService } from './store.service';
@@ -23,6 +24,7 @@ export class JarvisService {
   private memory = inject(MemoryService);
   private tools = inject(ToolsService);
   private voice = inject(VoiceService);
+  private llm = inject(LlmService);
 
   readonly conversations = signal<Conversation[]>([]);
   readonly currentId = signal<string | null>(null);
@@ -45,8 +47,21 @@ export class JarvisService {
   async ensureEngine(): Promise<boolean> {
     const c = this.store.settings().cloud;
     if (c.mode !== 'off' && c.apiKey && c.model && navigator.onLine) return true;
-    if (await this.ollama.ping()) return true;
     const s = this.store.settings();
+    if (s.engine === 'device') {
+      try {
+        if (!this.llm.info()?.loaded) this.status.set('Loading the brain…');
+        const ok = await this.llm.ensureLoaded();
+        this.ollama.state.set(ok ? 'online' : 'offline');
+        return ok;
+      } catch {
+        this.ollama.state.set('offline');
+        return false;
+      } finally {
+        this.status.set('');
+      }
+    }
+    if (await this.ollama.ping()) return true;
     const local = /127\.0\.0\.1|localhost/.test(s.ollamaUrl);
     if (!local || !s.autoWakeTermux || !isNative()) return false;
     const { installed } = await JarvisDevice.isTermuxInstalled().catch(() => ({ installed: false }));
@@ -61,6 +76,16 @@ export class JarvisService {
     this.ollama.state.set('offline');
     this.status.set('');
     return false;
+  }
+
+  offlineReason(): string {
+    const s = this.store.settings();
+    if (s.engine === 'device') {
+      if (!this.llm.available()) return 'The on-device engine is unavailable on this phone. Switch to Ollama or a cloud brain in Settings.';
+      if (!this.llm.activeInstalled()) return 'No brain installed yet. Open Brain and download a model (one time, then fully offline).';
+      return this.llm.loadError() || 'The brain failed to load. Try a smaller model or context in Brain.';
+    }
+    return 'The AI engine is offline. Open Termux and run: ollama serve';
   }
 
   // ---------------- conversations ----------------
@@ -115,17 +140,15 @@ export class JarvisService {
     const s = this.store.settings();
     const mem = await this.memory.contextFor(userText);
     const who = `${s.userName ? `The user's name is ${s.userName}. ` : ''}Address them as "${s.honorific}".`;
+    // Static parts first, changing parts last: the on-device engine reuses the cached prefix between turns.
     const parts = [
       s.persona,
       who,
-      `Now: ${prettyDate()} ${hm()}.`,
-      `## Current state\n${this.store.snapshot()}`,
-      mem ? `## What you remember about ${s.honorific}\n${mem}` : '',
       `## How to act
 - When the user asks you to do something, call the matching tool, then confirm briefly what was done.
 - Prefer one clear next action over long advice. Be honest about weak plans.
 - Use remember() for new durable personal facts the user shares.
-- For dates use YYYY-MM-DD. Today is ${this.store.today()}.`,
+- For dates use YYYY-MM-DD.`,
     ];
     if (!nativeTools && tools.length) {
       parts.push(`## Tools
@@ -134,6 +157,11 @@ You can use these tools. To call one, reply ONLY with a line like:
 You may call several, one per line. After results come back, answer the user normally.
 ${this.tools.catalogue(tools)}`);
     }
+    parts.push(
+      `## Right now\n${prettyDate()} ${hm()} (today is ${this.store.today()}).`,
+      `## Current state\n${this.store.snapshot()}`,
+      mem ? `## What you remember about ${s.honorific}\n${mem}` : '',
+    );
     return parts.filter(Boolean).join('\n\n');
   }
 
@@ -170,7 +198,7 @@ ${this.tools.catalogue(tools)}`);
     const patchReply = (p: Partial<UiMessage>) => this.messages.update(a => a.map(m => (m.id === reply.id ? { ...m, ...p } : m)));
 
     try {
-      if (!(await this.ensureEngine())) throw new Error('The AI engine is offline. Open Termux and run: ollama serve');
+      if (!(await this.ensureEngine())) throw new Error(this.offlineReason());
       const { tools } = this.tools.select(clean, opts.allTools);
       const model = this.store.settings().chatModel;
       const cloudOn = this.store.settings().cloud.mode !== 'off' && !!this.store.settings().cloud.apiKey && navigator.onLine;
@@ -193,7 +221,7 @@ ${this.tools.catalogue(tools)}`);
         });
         patchReply({ brain: res.brain });
         // models that lost native tools mid-loop (learned at runtime) fall back to the text protocol
-        let calls = res.toolCalls.map(tc => ({ id: tc.id, name: tc.function.name, args: this.parseArgs(tc.function.arguments) }));
+        let calls: { id?: string; name: string; args: Record<string, unknown> }[] = res.toolCalls.map(tc => ({ id: tc.id, name: tc.function.name, args: this.parseArgs(tc.function.arguments) }));
         if (!calls.length) calls = this.parseTextCalls(res.content);
         if (!calls.length || round === MAX_TOOL_ROUNDS) {
           finalText += this.visible(res.content);
@@ -290,8 +318,8 @@ ${this.tools.catalogue(tools)}`);
     const stats = this.store.snapshot();
     const system = `${s.persona}\nYou are reviewing the user's ${kind} shutdown. Be candid, specific, encouraging but honest. Max 130 words. End with ${kind === 'daily' ? "3 suggested MITs for tomorrow as a numbered list" : "3 outcomes for next week as a numbered list"}.`;
     const user = `Wins: ${review.wins}\nBlockers: ${review.blockers}\nEnergy (1-5): ${review.energy}\nNotes: ${review.notes ?? ''}\n\nState:\n${stats}`;
-    if (!(await this.ensureEngine())) throw new Error('AI engine offline');
-    const out = await this.ollama.complete(system, user, { model: s.chatModel, think: kind === 'weekly' ? s.deepThink : false });
+    if (!(await this.ensureEngine())) throw new Error(this.offlineReason());
+    const out = await this.ollama.complete(system, user, { model: s.chatModel, think: kind === 'weekly' ? s.deepThink : false, background: false });
     this.memory.add(`${kind === 'daily' ? 'Daily' : 'Weekly'} review ${this.store.today()}: wins: ${review.wins.slice(0, 160)}; blockers: ${review.blockers.slice(0, 160)}; energy ${review.energy}/5`, 'event', 2).catch(() => undefined);
     return out;
   }
@@ -302,7 +330,7 @@ ${this.tools.catalogue(tools)}`);
 Return JSON: {"tasks":[{"title":"verb-first title","due":"YYYY-MM-DD or null","urgent":bool,"important":bool,"estimate_min":number|null,"project":string|null}]}`;
     let tasks: any[] = [];
     try {
-      if (await this.ensureEngine()) tasks = extractJson<{ tasks: any[] }>(await this.ollama.complete(system, text, { format: 'json' }))?.tasks ?? [];
+      if (await this.ensureEngine()) tasks = extractJson<{ tasks: any[] }>(await this.ollama.complete(system, text, { format: 'json', background: false }))?.tasks ?? [];
     } catch { tasks = []; }
     if (!tasks.length) { await this.store.addTask({ title: text, inbox: true }); return 1; }
     for (const t of tasks.slice(0, 10)) {

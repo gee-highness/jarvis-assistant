@@ -1,0 +1,26 @@
+name: Export node_modules (dev tooling)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Pack and push to the deps branch
+        run: |
+          tar -cJf /tmp/nm.tar.xz node_modules package-lock.json
+          ls -la /tmp/nm.tar.xz
+          mkdir /tmp/deps && cd /tmp/deps
+          split -b 45m /tmp/nm.tar.xz nm.tar.xz.part-
+          git init -q && git checkout -q -b deps
+          git config user.name jarvis-ci && git config user.email jarvis-ci@users.noreply.github.com
+          git add . && git commit -qm "node_modules snapshot"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" deps

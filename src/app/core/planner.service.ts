@@ -61,7 +61,7 @@ export class PlannerService {
 Rules: MITs first and in the earliest focus slots; deep work in 25-90 minute blocks; batch small tasks into one admin block; 10-15 minute break after every 60-90 minutes of work; leave ~15% slack; never overlap fixed events; don't schedule beyond ${to}.
 Return JSON only: {"blocks":[{"start":"HH:MM","end":"HH:MM","label":"...","taskId":"<8-char id or omit>","kind":"focus|admin|break|fixed"}]}`;
           const user = `Tasks (id | title | estimate | flags):\n${list}\n${fixed.length ? 'Fixed events:\n' + fixed.map(f => `${f.start}-${f.end} ${f.label}`).join('\n') : ''}${opts.notes ? '\nUser notes: ' + opts.notes : ''}`;
-          const out = await this.ollama.complete(system, user, { format: 'json', model: s.chatModel });
+          const out = await this.ollama.complete(system, user, { format: 'json', model: s.chatModel, background: false });
           const parsed = extractJson<{ blocks?: TimeBlock[] }>(out);
           blocks = this.validate(parsed?.blocks ?? [], from, to, tasks);
         } catch { blocks = null; }

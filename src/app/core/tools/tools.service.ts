@@ -619,7 +619,12 @@ export class ToolsService {
     const groups = new Set<ToolGroup>(['core']);
     if (all) Object.keys(TRIGGERS).forEach(g => groups.add(g as ToolGroup));
     else for (const [g, re] of Object.entries(TRIGGERS)) if (re.test(text)) groups.add(g as ToolGroup);
-    const tools = this.defs.filter(d => groups.has(d.group)).map(d => this.toOllama(d));
+    // core tools first, in a fixed order: keeps the rendered prompt prefix stable so the
+    // on-device engine can reuse its KV cache between turns
+    const tools = [
+      ...this.defs.filter(d => d.group === 'core'),
+      ...this.defs.filter(d => d.group !== 'core' && groups.has(d.group)),
+    ].map(d => this.toOllama(d));
     const mcpTools = this.mcp.toolDefs();
     if (mcpTools.length && (all || /mcp|server|file|repo|git|database|search|fetch|\b(use|with) (the )?\w+ tool/i.test(text) || mcpTools.length <= 6)) tools.push(...mcpTools);
     return { tools, groups: [...groups] };

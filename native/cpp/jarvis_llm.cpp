@@ -51,6 +51,7 @@ llama_context * e_ctx = nullptr;
 std::string e_model_path;
 
 int g_threads = 4;
+bool g_kv_q8 = false;
 
 void log_cb(ggml_log_level level, const char * text, void *) {
     int prio = ANDROID_LOG_DEBUG;
@@ -149,6 +150,7 @@ common_json model_info_json() {
     o["n_ctx"] = g_n_ctx;
     o["n_ctx_train"] = llama_model_n_ctx_train(g_model);
     o["threads"] = g_threads;
+    o["kv_q8"] = g_kv_q8;
     if (g_tmpls) {
         o["has_template"] = common_chat_templates_was_explicit(g_tmpls.get());
         o["supports_thinking"] = common_chat_templates_support_enable_thinking(g_tmpls.get());
@@ -248,11 +250,22 @@ Java_com_jarvis_assistant_LlmNative_load(JNIEnv * env, jclass, jstring jpath, ji
     cp.abort_callback_data = nullptr;
     cp.no_perf = true;
 
-    llama_context * ctx = llama_init_from_model(model, cp);
+    // 8-bit KV cache (needs flash attention) halves context memory at no visible quality cost
+    llama_context_params cpq = cp;
+    cpq.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED;
+    cpq.type_k = GGML_TYPE_Q8_0;
+    cpq.type_v = GGML_TYPE_Q8_0;
+    llama_context * ctx = llama_init_from_model(model, cpq);
+    bool kv_q8 = ctx != nullptr;
+    if (!ctx) {
+        LOGW("q8 KV cache unavailable, using f16");
+        ctx = llama_init_from_model(model, cp);
+    }
     if (!ctx) {
         llama_model_free(model);
         return to_bytes(env, error_json("memory", "Not enough memory for this model and context size. Try a smaller model or context."));
     }
+    g_kv_q8 = kv_q8;
 
     g_model = model;
     g_ctx = ctx;

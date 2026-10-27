@@ -44,6 +44,10 @@ export interface JarvisDevicePlugin {
   keepAwake(o: { on: boolean }): Promise<void>;
   saveFile(o: { name: string; content: string; mime?: string }): Promise<{ uri: string }>;
   updateWidget(o: { line: string }): Promise<void>;
+  /** Home-screen chat widget: last exchange + status line. */
+  updateChatWidget(o: { question: string; answer: string; status?: string }): Promise<void>;
+  /** Short haptic feedback. */
+  haptic(o: { kind: 'tick' | 'light' | 'medium' | 'success' | 'warning' }): Promise<void>;
   // ---- Termux / engine ----
   isTermuxInstalled(): Promise<{ installed: boolean }>;
   startTermuxOllama(o: { origins?: string }): Promise<void>;
@@ -117,6 +121,11 @@ class JarvisDeviceWeb extends WebPlugin {
     return { uri: o.name };
   }
   async updateWidget() {}
+  async updateChatWidget() {}
+  async haptic(o: { kind: string }) {
+    const ms: Record<string, number | number[]> = { tick: 8, light: 12, medium: 25, success: [12, 60, 24], warning: [30, 80, 30] };
+    try { navigator.vibrate?.(ms[o.kind] ?? 10); } catch { /* ignore */ }
+  }
   async isTermuxInstalled() { return { installed: false }; }
   async startTermuxOllama() {}
   async getLaunchAction() {
@@ -130,3 +139,68 @@ export const JarvisDevice = registerPlugin<JarvisDevicePlugin>('JarvisDevice', {
 });
 
 export const isNative = () => Capacitor.isNativePlatform();
+
+// ---------------------------------------------------------------------------
+// On-device LLM engine (llama.cpp) — native/java/JarvisLlmPlugin.java
+// ---------------------------------------------------------------------------
+export interface LlmStatus {
+  available: boolean; error?: string; modelsDir: string; freeBytes?: number;
+  ramTotalMb: number; ramAvailMb: number; cores: number; defaultThreads?: number; systemInfo?: string;
+}
+export interface LlmModelInfo {
+  loaded: boolean; path?: string; desc?: string; size?: number; params?: number; n_ctx?: number; n_ctx_train?: number;
+  threads?: number; kv_q8?: boolean; has_template?: boolean; supports_thinking?: boolean; caps?: Record<string, boolean>;
+  error?: string; message?: string;
+}
+export interface LlmChatResult {
+  content?: string; reasoning?: string; tool_calls?: { id?: string; name: string; arguments: string }[];
+  finish?: 'stop' | 'length' | 'aborted' | 'error'; prompt_tokens?: number; cached_tokens?: number; gen_tokens?: number;
+  prompt_ms?: number; gen_ms?: number; tps?: number; format?: string; n_ctx?: number;
+  error?: 'context' | 'template' | 'template_tools' | 'not_loaded' | 'aborted' | 'decode' | 'sampler' | 'request' | 'internal';
+  message?: string;
+}
+export interface LlmDownloadEvent { id: string; status: 'pending' | 'running' | 'paused' | 'done' | 'error' | 'cancelled'; received: number; total: number; error?: string; }
+
+export interface JarvisLlmPlugin {
+  getStatus(): Promise<LlmStatus>;
+  listModels(): Promise<{ models: { file: string; size: number; modified: number }[] }>;
+  deleteModel(o: { file: string }): Promise<{ deleted: boolean }>;
+  load(o: { file: string; nCtx: number; threads?: number; batch?: number }): Promise<LlmModelInfo>;
+  unload(): Promise<void>;
+  info(): Promise<LlmModelInfo>;
+  chat(o: { request: string; requestId: string }): Promise<LlmChatResult>;
+  stop(): Promise<void>;
+  clearSlot(o: { slot: number }): Promise<void>;
+  loadEmbed(o: { file: string }): Promise<{ ok?: boolean; dims?: number; error?: string; message?: string }>;
+  embed(o: { texts: string[] }): Promise<{ vectors: number[][] }>;
+  download(o: { id: string; repo: string; file?: string; quant?: string; dest: string; title?: string; wifiOnly?: boolean }): Promise<{ started: boolean; repoFile: string; expected: number }>;
+  cancelDownload(o: { id: string }): Promise<void>;
+  getDownloads(): Promise<{ downloads: LlmDownloadEvent[] }>;
+  importModel(): Promise<{ file: string; size: number }>;
+  addListener(event: 'llmDelta', cb: (e: { requestId: string; content: string; reasoning: string }) => void): Promise<PluginListenerHandle>;
+  addListener(event: 'llmDownload', cb: (e: LlmDownloadEvent) => void): Promise<PluginListenerHandle>;
+}
+
+/** Browser builds have no on-device engine; everything reports "unavailable". */
+class JarvisLlmWeb extends WebPlugin {
+  private no(): never { throw new Error('The on-device engine needs the Android app'); }
+  async getStatus(): Promise<LlmStatus> { return { available: false, error: 'web', modelsDir: '', ramTotalMb: 0, ramAvailMb: 0, cores: navigator.hardwareConcurrency ?? 0 }; }
+  async listModels() { return { models: [] }; }
+  async deleteModel() { return { deleted: false }; }
+  async load() { return this.no(); }
+  async unload() {}
+  async info() { return { loaded: false }; }
+  async chat() { return this.no(); }
+  async stop() {}
+  async clearSlot() {}
+  async loadEmbed() { return this.no(); }
+  async embed() { return this.no(); }
+  async download() { return this.no(); }
+  async cancelDownload() {}
+  async getDownloads() { return { downloads: [] }; }
+  async importModel() { return this.no(); }
+}
+
+export const JarvisLlm = registerPlugin<JarvisLlmPlugin>('JarvisLlm', {
+  web: () => Promise.resolve(new JarvisLlmWeb() as unknown as JarvisLlmPlugin),
+});

@@ -1,5 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { CapacitorHttp } from '@capacitor/core';
+import { LlmService } from './llm.service';
 import { StoreService } from './store.service';
 
 export interface OllamaToolCall { id?: string; function: { name: string; arguments: Record<string, unknown> | string } }
@@ -28,6 +29,9 @@ export interface ChatOptions {
   onThinking?: (token: string) => void;
   /** Force the on-phone model even when a cloud brain is configured. */
   local?: boolean;
+  /** Background job (summaries, extraction): runs at low priority on the on-device engine. */
+  background?: boolean;
+  maxTokens?: number;
 }
 export interface ChatResult { content: string; thinking: string; toolCalls: OllamaToolCall[]; tokensPerSec?: number; brain: 'phone' | 'cloud'; }
 export interface ModelInfo { name: string; size: number; modified_at: string; details?: { parameter_size?: string; quantization_level?: string; family?: string } }
@@ -37,6 +41,7 @@ export type EngineState = 'unknown' | 'online' | 'offline' | 'waking';
 @Injectable({ providedIn: 'root' })
 export class OllamaService {
   private store = inject(StoreService);
+  private llm = inject(LlmService);
   readonly state = signal<EngineState>('unknown');
   readonly models = signal<ModelInfo[]>([]);
   readonly version = signal('');
@@ -47,8 +52,24 @@ export class OllamaService {
   private noThink = new Set<string>();
 
   private get base(): string { return this.store.settings().ollamaUrl.replace(/\/+$/, ''); }
+  private get device(): boolean { return this.store.settings().engine === 'device'; }
 
-  supportsTools(model: string) { return !this.noTools.has(model); }
+  supportsTools(model: string) { return this.device ? this.llm.supportsTools() : !this.noTools.has(model); }
+
+  /** Identifies which embedding space memories were indexed with. */
+  embedKey(): string {
+    const s = this.store.settings();
+    return this.device ? (s.deviceEmbed ? 'device:all-minilm-l6-v2' : '') : s.embedModel;
+  }
+
+  /** Is the configured local brain usable right now (model present / server reachable)? */
+  async checkLocal(): Promise<boolean> {
+    if (!this.device) return this.ping();
+    await this.llm.init();
+    const ok = this.llm.available() && this.llm.activeInstalled();
+    this.state.set(ok ? 'online' : 'offline');
+    return ok;
+  }
 
   async ping(timeoutMs = 2500): Promise<boolean> {
     try {
@@ -97,6 +118,7 @@ export class OllamaService {
   }
 
   async embed(texts: string[], model = this.store.settings().embedModel): Promise<number[][] | null> {
+    if (this.device) return this.llm.embed(texts);
     if (!model) return null;
     try {
       const r = await fetch(`${this.base}/api/embed`, { method: 'POST', body: JSON.stringify({ model, input: texts, keep_alive: '30m' }) });
@@ -115,7 +137,56 @@ export class OllamaService {
       try { return await this.cloudChat(messages, opts); }
       catch (e) { if (c.mode === 'always' || opts.signal?.aborted) throw e; /* auto: fall back to the phone model */ }
     }
-    return this.localChat(messages, opts);
+    return this.device ? this.deviceChat(messages, opts) : this.localChat(messages, opts);
+  }
+
+  // ---------------- built-in engine (llama.cpp) ----------------
+  private async deviceChat(messages: OllamaMessage[], opts: ChatOptions): Promise<ChatResult> {
+    const s = this.store.settings();
+    if (!(await this.llm.ensureLoaded())) {
+      throw new Error(this.llm.available()
+        ? 'No brain installed yet. Open Brain → download a model (one time, then fully offline).'
+        : 'The on-device engine is unavailable on this device.');
+    }
+    this.state.set('online');
+    let tools = opts.tools?.length && this.llm.supportsTools() ? opts.tools : undefined;
+    let msgs = this.toOpenAi(this.mergeSystem(messages), true);
+    const think = opts.think === true && this.llm.supportsThinking();
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const res = await this.llm.chat({
+        messages: msgs,
+        tools,
+        think,
+        json: !!opts.format,
+        slot: opts.background ? 1 : 0,
+        temperature: opts.temperature ?? s.temperature,
+        max_tokens: opts.maxTokens ?? (opts.format ? 768 : think ? 2048 : 1024),
+      }, { onContent: opts.onToken, onReasoning: opts.onThinking, signal: opts.signal });
+
+      if (res.error === 'context') {
+        // drop the oldest non-system turn and retry; keep the system prompt and the latest user message
+        const firstTurn = msgs.findIndex((m: any, i: number) => i > 0 && m.role !== 'system');
+        if (firstTurn < 0 || firstTurn >= msgs.length - 1) throw new Error('This message is too long for the model\'s memory. Try a shorter one or a larger context in Brain settings.');
+        let end = firstTurn + 1;
+        while (end < msgs.length - 1 && (msgs[end] as any).role === 'tool') end++;   // keep tool results with their call
+        msgs = [...msgs.slice(0, firstTurn), ...msgs.slice(end)];
+        continue;
+      }
+      if (res.error === 'template_tools' && tools) { this.llm.markNoTools(); tools = undefined; continue; }
+      if (res.error === 'aborted' || res.finish === 'aborted') {
+        const e = new Error('Stopped.'); e.name = 'AbortError'; throw e;
+      }
+      if (res.error) throw new Error(res.message ?? res.error);
+
+      const toolCalls: OllamaToolCall[] = (res.tool_calls ?? []).filter(t => t.name).map(t => {
+        let args: Record<string, unknown> = {};
+        try { args = t.arguments ? JSON.parse(t.arguments) : {}; } catch { args = {}; }
+        return { id: t.id || undefined, function: { name: t.name, arguments: args } };
+      });
+      this.lastBrain.set('phone');
+      return { content: (res.content ?? '').trim(), thinking: res.reasoning ?? '', toolCalls, tokensPerSec: res.tps, brain: 'phone' };
+    }
+    throw new Error('The conversation is too long for the model\'s memory. Start a new chat.');
   }
 
   private async localChat(messages: OllamaMessage[], opts: ChatOptions): Promise<ChatResult> {
@@ -184,7 +255,14 @@ export class OllamaService {
     return ids;
   }
 
-  private toOpenAi(messages: OllamaMessage[]): unknown[] {
+  /** Many chat templates only accept one system message, at the start. */
+  private mergeSystem(messages: OllamaMessage[]): OllamaMessage[] {
+    const sys = messages.filter(m => m.role === 'system').map(m => m.content).filter(Boolean);
+    const rest = messages.filter(m => m.role !== 'system');
+    return sys.length ? [{ role: 'system', content: sys.join('\n\n') }, ...rest] : rest;
+  }
+
+  private toOpenAi(messages: OllamaMessage[], device = false): unknown[] {
     let counter = 0;
     const pending: string[] = [];
     return messages.map(m => {
@@ -194,9 +272,13 @@ export class OllamaService {
           pending.push(id);
           return { id, type: 'function', function: { name: tc.function.name, arguments: typeof tc.function.arguments === 'string' ? tc.function.arguments : JSON.stringify(tc.function.arguments ?? {}) } };
         });
-        return { role: 'assistant', content: m.content || null, tool_calls };
+        return { role: 'assistant', content: m.content || (device ? '' : null), tool_calls };
       }
-      if (m.role === 'tool') return { role: 'tool', tool_call_id: m.tool_call_id ?? pending.shift() ?? `call_${++counter}`, content: m.content };
+      if (m.role === 'tool') {
+        const t: Record<string, unknown> = { role: 'tool', tool_call_id: m.tool_call_id ?? pending.shift() ?? `call_${++counter}`, content: m.content };
+        if (device && m.tool_name) t['name'] = m.tool_name;
+        return t;
+      }
       return { role: m.role, content: m.content };
     });
   }
@@ -274,13 +356,13 @@ export class OllamaService {
     const s = this.store.settings();
     const res = await this.chat(
       [{ role: 'system', content: system }, { role: 'user', content: user }],
-      { model: opts.model || s.utilityModel || s.chatModel, temperature: 0.2, think: false, ...opts },
+      { model: opts.model || s.utilityModel || s.chatModel, temperature: 0.2, think: false, background: true, ...opts },
     );
     return res.content.trim();
   }
 
   async speedTest(model = this.store.settings().chatModel): Promise<number> {
-    const res = await this.chat([{ role: 'user', content: 'Count from 1 to 40 separated by spaces.' }], { model, think: false, temperature: 0, local: true });
+    const res = await this.chat([{ role: 'user', content: 'Count from 1 to 40 separated by spaces.' }], { model, think: false, temperature: 0, local: true, maxTokens: 160 });
     return Math.round((res.tokensPerSec ?? 0) * 10) / 10;
   }
 

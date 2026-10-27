@@ -22,7 +22,7 @@ export class MemoryService {
     this.memories.set(await db.memories.orderBy('createdAt').reverse().toArray());
   }
 
-  private get embedModel() { return this.store.settings().embedModel; }
+  private get embedModel() { return this.ollama.embedKey(); }
 
   async add(text: string, kind: MemoryKind = 'fact', importance = 3, pinned = false): Promise<{ memory: Memory; merged: boolean }> {
     const clean = text.trim().replace(/\s+/g, ' ');
@@ -148,6 +148,26 @@ Return JSON: {"memories":[{"text":"<third-person fact, e.g. 'User's sister is Th
       }
       await this.init();
     } finally { this.reindexing.set(false); }
+  }
+
+  /** Quietly embeds memories that were saved without (or with a different) embedding model. */
+  async reindexStale(): Promise<number> {
+    const key = this.embedModel;
+    if (!key || this.reindexing()) return 0;
+    const stale = this.memories().filter(m => m.embedModel !== key);
+    if (!stale.length) return 0;
+    const probe = await this.ollama.embed([stale[0].text]);
+    if (!probe) return 0;
+    for (let i = 0; i < stale.length; i += 16) {
+      const slice = stale.slice(i, i + 16);
+      const vecs = await this.ollama.embed(slice.map(m => m.text));
+      if (!vecs) break;
+      const updated = slice.map((m, j) => ({ ...m, embedding: vecs[j], embedModel: key }));
+      await db.memories.bulkPut(updated);
+      const byId = new Map(updated.map(u => [u.id, u]));
+      this.memories.update(a => a.map(m => byId.get(m.id) ?? m));
+    }
+    return stale.length;
   }
 
   private findDuplicate(text: string, vec?: number[]): Memory | undefined {

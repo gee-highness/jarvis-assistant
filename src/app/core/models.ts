@@ -112,10 +112,24 @@ export const CLOUD_PRESETS: Record<CloudProvider, { label: string; baseUrl: stri
   custom: { label: 'Custom (OpenAI-compatible)', baseUrl: '', keyUrl: '', hint: 'Any OpenAI-compatible endpoint' },
 };
 
+export type EngineKind = 'device' | 'ollama';
+
 export interface Settings {
   id: 'main';
   userName: string;
   honorific: string;
+  /** Which local brain runs the AI: built-in llama.cpp engine or Ollama (Termux / PC). */
+  engine: EngineKind;
+  /** On-device model: a DEVICE_MODELS id, or "file:<name>.gguf" for an imported model. */
+  deviceModel: string;
+  /** Use the on-device embedding model for memory search. */
+  deviceEmbed: boolean;
+  /** Context window for the on-device engine (tokens). 0 = model default from the catalog. */
+  deviceCtx: number;
+  /** CPU threads for the on-device engine. 0 = auto (big cores). */
+  deviceThreads: number;
+  /** Only download models on Wi-Fi. */
+  wifiOnly: boolean;
   ollamaUrl: string;
   chatModel: string;
   utilityModel: string;
@@ -148,6 +162,12 @@ export const DEFAULT_SETTINGS: Settings = {
   id: 'main',
   userName: '',
   honorific: 'sir',
+  engine: 'device',
+  deviceModel: 'hermes3-3b',
+  deviceEmbed: true,
+  deviceCtx: 0,
+  deviceThreads: 0,
+  wifiOnly: true,
   ollamaUrl: 'http://127.0.0.1:11434',
   chatModel: 'huihui_ai/Hermes-3-Llama-3.2-abliterated:3b',
   utilityModel: '',
@@ -179,3 +199,83 @@ export const RECOMMENDED_MODELS = [
   { name: 'all-minilm', size: '46 MB', note: 'Embeddings (memory) · tiny' },
   { name: 'nomic-embed-text', size: '274 MB', note: 'Embeddings (memory) · better recall' },
 ];
+
+// ---------------------------------------------------------------------------
+// On-device model catalog (GGUF from Hugging Face, all abliterated/uncensored).
+// Small models lose more from quantisation, so the tiny ones ship at Q8 and the mid ones at Q5/Q4_K_M:
+// each tier is the most capable file that fits its RAM class.
+// ---------------------------------------------------------------------------
+export type ModelTier = 'nano' | 'lite' | 'balanced' | 'smart' | 'max';
+export interface DeviceModel {
+  id: string;
+  name: string;
+  tier: ModelTier;
+  family: string;
+  params: string;
+  quant: string;
+  repo: string;
+  /** Preferred file inside the repo; the app falls back to the first file matching `quant`. */
+  file?: string;
+  sizeMb: number;
+  /** Minimum total phone RAM (GB) to run comfortably. */
+  minRamGb: number;
+  /** Default context window on the phone. */
+  ctx: number;
+  thinking: boolean;
+  blurb: string;
+  strengths: string[];
+}
+
+export const DEVICE_MODELS: DeviceModel[] = [
+  {
+    id: 'qwen3-0.6b', name: 'Nano', tier: 'nano', family: 'Qwen3 0.6B abliterated', params: '0.6B', quant: 'Q8_0',
+    repo: 'mlabonne/Qwen3-0.6B-abliterated-GGUF', sizeMb: 639, minRamGb: 2, ctx: 8192, thinking: true,
+    blurb: 'Tiny and very fast. Good for quick capture, reminders and simple commands.',
+    strengths: ['Fastest replies', 'Runs on any phone', 'Basic tool use'],
+  },
+  {
+    id: 'qwen3-1.7b', name: 'Lite', tier: 'lite', family: 'Qwen3 1.7B abliterated', params: '1.7B', quant: 'Q5_K_M',
+    repo: 'bartowski/mlabonne_Qwen3-1.7B-abliterated-GGUF', file: 'mlabonne_Qwen3-1.7B-abliterated-Q5_K_M.gguf',
+    sizeMb: 1260, minRamGb: 3, ctx: 8192, thinking: true,
+    blurb: 'Small but sharp, with a reasoning mode. A great pick for 3-4 GB phones.',
+    strengths: ['Quick', 'Deep-think mode', 'Solid tool calling'],
+  },
+  {
+    id: 'hermes3-3b', name: 'Balanced', tier: 'balanced', family: 'Hermes 3 · Llama 3.2 3B abliterated', params: '3B', quant: 'Q5_K_M',
+    repo: 'darkc0de/Hermes-3-Llama-3.2-3B-abliterated-Q5_K_M-GGUF', file: 'hermes-3-llama-3.2-3b-abliterated-q5_k_m.gguf',
+    sizeMb: 2320, minRamGb: 5, ctx: 6144, thinking: false,
+    blurb: 'The default Jarvis brain: coherent, uncensored and built for function calling.',
+    strengths: ['Best tool use per GB', 'Natural conversation', 'Follows the persona'],
+  },
+  {
+    id: 'qwen3-4b', name: 'Smart', tier: 'smart', family: 'Qwen3 4B abliterated', params: '4B', quant: 'Q4_K_M',
+    repo: 'bartowski/mlabonne_Qwen3-4B-abliterated-GGUF', file: 'mlabonne_Qwen3-4B-abliterated-Q4_K_M.gguf',
+    sizeMb: 2500, minRamGb: 6, ctx: 6144, thinking: true,
+    blurb: 'The smartest model for 6-8 GB phones. Strong planning and reasoning when Deep think is on.',
+    strengths: ['Strong reasoning', 'Deep-think mode', 'Better planning'],
+  },
+  {
+    id: 'qwen3-8b', name: 'Max', tier: 'max', family: 'Qwen3 8B abliterated', params: '8B', quant: 'Q4_K_M',
+    repo: 'DevQuasar/huihui-ai.Qwen3-8B-abliterated-GGUF', file: 'huihui-ai.Qwen3-8B-abliterated.Q4_K_M.gguf',
+    sizeMb: 5030, minRamGb: 11, ctx: 4096, thinking: true,
+    blurb: 'Desktop-class intelligence for 12 GB+ phones. Slower, but noticeably wiser.',
+    strengths: ['Best answers', 'Long reasoning', 'Complex plans'],
+  },
+];
+
+export const DEVICE_EMBED_MODEL = {
+  id: 'minilm', name: 'Memory engine', family: 'all-MiniLM-L6-v2', quant: 'Q8_0',
+  repo: 'second-state/All-MiniLM-L6-v2-Embedding-GGUF', file: 'all-MiniLM-L6-v2-Q8_0.gguf', sizeMb: 25,
+  dest: 'embed-all-minilm-l6-v2-q8_0.gguf',
+};
+
+export function deviceModelFile(m: DeviceModel): string { return `${m.id}-${m.quant.toLowerCase()}.gguf`; }
+
+/** Best catalog tier for a phone with this much RAM (MB as reported by Android). */
+export function recommendedModel(ramTotalMb: number): DeviceModel {
+  const gb = ramTotalMb / 1024 + 0.5; // Android reports a bit less than the marketed size
+  const fits = DEVICE_MODELS.filter(m => m.minRamGb <= gb);
+  // prefer the tool-calling default for 5-7 GB phones over the slightly larger Qwen 4B
+  if (gb < 7.5 && fits.some(m => m.id === 'hermes3-3b')) return DEVICE_MODELS.find(m => m.id === 'hermes3-3b')!;
+  return fits[fits.length - 1] ?? DEVICE_MODELS[0];
+}
