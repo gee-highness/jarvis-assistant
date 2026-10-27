@@ -144,6 +144,7 @@ export class AppComponent implements OnInit {
     { path: '/review', label: 'Review', icon: '✎' },
     { path: '/memory', label: 'Memory', icon: '⌬' },
     { path: '/voices', label: 'Voices', icon: '♫' },
+    { path: '/personality', label: 'Personality', icon: '☺' },
     { path: '/progress', label: 'Progress', icon: '★' },
     { path: '/brain', label: 'Brain', icon: '◎' },
     { path: '/settings', label: 'Settings', icon: '⚙' },

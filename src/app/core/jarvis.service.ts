@@ -1,3 +1,4 @@
+import { composePersona } from './personality';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { db } from './db';
 import { MemoryService } from './memory.service';
@@ -135,14 +136,21 @@ export class JarvisService {
     this.pendingConfirm()?.resolve(false);
   }
 
+  /** Active persona text: compiled from the personality profile (or the raw override). */
+  persona(): string {
+    const s = this.store.settings();
+    return s.personality.rawOverride ? s.persona : composePersona(s.personality, s.honorific, s.userName);
+  }
+
   // ---------------- prompt ----------------
   private async systemPrompt(userText: string, tools: OllamaTool[], nativeTools: boolean): Promise<string> {
     const s = this.store.settings();
     const mem = await this.memory.contextFor(userText);
+    const persona = this.persona();
     const who = `${s.userName ? `The user's name is ${s.userName}. ` : ''}Address them as "${s.honorific}".`;
     // Static parts first, changing parts last: the on-device engine reuses the cached prefix between turns.
     const parts = [
-      s.persona,
+      persona,
       who,
       `## How to act
 - When the user asks you to do something, call the matching tool, then confirm briefly what was done.
@@ -316,7 +324,7 @@ ${this.tools.catalogue(tools)}`);
   async reviewFeedback(kind: 'daily' | 'weekly', review: { wins: string; blockers: string; energy: number; notes?: string }): Promise<string> {
     const s = this.store.settings();
     const stats = this.store.snapshot();
-    const system = `${s.persona}\nYou are reviewing the user's ${kind} shutdown. Be candid, specific, encouraging but honest. Max 130 words. End with ${kind === 'daily' ? "3 suggested MITs for tomorrow as a numbered list" : "3 outcomes for next week as a numbered list"}.`;
+    const system = `${this.persona()}\nYou are reviewing the user's ${kind} shutdown. Be candid, specific, encouraging but honest. Max 130 words. End with ${kind === 'daily' ? "3 suggested MITs for tomorrow as a numbered list" : "3 outcomes for next week as a numbered list"}.`;
     const user = `Wins: ${review.wins}\nBlockers: ${review.blockers}\nEnergy (1-5): ${review.energy}\nNotes: ${review.notes ?? ''}\n\nState:\n${stats}`;
     if (!(await this.ensureEngine())) throw new Error(this.offlineReason());
     const out = await this.ollama.complete(system, user, { model: s.chatModel, think: kind === 'weekly' ? s.deepThink : false, background: false });

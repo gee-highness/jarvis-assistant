@@ -12,7 +12,7 @@ import { StoreService } from '../store.service';
 import { addDays, hm, prettyDate, ymd } from '../util';
 import { calculate, convertUnits, describeWhen, htmlToText, parseDue, parseWhen } from './helpers';
 
-export type ToolGroup = 'core' | 'tasks' | 'focus' | 'habits' | 'planning' | 'notes' | 'memory' | 'reminders' | 'phone' | 'comms' | 'calendar' | 'utility' | 'web';
+export type ToolGroup = 'core' | 'tasks' | 'focus' | 'habits' | 'planning' | 'notes' | 'memory' | 'reminders' | 'phone' | 'comms' | 'calendar' | 'utility' | 'web' | 'persona';
 
 export interface ToolContext { confirm: (question: string) => Promise<boolean>; }
 
@@ -39,6 +39,7 @@ const TRIGGERS: Record<Exclude<ToolGroup, 'core'>, RegExp> = {
   comms: /sms|text |message|call |dial|phone number|email|mail|share|send/i,
   calendar: /calendar|meeting|event|appointment/i,
   utility: /calculat|math|\d\s*[-+*\/x^%]\s*\d|convert|how many|percent|time is it|what time|date|days (until|between)|clipboard|copy|paste/i,
+  persona: /personality|be (more|less)|funnier|more (funny|serious|casual|formal|blunt|gentle|chill|hyped)|less (formal|sarcastic|blunt)|tone|your (name|style|vibe)|call (me|yourself)|talk (more|less|like)|stop (joking|being)|swear|emoji/i,
   web: /search|google|look up|lookup|web|internet|online|news|website|url|http|weather|price of|latest/i,
 };
 
@@ -296,6 +297,38 @@ export class ToolsService {
         const existing = this.store.notes().find(n => n.title === title);
         await this.store.saveNote({ id: existing?.id, title, body: `${existing ? existing.body + '\n\n' : ''}**${hm()}** ${a['text']}`, tags: ['journal'] });
         return 'Journal updated.';
+      },
+    },
+    // ---------------- personality ----------------
+    {
+      name: 'set_personality', group: 'persona',
+      description: 'Adjust your own personality when the user asks you to change how you act (e.g. "be funnier", "less formal", "call me boss"). Trait values are 0-100.',
+      params: {
+        trait: { type: 'string', enum: ['warmth', 'humor', 'sarcasm', 'formality', 'directness', 'verbosity', 'enthusiasm', 'playfulness', 'curiosity', 'toughLove', 'emotional', 'proactivity'], description: 'Which trait' },
+        value: { type: 'number', description: 'New value 0-100' },
+        delta: { type: 'number', description: 'Or a relative change, e.g. +20 or -20' },
+        name: { type: 'string', description: 'New name for the assistant' },
+        honorific: { type: 'string', description: 'What to call the user' },
+        emoji: { type: 'string', enum: ['none', 'some', 'lots'], description: 'Emoji usage' },
+      },
+      run: async a => {
+        const s = this.store.settings();
+        const p = { ...s.personality, traits: { ...s.personality.traits }, preset: 'custom' };
+        const done: string[] = [];
+        const t = a['trait'] as keyof typeof p.traits | undefined;
+        if (t && t in p.traits) {
+          const cur = p.traits[t];
+          const next = a['value'] != null ? Number(a['value']) : cur + Number(a['delta'] ?? 0);
+          p.traits[t] = Math.max(0, Math.min(100, Math.round(next)));
+          done.push(`${t} ${cur} → ${p.traits[t]}`);
+        }
+        if (a['name']) { p.name = String(a['name']); done.push(`name ${p.name}`); }
+        if (a['emoji']) { p.emoji = a['emoji'] as any; done.push(`emoji ${p.emoji}`); }
+        const patch: any = { personality: p };
+        if (a['honorific']) { patch.honorific = String(a['honorific']); done.push(`calling the user "${patch.honorific}"`); }
+        if (!done.length) return 'Nothing changed: specify a trait, name, honorific or emoji.';
+        await this.store.updateSettings(patch);
+        return 'Personality updated: ' + done.join(', ');
       },
     },
     // ---------------- memory ----------------

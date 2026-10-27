@@ -1,3 +1,4 @@
+import { DEFAULT_PERSONALITY, Personality } from './personality';
 export type ID = string;
 
 export interface Repeat {
@@ -225,6 +226,8 @@ export interface Settings {
   temperature: number;
   deepThink: boolean;
   persona: string;
+  /** Adjustable personality profile (compiled into the system persona unless personality.rawOverride). */
+  personality: Personality;
   wakeTime: string;      // HH:mm
   shutdownTime: string;  // HH:mm
   workStart: string;
@@ -263,6 +266,7 @@ export const DEFAULT_SETTINGS: Settings = {
   temperature: 0.6,
   deepThink: false,
   persona: DEFAULT_PERSONA,
+  personality: DEFAULT_PERSONALITY,
   wakeTime: '06:30',
   shutdownTime: '18:00',
   workStart: '08:00',
