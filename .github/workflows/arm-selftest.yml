@@ -48,3 +48,46 @@ jobs:
           cd "$(mktemp -d)"; git init -q; git config user.name ci; git config user.email ci@users.noreply.github.com
           git checkout -q -b $b; cp /tmp/out.txt OUT.txt 2>/dev/null || echo none > OUT.txt
           git add OUT.txt; git commit -qm out; git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" $b
+
+  ndk-a53:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - name: Tools
+        run: |
+          sudo apt-get -qq update && sudo apt-get -qq install -y qemu-user-static > /dev/null
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;29.0.13113456" > /dev/null
+      - name: Build static llama-simple with the app's NDK (armv8-a)
+        run: |
+          exec > >(tee -a /tmp/out.txt) 2>&1
+          git clone -q --depth 1 --branch b11936 https://github.com/ggml-org/llama.cpp /tmp/llama.cpp
+          NDK=$ANDROID_HOME/ndk/29.0.13113456
+          cmake -S /tmp/llama.cpp -B /tmp/b -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-28 -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF -DGGML_BACKEND_DL=OFF -DGGML_NATIVE=OFF -DGGML_CPU_ARM_ARCH=armv8-a \
+            -DGGML_LLAMAFILE=OFF -DGGML_OPENMP=OFF -DGGML_CPU_KLEIDIAI=OFF -DGGML_CPU_REPACK=OFF \
+            -DLLAMA_CURL=OFF -DLLAMA_OPENSSL=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_SERVER=OFF -DLLAMA_BUILD_EXAMPLES=ON \
+            -DCMAKE_EXE_LINKER_FLAGS="-static" > /tmp/cmake.log 2>&1 || tail -30 /tmp/cmake.log
+          cmake --build /tmp/b -j4 --target llama-simple > /tmp/build.log 2>&1 || grep -B5 "error" /tmp/build.log | head -40
+          file /tmp/b/bin/llama-simple
+      - name: Model
+        run: |
+          f=$(curl -s https://huggingface.co/api/models/mlabonne/Qwen3-0.6B-abliterated-GGUF | jq -r '.siblings[].rfilename' | grep -i q8_0 | head -1)
+          curl -sL -o /tmp/nano.gguf "https://huggingface.co/mlabonne/Qwen3-0.6B-abliterated-GGUF/resolve/main/$f"
+      - name: Run on emulated Cortex-A53
+        run: |
+          exec > >(tee -a /tmp/out.txt) 2>&1
+          for cpu in cortex-a53 max; do
+            echo "=== NDK build on $cpu ==="
+            timeout 1500 qemu-aarch64-static -cpu $cpu /tmp/b/bin/llama-simple -m /tmp/nano.gguf -n 16 "The capital of France is" 2>/tmp/err.txt; echo; tail -3 /tmp/err.txt
+          done
+      - name: Publish
+        if: always()
+        run: |
+          cd "$(mktemp -d)"; git init -q; git config user.name ci; git config user.email ci@users.noreply.github.com
+          git checkout -q -b selftest-ndk-a53; cp /tmp/out.txt OUT.txt 2>/dev/null || echo none > OUT.txt
+          git add OUT.txt; git commit -qm out; git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" selftest-ndk-a53
