@@ -19,6 +19,12 @@ interface Row { name: string; ok: boolean | null; detail: string; }
       <div class="page-head"><h1>Diagnostics</h1></div>
       <p class="small muted">Checks each layer in turn so we can see exactly where it stops responding.</p>
       <div class="row wrap">
+        <div class="card small">
+          <b>Engine monitor</b> (live)<br>
+          Installed: {{ llm.status()?.available ? 'engine ✓' : 'engine ✗' }} · model {{ llm.activeInstalled() ? '✓ ' + (llm.active()?.name ?? '') : '✗ none' }}<br>
+          Loaded: {{ llm.info()?.loaded ? 'yes · ctx ' + llm.info()?.n_ctx + ' · ' + llm.info()?.threads + ' threads' : 'no' }}<br>
+          Now: @if (llm.activity(); as a) { {{ a.phase === 'prompt' ? 'reading prompt' : 'generating' }} · {{ a.chars }} chars · {{ tick() }}s } @else { idle }
+        </div>
         <button class="primary" [disabled]="running()" (click)="run()">{{ running() ? 'Running…' : '▶ Run full check' }}</button>
         <button [disabled]="!rows().length" (click)="copy()">Copy report</button>
       </div>
@@ -41,12 +47,16 @@ interface Row { name: string; ok: boolean | null; detail: string; }
 export class DiagnosticsPage {
   readonly diag = inject(DiagService);
   private store = inject(StoreService);
-  private llm = inject(LlmService);
+  readonly llm = inject(LlmService);
   private ollama = inject(OllamaService);
   private jarvis = inject(JarvisService);
   private voice = inject(VoiceService);
   readonly rows = signal<Row[]>([]);
   readonly running = signal(false);
+  readonly now = signal(Date.now());
+  readonly tick = () => { const a = this.llm.activity(); return a ? Math.round((this.now() - a.since) / 1000) : 0; };
+  private timer = setInterval(() => this.now.set(Date.now()), 1000);
+  ngOnDestroy() { clearInterval(this.timer); }
 
   private push(r: Row) { this.rows.update(a => [...a.filter(x => x.name !== r.name), r]); }
   private ms(t0: number) { return `${((performance.now() - t0) / 1000).toFixed(1)}s`; }

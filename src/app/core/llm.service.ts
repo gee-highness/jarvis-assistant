@@ -73,6 +73,8 @@ export class LlmService {
       JarvisLlm.addListener('llmDelta', e => {
         const h = this.handlers.get(e.requestId);
         if (!h) return;
+        const act = this.activity();
+        if (act) this.activity.set({ ...act, chars: act.chars + (e.content?.length ?? 0) + (e.reasoning?.length ?? 0), phase: 'generating' });
         if (e.reasoning) h.onReasoning?.(e.reasoning);
         if (e.content) h.onContent?.(e.content);
       }).catch(() => undefined);
@@ -216,6 +218,7 @@ export class LlmService {
     const job = i >= 0 ? this.queue.splice(i, 1)[0] : this.queue.shift();
     if (!job) return;
     this.running = job;
+    this.activity.set({ since: Date.now(), chars: 0, phase: 'prompt' });
     const id = uid();
     this.handlers.set(id, job.h);
     const onAbort = () => { if (this.running === job) JarvisLlm.stop().catch(() => undefined); };
@@ -232,9 +235,13 @@ export class LlmService {
         job.h.signal?.removeEventListener('abort', onAbort);
         this.handlers.delete(id);
         this.running = null;
+        this.activity.set(null);
         this.pump();
       });
   }
+
+  /** Live generation state, for the engine monitor. */
+  readonly activity = signal<{ since: number; chars: number; phase: 'prompt' | 'generating' } | null>(null);
 
   markNoTools() { const a = this.active(); if (a) this.noTools.add(a.id); }
 
