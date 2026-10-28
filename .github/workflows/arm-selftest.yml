@@ -7,6 +7,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -24,12 +26,21 @@ jobs:
           cmake --build b -j4 --target llama-simple
       - name: Models
         run: |
+          exec > >(tee -a /tmp/out.txt) 2>&1
           get() { f=$(curl -s https://huggingface.co/api/models/$1 | jq -r '.siblings[].rfilename' | grep -i "$2" | head -1); echo "$1 -> $f"; curl -sL -o "$3" "https://huggingface.co/$1/resolve/main/$f"; ls -l "$3"; }
           get mlabonne/Qwen3-0.6B-abliterated-GGUF 'q8_0' nano.gguf
           get bartowski/mlabonne_Qwen3-1.7B-abliterated-GGUF 'Q4_K_L' lite.gguf
       - name: Run
         run: |
+          exec > >(tee -a /tmp/out.txt) 2>&1
           for m in nano lite; do
             echo "=== ${{ matrix.arch }} $m ==="
             timeout 600 ./llama.cpp/b/bin/llama-simple -m $m.gguf -n 24 "The capital of France is" 2>&1 | tail -8
           done
+      - name: Publish
+        if: always()
+        run: |
+          b=selftest-$(echo '${{ matrix.arch }}' | tr -c 'a-z0-9\n' '-')
+          cd "$(mktemp -d)"; git init -q; git config user.name ci; git config user.email ci@users.noreply.github.com
+          git checkout -q -b $b; cp /tmp/out.txt OUT.txt 2>/dev/null || echo none > OUT.txt
+          git add OUT.txt; git commit -qm out; git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" $b
