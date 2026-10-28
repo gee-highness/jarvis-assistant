@@ -2,7 +2,7 @@ name: ARM engine self-test
 on:
   workflow_dispatch:
   push:
-    paths: ['.github/workflows/arm-selftest.yml']
+    paths: ['.github/workflows/arm-selftest.yml', 'ci/selftest/**', 'native/cpp/jarvis_llm.cpp']
 
 jobs:
   test:
@@ -14,29 +14,32 @@ jobs:
       matrix:
         arch: ['armv8-a', 'armv8.2-a+dotprod+fp16']
     steps:
-      - name: Fetch llama.cpp
-        run: git clone --depth 1 --branch b11936 https://github.com/ggml-org/llama.cpp
-      - name: Build (${{ matrix.arch }})
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - name: Build engine wrapper (${{ matrix.arch }})
         run: |
-          cd llama.cpp
+          exec > >(tee -a /tmp/out.txt) 2>&1
+          git clone -q --depth 1 --branch b11936 https://github.com/ggml-org/llama.cpp /tmp/llama.cpp
           export CC=clang CXX=clang++
-          cmake -B b -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=OFF -DGGML_CPU_ARM_ARCH=${{ matrix.arch }} \
-            -DGGML_CPU_REPACK=OFF -DGGML_CPU_KLEIDIAI=OFF -DGGML_OPENMP=OFF -DLLAMA_CURL=OFF -DLLAMA_OPENSSL=OFF \
-            -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_SERVER=OFF -DLLAMA_BUILD_EXAMPLES=ON
-          cmake --build b -j4 --target llama-simple
+          cmake -S ci/selftest -B /tmp/b -DCMAKE_BUILD_TYPE=Release -DLLAMA_SRC=/tmp/llama.cpp \
+            -DJARVIS_CPP=$PWD/native/cpp/jarvis_llm.cpp -DGGML_CPU_ARM_ARCH=${{ matrix.arch }} > /tmp/cmake.log
+          cmake --build /tmp/b -j4 2>&1 | grep -E "error|warning: unused|Built target jarvisllm" | head -40
+          ls /tmp/b/bin
       - name: Models
         run: |
           exec > >(tee -a /tmp/out.txt) 2>&1
-          get() { f=$(curl -s https://huggingface.co/api/models/$1 | jq -r '.siblings[].rfilename' | grep -i "$2" | head -1); echo "$1 -> $f"; curl -sL -o "$3" "https://huggingface.co/$1/resolve/main/$f"; ls -l "$3"; }
+          get() { f=$(curl -s https://huggingface.co/api/models/$1 | jq -r '.siblings[].rfilename' | grep -i "$2" | head -1); echo "$1 -> $f"; curl -sL -o "/tmp/$3" "https://huggingface.co/$1/resolve/main/$f"; }
           get mlabonne/Qwen3-0.6B-abliterated-GGUF 'q8_0' nano.gguf
           get bartowski/mlabonne_Qwen3-1.7B-abliterated-GGUF 'Q4_K_L' lite.gguf
-      - name: Run
+      - name: Run wrapper exactly like the app
         run: |
           exec > >(tee -a /tmp/out.txt) 2>&1
-          for m in nano lite; do
-            echo "=== ${{ matrix.arch }} $m ==="
-            timeout 600 ./llama.cpp/b/bin/llama-simple -m $m.gguf -n 24 "The capital of France is" 2>/dev/null; echo
-          done
+          cd ci/selftest && javac -d /tmp/cls src/com/jarvis/assistant/*.java
+          for m in nano lite; do for t in 4 1; do
+            echo "=== ${{ matrix.arch }} $m threads=$t ==="
+            timeout 900 java -Djava.library.path=/tmp/b/bin -cp /tmp/cls com.jarvis.assistant.Test /tmp/b/bin /tmp/$m.gguf $t 2>&1 | grep -E "^(LOAD|CHAT|SYSINFO)|error|Error" | cut -c1-900
+          done; done
       - name: Publish
         if: always()
         run: |
