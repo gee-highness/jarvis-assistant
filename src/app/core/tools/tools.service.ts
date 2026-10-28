@@ -9,10 +9,11 @@ import { NotifyService } from '../notify.service';
 import { OllamaTool } from '../ollama.service';
 import { PlannerService } from '../planner.service';
 import { StoreService } from '../store.service';
-import { addDays, hm, prettyDate, ymd } from '../util';
+import { addDays, hm, prettyDate, uid, ymd } from '../util';
+import { ProgressService } from '../progress.service';
 import { calculate, convertUnits, describeWhen, htmlToText, parseDue, parseWhen } from './helpers';
 
-export type ToolGroup = 'core' | 'tasks' | 'focus' | 'habits' | 'planning' | 'notes' | 'memory' | 'reminders' | 'phone' | 'comms' | 'calendar' | 'utility' | 'web' | 'persona';
+export type ToolGroup = 'core' | 'tasks' | 'focus' | 'habits' | 'planning' | 'notes' | 'memory' | 'reminders' | 'phone' | 'comms' | 'calendar' | 'utility' | 'web' | 'persona' | 'goals' | 'journal' | 'templates' | 'progress';
 
 export interface ToolContext { confirm: (question: string) => Promise<boolean>; }
 
@@ -39,6 +40,10 @@ const TRIGGERS: Record<Exclude<ToolGroup, 'core'>, RegExp> = {
   comms: /sms|text |message|call |dial|phone number|email|mail|share|send/i,
   calendar: /calendar|meeting|event|appointment/i,
   utility: /calculat|math|\d\s*[-+*\/x^%]\s*\d|convert|how many|percent|time is it|what time|date|days (until|between)|clipboard|copy|paste/i,
+  goals: /goal|milestone|objective|ambition|target|aim to|want to (run|save|learn|lose|read|build|write)/i,
+  journal: /journal|mood|how (am i|i'm) feel|i feel|feeling|energy|gratitude|grateful|diary|reflect|burn ?out|stress/i,
+  templates: /template|checklist|routine|project|workflow|kick ?off|set ?up a/i,
+  progress: /\bxp\b|level|streak|quest|achievement|progress|score|how am i doing|stats/i,
   persona: /personality|be (more|less)|funnier|more (funny|serious|casual|formal|blunt|gentle|chill|hyped)|less (formal|sarcastic|blunt)|tone|your (name|style|vibe)|call (me|yourself)|talk (more|less|like)|stop (joking|being)|swear|emoji/i,
   web: /search|google|look up|lookup|web|internet|online|news|website|url|http|weather|price of|latest/i,
 };
@@ -51,6 +56,7 @@ export class ToolsService {
   private notify = inject(NotifyService);
   private planner = inject(PlannerService);
   private mcp = inject(McpService);
+  private progress = inject(ProgressService);
 
   private findTaskOrThrow(ref: string): Task {
     const t = this.store.findTask(String(ref ?? ''));
@@ -75,6 +81,9 @@ export class ToolsService {
         project: { type: 'string', description: 'Project or area name' },
         mit: { type: 'boolean', description: 'Make it one of today\'s 3 Most Important Tasks' },
         notes: { type: 'string', description: 'Extra details' },
+        repeat: { type: 'string', enum: ['daily', 'weekdays', 'weekly', 'monthly'], description: 'Make it recurring' },
+        goal: { type: 'string', description: 'Title of a goal this task serves' },
+        subtasks: { type: 'array', items: { type: 'string' }, description: 'Checklist steps' },
       },
       required: ['title'],
       run: async a => {
@@ -82,6 +91,8 @@ export class ToolsService {
         const t = await this.store.addTask({
           title: String(a['title']), due: parseDue(a['due']), urgent: !!a['urgent'], important: a['important'] !== false,
           estimateMin: a['estimate_min'] ? Number(a['estimate_min']) : undefined, project: a['project'], isMit: !!a['mit'], notes: a['notes'],
+          repeat: a['repeat'] ? { every: a['repeat'] } : undefined, goalId: a['goal'] ? this.store.findGoal(String(a['goal']))?.id : undefined,
+          subtasks: Array.isArray(a['subtasks']) ? a['subtasks'].map((x: unknown) => ({ id: uid(), title: String(x), done: false })) : undefined,
         });
         return `Added: ${this.fmtTask(t)}`;
       },
@@ -298,6 +309,160 @@ export class ToolsService {
         await this.store.saveNote({ id: existing?.id, title, body: `${existing ? existing.body + '\n\n' : ''}**${hm()}** ${a['text']}`, tags: ['journal'] });
         return 'Journal updated.';
       },
+    },
+    // ---------------- goals ----------------
+    {
+      name: 'add_goal', group: 'goals',
+      description: 'Create a goal with optional measurable target and milestones.',
+      params: {
+        title: { type: 'string', description: 'The goal' }, why: { type: 'string', description: 'Why it matters' },
+        area: { type: 'string', enum: ['career', 'health', 'money', 'learning', 'relationships', 'personal', 'project'], description: 'Life area' },
+        target_date: { type: 'string', description: 'YYYY-MM-DD or phrase' },
+        metric_unit: { type: 'string', description: 'Unit, e.g. km' }, metric_target: { type: 'number', description: 'Target value' },
+        milestones: { type: 'array', items: { type: 'string' }, description: 'Milestone titles' },
+      },
+      required: ['title'],
+      run: async a => {
+        const g = await this.store.addGoal({
+          title: String(a['title']), why: a['why'], area: a['area'], targetDate: parseDue(a['target_date']),
+          metric: a['metric_unit'] && a['metric_target'] ? { unit: String(a['metric_unit']), target: Number(a['metric_target']), current: 0 } : undefined,
+          milestones: Array.isArray(a['milestones']) ? a['milestones'].map((m: unknown) => ({ id: uid(), title: String(m), done: false })) : [],
+        });
+        return `Goal created: ${g.title}${g.milestones.length ? ` with ${g.milestones.length} milestones` : ''}.`;
+      },
+    },
+    {
+      name: 'list_goals', group: 'goals',
+      description: 'List active goals with progress.',
+      params: {},
+      run: async () => {
+        const gs = this.store.activeGoals();
+        return gs.length ? gs.map(g => `- ${g.title} (${g.area}): ${Math.round(this.store.goalProgress(g) * 100)}%${g.targetDate ? ', due ' + g.targetDate : ''}${g.metric ? `, ${g.metric.current}/${g.metric.target} ${g.metric.unit}` : ''}; milestones ${g.milestones.filter(m => m.done).length}/${g.milestones.length}`).join('\n') : 'No active goals.';
+      },
+    },
+    {
+      name: 'update_goal', group: 'goals',
+      description: 'Update a goal: log metric progress, add or complete a milestone, or mark the goal achieved.',
+      params: {
+        goal: { type: 'string', description: 'Goal title or fragment' },
+        current: { type: 'number', description: 'New metric value' }, add_progress: { type: 'number', description: 'Amount to add to the metric' },
+        add_milestone: { type: 'string', description: 'Milestone to add' }, complete_milestone: { type: 'string', description: 'Milestone title fragment to mark done' },
+        done: { type: 'boolean', description: 'Mark the goal achieved' },
+      },
+      required: ['goal'],
+      run: async a => {
+        const g = this.store.findGoal(String(a['goal']));
+        if (!g) return `No goal matching "${a['goal']}".`;
+        const out: string[] = [];
+        if (g.metric && (a['current'] != null || a['add_progress'] != null)) {
+          const v = a['current'] != null ? Number(a['current']) : g.metric.current + Number(a['add_progress']);
+          await this.store.updateGoal(g.id, { metric: { ...g.metric, current: v } }); out.push(`${v}/${g.metric.target} ${g.metric.unit}`);
+        }
+        if (a['add_milestone']) { await this.store.addMilestone(g.id, String(a['add_milestone'])); out.push('milestone added'); }
+        if (a['complete_milestone']) {
+          const f = String(a['complete_milestone']).toLowerCase();
+          const m = this.store.findGoal(g.id)?.milestones.find(x => !x.done && x.title.toLowerCase().includes(f));
+          if (m) { await this.store.toggleMilestone(g.id, m.id); out.push(`milestone done: ${m.title}`); } else out.push('milestone not found');
+        }
+        if (a['done']) { await this.store.completeGoal(g.id); out.push('goal achieved'); }
+        return out.length ? `${g.title}: ${out.join('; ')}. Progress ${Math.round(this.store.goalProgress(this.store.findGoal(g.id) ?? g) * 100)}%.` : 'Nothing to update.';
+      },
+    },
+    // ---------------- journal ----------------
+    {
+      name: 'log_mood', group: 'journal',
+      description: 'Record how the user feels today (mood and energy 1-5) with an optional journal note and gratitude.',
+      params: {
+        mood: { type: 'number', description: '1 terrible .. 5 great' }, energy: { type: 'number', description: '1 exhausted .. 5 energised' },
+        text: { type: 'string', description: 'Journal text' }, gratitude: { type: 'string', description: 'Something they are grateful for' },
+      },
+      run: async a => {
+        const cur = this.store.todayJournal();
+        const e = await this.store.saveJournal({
+          mood: a['mood'] != null ? Math.max(1, Math.min(5, Math.round(Number(a['mood'])))) : undefined,
+          energy: a['energy'] != null ? Math.max(1, Math.min(5, Math.round(Number(a['energy'])))) : undefined,
+          text: a['text'] ? `${cur?.text ? cur.text + '\n' : ''}${a['text']}` : undefined, gratitude: a['gratitude'],
+        });
+        return `Logged for ${e.date}: mood ${e.mood}/5, energy ${e.energy}/5.`;
+      },
+    },
+    {
+      name: 'journal_insights', group: 'journal',
+      description: 'Summarise mood and energy trends over recent days.',
+      params: { days: { type: 'number', description: 'Days to look back (default 14)' } },
+      run: async a => {
+        const n = Number(a['days'] ?? 14), from = new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+        const es = this.store.journal().filter(j => j.date >= from);
+        if (!es.length) return 'No journal entries in that period.';
+        const avg = (k: 'mood' | 'energy') => (es.reduce((s, e) => s + e[k], 0) / es.length).toFixed(1);
+        const best = [...es].sort((x, y) => y.mood - x.mood)[0], worst = [...es].sort((x, y) => x.mood - y.mood)[0];
+        return `${es.length} entries. Avg mood ${avg('mood')}/5, energy ${avg('energy')}/5. Best day ${best.date} (${best.mood}), lowest ${worst.date} (${worst.mood}).`;
+      },
+    },
+    // ---------------- templates & projects ----------------
+    {
+      name: 'list_templates', group: 'templates',
+      description: 'List available task templates (checklists/routines/project kits).',
+      params: {},
+      run: async () => this.store.templates().map(t => `- ${t.name}: ${t.items.length} steps`).join('\n'),
+    },
+    {
+      name: 'apply_template', group: 'templates',
+      description: 'Create all tasks of a template, optionally as a named project.',
+      params: { template: { type: 'string', description: 'Template name' }, project: { type: 'string', description: 'Project name' }, start: { type: 'string', description: 'Start date' } },
+      required: ['template'],
+      run: async a => {
+        const n = await this.store.applyTemplate(String(a['template']), { project: a['project'], start: parseDue(a['start']) });
+        return `Created ${n} tasks from the template.`;
+      },
+    },
+    {
+      name: 'save_template', group: 'templates',
+      description: 'Save a reusable template of task steps.',
+      params: { name: { type: 'string', description: 'Template name' }, steps: { type: 'array', items: { type: 'string' }, description: 'Step titles' }, icon: { type: 'string', description: 'Emoji' } },
+      required: ['name', 'steps'],
+      run: async a => {
+        const t = await this.store.saveTemplate({ name: String(a['name']), icon: a['icon'], items: (a['steps'] as unknown[]).map(x => ({ title: String(x) })) });
+        return `Template "${t.name}" saved with ${t.items.length} steps.`;
+      },
+    },
+    {
+      name: 'list_projects', group: 'templates',
+      description: 'List projects with open/done task counts.',
+      params: {},
+      run: async () => this.store.projects().map(p => `- ${p.name}: ${p.open} open, ${p.done} done`).join('\n') || 'No projects.',
+    },
+    {
+      name: 'snooze_task', group: 'tasks',
+      description: 'Push a task to a later day.',
+      params: { task: { type: 'string', description: 'Task title or id' }, days: { type: 'number', description: 'Days to push (default 1)' } },
+      required: ['task'],
+      run: async a => {
+        const t = this.store.findTask(String(a['task']));
+        if (!t) return `No task matching "${a['task']}".`;
+        const u = await this.store.snoozeTask(t.id, Number(a['days'] ?? 1));
+        return `Snoozed to ${u?.due}: ${t.title}`;
+      },
+    },
+    {
+      name: 'add_subtasks', group: 'tasks',
+      description: 'Add checklist steps to an existing task, or make it repeat.',
+      params: { task: { type: 'string', description: 'Task title or id' }, steps: { type: 'array', items: { type: 'string' }, description: 'Steps' }, repeat: { type: 'string', enum: ['daily', 'weekdays', 'weekly', 'monthly'], description: 'Make recurring' } },
+      required: ['task'],
+      run: async a => {
+        const t = this.store.findTask(String(a['task']));
+        if (!t) return `No task matching "${a['task']}".`;
+        const steps = Array.isArray(a['steps']) ? a['steps'].map((x: unknown) => ({ id: uid(), title: String(x), done: false })) : [];
+        await this.store.updateTask(t.id, { subtasks: [...(t.subtasks ?? []), ...steps], repeat: a['repeat'] ? { every: a['repeat'] } : t.repeat });
+        return `Updated "${t.title}": ${steps.length} steps added${a['repeat'] ? ', repeats ' + a['repeat'] : ''}.`;
+      },
+    },
+    // ---------------- progress ----------------
+    {
+      name: 'my_progress', group: 'progress',
+      description: 'Report level, XP, streak and today\'s quests.',
+      params: {},
+      run: async () => this.progress.summary(),
     },
     // ---------------- personality ----------------
     {

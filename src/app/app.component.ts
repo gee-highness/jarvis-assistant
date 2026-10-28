@@ -46,10 +46,13 @@ import { VoiceOverlayComponent } from './ui/voice-overlay.component';
         }
       }
 
+      @if (!url().startsWith('/welcome')) {
       <button class="fab" (click)="openVoice()" aria-label="Talk to Jarvis">
         <svg viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg>
       </button>
+      }
 
+      @if (!url().startsWith('/welcome')) {
       <nav class="nav">
         <a routerLink="/briefing" routerLinkActive="on"><span>◎</span>Brief</a>
         <a routerLink="/chat" routerLinkActive="on"><span>◈</span>Chat</a>
@@ -57,6 +60,7 @@ import { VoiceOverlayComponent } from './ui/voice-overlay.component';
         <a routerLink="/focus" routerLinkActive="on"><span>◔</span>Focus</a>
         <button [class.on]="moreOpen() || moreActive()" (click)="moreOpen.set(!moreOpen())"><span>⋯</span>More</button>
       </nav>
+      }
 
       @if (moreOpen()) {
         <div class="scrim" (click)="moreOpen.set(false)">
@@ -137,13 +141,16 @@ export class AppComponent implements OnInit {
   readonly voiceOpen = signal(false);
   readonly quick = signal<{ mode: QuickMode; preset: string | null } | null>(null);
   readonly moreOpen = signal(false);
-  private url = signal('');
+  readonly url = signal('');
   readonly moreLinks = [
     { path: '/planner', label: 'Planner', icon: '▤' },
     { path: '/habits', label: 'Habits', icon: '↻' },
     { path: '/review', label: 'Review', icon: '✎' },
     { path: '/memory', label: 'Memory', icon: '⌬' },
     { path: '/voices', label: 'Voices', icon: '♫' },
+    { path: '/goals', label: 'Goals', icon: '🎯' },
+    { path: '/journal', label: 'Journal', icon: '📓' },
+    { path: '/projects', label: 'Projects', icon: '📁' },
     { path: '/personality', label: 'Personality', icon: '☺' },
     { path: '/progress', label: 'Progress', icon: '★' },
     { path: '/brain', label: 'Brain', icon: '◎' },
@@ -196,7 +203,9 @@ export class AppComponent implements OnInit {
       if (this.store.settings().engine === 'ollama') this.ollama.listModels().catch(() => undefined);
       this.memory.reindexStale().catch(() => undefined);
     }).catch(() => undefined);
-    if (!this.store.settings().onboarded) this.router.navigateByUrl('/settings?setup=1');
+    const st = this.store.settings();
+    if (!st.welcomed && !st.onboarded) this.router.navigateByUrl('/welcome');
+    else if (!st.onboarded) this.router.navigateByUrl('/settings?setup=1');
 
     // widget / shortcut / deep-link launch actions
     const first = await JarvisDevice.getLaunchAction().catch(() => ({ action: null }));

@@ -3,9 +3,11 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FocusService } from '../core/focus.service';
 import { JarvisService } from '../core/jarvis.service';
-import { Task } from '../core/models';
+import { Repeat, Task } from '../core/models';
+import { JarvisDevice } from '../core/native';
 import { StoreService } from '../core/store.service';
 import { VoiceService } from '../core/voice.service';
+import { uid } from '../core/util';
 
 type View = 'today' | 'all' | 'matrix' | 'inbox' | 'done';
 
@@ -28,6 +30,9 @@ type View = 'today' | 'all' | 'matrix' | 'inbox' | 'done';
         </div>
       </div>
 
+      @if (project()) {
+        <div class="row small"><span class="chip violet">Project: {{ project() }}</span><button class="small ghost" (click)="clearProject()">✕ Clear filter</button></div>
+      }
       <div class="tabs">
         @for (v of views; track v.id) {
           <button [class.on]="view() === v.id" (click)="view.set(v.id)">{{ v.label }}@if (v.id === 'inbox' && store.inbox().length) { <span class="chip gold">{{ store.inbox().length }}</span> }</button>
@@ -57,10 +62,11 @@ type View = 'today' | 'all' | 'matrix' | 'inbox' | 'done';
             <div class="row between" style="margin-bottom:8px"><span class="small muted">Untriaged captures</span>
               <button class="small" [disabled]="jarvis.busy()" (click)="triage()">✨ Triage with Jarvis</button></div>
           }
+          @if (list().length && !hintSeen) { <div class="small dim" style="margin-bottom:6px">Swipe right to complete, left to snooze a day.</div> }
           <div class="list">
             @for (t of list(); track t.id) {
-              <div class="item">
-                <button class="check" [class.on]="t.status === 'done'" (click)="store.completeTask(t.id, t.status !== 'done')"></button>
+              <div class="item swipe" (touchstart)="ts($event)" (touchmove)="tm($event, t)" (touchend)="te($event, t)" (touchcancel)="reset($event)">
+                <button class="check" [class.on]="t.status === 'done'" (click)="toggle(t)"></button>
                 <div class="grow" (click)="edit(t)">
                   <div [class.done]="t.status === 'done'">{{ t.title }}</div>
                   <div class="row wrap tags">
@@ -69,6 +75,9 @@ type View = 'today' | 'all' | 'matrix' | 'inbox' | 'done';
                     @if (t.important) { <span class="chip cyan">important</span> }
                     @if (t.estimateMin) { <span class="chip">{{ t.estimateMin }}m</span> }
                     @if (t.project) { <span class="chip violet">{{ t.project }}</span> }
+                    @if (t.repeat) { <span class="chip">↻ {{ t.repeat.every }}</span> }
+                    @if (t.subtasks?.length) { <span class="chip">☑ {{ subDone(t) }}/{{ t.subtasks!.length }}</span> }
+                    @if (t.goalId && goalTitle(t.goalId); as gt) { <span class="chip gold">🎯 {{ gt }}</span> }
                   </div>
                 </div>
                 @if (t.status === 'todo') {
@@ -90,7 +99,26 @@ type View = 'today' | 'all' | 'matrix' | 'inbox' | 'done';
               <label class="field">Due<input type="date" [(ngModel)]="e.due"></label>
               <label class="field">Estimate (min)<input type="number" [(ngModel)]="e.estimateMin"></label>
             </div>
-            <label class="field">Project<input [(ngModel)]="e.project"></label>
+            <label class="field">Project<input [(ngModel)]="e.project" list="projlist"></label>
+            <datalist id="projlist">@for (p of store.projects(); track p.name) { <option [value]="p.name"></option> }</datalist>
+            <div class="grid2">
+              <label class="field">Repeat
+                <select [ngModel]="e.repeat?.every ?? ''" (ngModelChange)="setRepeat(e, $event)">
+                  <option value="">Never</option><option value="daily">Daily</option><option value="weekdays">Weekdays</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
+                </select></label>
+              <label class="field">Goal
+                <select [(ngModel)]="e.goalId"><option [ngValue]="undefined">None</option>@for (g of store.activeGoals(); track g.id) { <option [value]="g.id">{{ g.title }}</option> }</select></label>
+            </div>
+            <div class="field">Checklist
+              @for (st of e.subtasks ?? []; track st.id) {
+                <div class="row small"><input type="checkbox" [(ngModel)]="st.done"><input class="grow" [(ngModel)]="st.title"><button class="ghost small" (click)="delSub(e, st.id)" aria-label="Remove">✕</button></div>
+              }
+              <div class="row"><input class="grow" [(ngModel)]="newSub" placeholder="Add a step…" (keydown.enter)="addSub(e)"><button class="small" (click)="addSub(e)">Add</button></div>
+            </div>
+            <div class="row wrap">
+              <span class="small muted">Move:</span>
+              <button class="small" (click)="snooze(e, 1)">Tomorrow</button><button class="small" (click)="snooze(e, 3)">+3 days</button><button class="small" (click)="snooze(e, 7)">Next week</button>
+            </div>
             <label class="field">Notes<textarea [(ngModel)]="e.notes"></textarea></label>
             <div class="row wrap">
               <label class="row small"><input type="checkbox" [(ngModel)]="e.urgent"> Urgent</label>
@@ -113,6 +141,7 @@ type View = 'today' | 'all' | 'matrix' | 'inbox' | 'done';
     .quad { min-height: 150px; padding: 10px; }
     .done { text-decoration: line-through; color: var(--dim); }
     .tags { gap: 4px; margin-top: 3px; }
+    .swipe { touch-action: pan-y; transition: transform .18s, background .18s; border-radius: 10px; }
     .scrim { position: fixed; inset: 0; z-index: 45; background: rgba(0,0,0,.6); display: flex; align-items: flex-end; justify-content: center; }
     .sheet { width: 100%; max-width: 600px; border-radius: 18px 18px 0 0; display: flex; flex-direction: column; gap: 10px; padding-bottom: calc(20px + var(--safe-bottom)); max-height: 90vh; overflow-y: auto; }
   `],
@@ -126,6 +155,9 @@ export class TasksPage implements OnInit {
   private route = inject(ActivatedRoute);
 
   capture = '';
+  newSub = '';
+  hintSeen = (() => { try { return localStorage.getItem('jarvis_swipe_hint') === '1'; } catch { return false; } })();
+  readonly project = signal('');
   smart = true;
   readonly adding = signal(false);
   readonly view = signal<View>('today');
@@ -141,21 +173,69 @@ export class TasksPage implements OnInit {
   ];
 
   readonly list = computed(() => {
-    const s = this.store;
     const byPriority = (a: Task, b: Task) =>
       (+b.isMit - +a.isMit) || ((a.due ?? '9999') < (b.due ?? '9999') ? -1 : (a.due ?? '9999') > (b.due ?? '9999') ? 1 : 0) ||
       (+(b.urgent && b.important) - +(a.urgent && a.important)) || (+b.important - +a.important) || b.createdAt - a.createdAt;
+    const proj = this.project();
+    const only = (a: Task[]) => (proj ? a.filter(t => t.project === proj) : a);
+    return only(this.base(byPriority));
+  });
+  private base(byPriority: (a: Task, b: Task) => number): Task[] {
+    const s = this.store;
     switch (this.view()) {
       case 'today': return [...new Set([...s.mits(), ...s.overdue(), ...s.dueToday(), ...s.openTasks().filter(t => t.urgent && t.important)])].sort(byPriority);
       case 'inbox': return s.inbox();
       case 'done': return s.tasks().filter(t => t.status === 'done').sort((a, b) => (b.doneAt ?? 0) - (a.doneAt ?? 0)).slice(0, 100);
       default: return [...s.openTasks()].sort(byPriority);
     }
-  });
+  }
   readonly emptyText = computed(() => ({ today: 'Nothing urgent today. Pick MITs with ★.', all: 'No open tasks. Enjoy it, sir.', inbox: 'Inbox zero.', done: 'Nothing completed yet.', matrix: '' })[this.view()]);
 
   ngOnInit() {
     if (this.route.snapshot.queryParamMap.get('add')) setTimeout(() => this.dictate(), 300);
+    this.route.queryParamMap.subscribe(q => { const p = q.get('project') ?? ''; this.project.set(p); if (p) this.view.set('all'); });
+  }
+
+  clearProject() { this.router.navigate([], { queryParams: { project: null }, queryParamsHandling: 'merge' }); }
+  goalTitle(id: string) { return this.store.goals().find(g => g.id === id)?.title; }
+  subDone(t: Task) { return t.subtasks?.filter(x => x.done).length ?? 0; }
+
+  async toggle(t: Task) {
+    const done = t.status !== 'done';
+    await this.store.completeTask(t.id, done);
+    if (done) JarvisDevice.haptic({ kind: 'success' }).catch(() => undefined);
+  }
+
+  // ---- swipe gestures: right = complete, left = snooze one day
+  private sx = 0; private sy = 0; private dx = 0; private lock = false;
+  ts(e: TouchEvent) { const t = e.touches[0]; this.sx = t.clientX; this.sy = t.clientY; this.dx = 0; this.lock = false; }
+  tm(e: TouchEvent, t: Task) {
+    if (t.status !== 'todo' || this.lock) return;
+    const p = e.touches[0], dx = p.clientX - this.sx, dy = p.clientY - this.sy;
+    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) { this.lock = true; return; }
+    if (Math.abs(dx) < 12) return;
+    this.dx = dx;
+    const el = e.currentTarget as HTMLElement;
+    el.style.transform = `translateX(${Math.max(-140, Math.min(140, dx))}px)`;
+    el.style.background = dx > 0 ? 'rgba(74,222,128,.2)' : 'rgba(250,204,21,.2)';
+  }
+  async te(e: TouchEvent, t: Task) {
+    const dx = this.dx; this.dx = 0; this.reset(e);
+    if (t.status !== 'todo' || this.lock) return;
+    if (dx > 90) { await this.toggle(t); this.seen(); }
+    else if (dx < -90) { JarvisDevice.haptic({ kind: 'light' }).catch(() => undefined); await this.store.snoozeTask(t.id, 1); this.seen(); }
+  }
+  reset(e: Event) { const el = e.currentTarget as HTMLElement; el.style.transform = ''; el.style.background = ''; }
+  private seen() { this.hintSeen = true; try { localStorage.setItem('jarvis_swipe_hint', '1'); } catch { /* ignore */ } }
+
+  setRepeat(e: Task, v: string) { e.repeat = v ? ({ every: v, interval: e.repeat?.interval ?? 1 } as Repeat) : undefined; }
+  addSub(e: Task) { const t = this.newSub.trim(); if (!t) return; e.subtasks = [...(e.subtasks ?? []), { id: uid(), title: t, done: false }]; this.newSub = ''; }
+  delSub(e: Task, id: string) { e.subtasks = (e.subtasks ?? []).filter(s => s.id !== id); }
+  snooze(e: Task, days: number) { e.due = this.shift(e.due, days); }
+  private shift(due: string | undefined, days: number) {
+    const base = due && due > this.store.today() ? due : this.store.today();
+    const d = new Date(base + 'T00:00:00'); d.setDate(d.getDate() + days);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
   quadrant(key: string): Task[] {
@@ -186,10 +266,10 @@ export class TasksPage implements OnInit {
 
   async focusOn(t: Task) { await this.focus.start({ taskId: t.id }); this.router.navigateByUrl('/focus'); }
 
-  edit(t: Task) { this.editing.set({ ...t }); }
+  edit(t: Task) { this.editing.set({ ...t, subtasks: t.subtasks?.map(x => ({ ...x })), repeat: t.repeat ? { ...t.repeat } : undefined }); }
 
   async save(e: Task) {
-    await this.store.updateTask(e.id, { ...e, estimateMin: e.estimateMin ? Number(e.estimateMin) : undefined, due: e.due || undefined, inbox: false });
+    await this.store.updateTask(e.id, { ...e, estimateMin: e.estimateMin ? Number(e.estimateMin) : undefined, due: e.due || undefined, goalId: e.goalId || undefined, project: e.project?.trim() || undefined, repeat: e.repeat, subtasks: e.subtasks?.length ? e.subtasks : undefined, inbox: false });
     if (e.isMit) { const ids = this.store.mits().map(m => m.id); if (!ids.includes(e.id)) await this.store.setMits([...ids, e.id].slice(-3)); }
     this.editing.set(null);
   }

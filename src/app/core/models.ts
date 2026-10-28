@@ -241,6 +241,8 @@ export interface Settings {
   mcpServers: McpServer[];
   cloud: CloudSettings;
   onboarded: boolean;
+  /** First-run welcome flow finished. */
+  welcomed?: boolean;
 }
 
 export const DEFAULT_PERSONA =

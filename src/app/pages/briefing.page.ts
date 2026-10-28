@@ -47,6 +47,13 @@ import { OrbComponent } from '../ui/orb.component';
         <div class="card stat"><div class="mono big" [style.color]="store.overdue().length ? 'var(--red)' : ''">{{ store.overdue().length }}</div><div class="small muted">overdue</div></div>
       </div>
 
+      @if (!store.todayJournal()) {
+        <div class="card">
+          <div class="small muted" style="margin-bottom:6px">Quick check-in: how are you feeling, {{ store.settings().honorific }}?</div>
+          <div class="row" style="gap:6px">@for (m of moods; track $index) { <button class="grow" style="font-size:1.3rem" (click)="checkIn($index + 1)" [attr.aria-label]="'Mood ' + ($index + 1)">{{ m }}</button> }</div>
+        </div>
+      }
+
       <a class="card" routerLink="/progress" style="display:block;color:inherit;text-decoration:none">
         <div class="row between"><b>★ Lv {{ progress.level() }} · {{ progress.title() }}</b><span>🔥 {{ progress.streak() }}</span></div>
         <div style="height:6px;border-radius:4px;background:rgba(34,211,238,.12);margin:8px 0;overflow:hidden"><i style="display:block;height:100%;background:linear-gradient(90deg,#22d3ee,#4ade80)" [style.width.%]="progress.levelProgress().pct"></i></div>
@@ -136,6 +143,8 @@ export class BriefingPage implements OnInit {
   ollama = inject(OllamaService);
   llm = inject(LlmService);
   progress = inject(ProgressService);
+  readonly moods = ['😞', '😕', '😐', '🙂', '😄'];
+  async checkIn(m: number) { await this.store.saveJournal({ mood: m }); this.router.navigateByUrl('/journal'); }
   questsDone = computed(() => this.progress.quests().filter(q => q.progress >= q.target).length);
   planner = inject(PlannerService);
   private focus = inject(FocusService);

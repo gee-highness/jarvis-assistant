@@ -9,4 +9,6 @@ Angular 20 + Capacitor 8. On-device llama.cpp brain (no Ollama/Termux needed), l
 4. Long-press the home screen → Widgets → Jarvis (mic, wide, chat).
 
 ## Build diagnostics
+Features: goals, journal with mood trends, projects and templates, recurring tasks, subtasks, swipe gestures, focus soundscapes, adjustable personality, onboarding.
+
 CI writes logs to the `build-logs` branch (`ERRORS.txt`, `BUILD_LOG.txt`).

@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } 
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { FocusService } from '../core/focus.service';
+import { SCAPES, SoundscapeService } from '../core/soundscape.service';
 import { StoreService } from '../core/store.service';
 import { ymd } from '../core/util';
 
@@ -55,6 +56,19 @@ import { ymd } from '../core/util';
       }
 
       <div class="card">
+        <div class="card-head"><h2>Soundscape</h2>
+          <button class="small" [class.primary]="sound.playing()" (click)="sound.toggle()">{{ sound.playing() ? '■ Stop' : '▶ Play' }}</button></div>
+        <div class="scapes">
+          @for (c of scapes; track c.id) {
+            <button class="scape" [class.on]="sound.selected() === c.id" (click)="sound.select(c.id)" [title]="c.hint"><span>{{ c.icon }}</span>{{ c.label }}</button>
+          }
+        </div>
+        <label class="row small muted" style="margin-top:10px">Volume
+          <input type="range" min="0" max="1" step="0.05" class="grow" [ngModel]="sound.volume()" (ngModelChange)="sound.setVolume(+$event)" aria-label="Volume"></label>
+        <label class="row small muted"><input type="checkbox" [ngModel]="sound.autoPlay()" (ngModelChange)="sound.setAuto($event)"> Play automatically with focus sessions, stop when they end</label>
+      </div>
+
+      <div class="card">
         <div class="card-head"><h2>Today's sessions</h2><span class="small muted">{{ todaySessions().length }}</span></div>
         <div class="list">
           @for (s of todaySessions(); track s.id) {
@@ -74,6 +88,9 @@ import { ymd } from '../core/util';
     </div>
   `,
   styles: [`
+    .scapes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .scape { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px; font-size: .72rem; }
+    .scape span { font-size: 1.3rem; } .scape.on { border-color: var(--cyan); background: rgba(34,211,238,.12); }
     .timer-card { display: grid; place-items: center; padding: 24px 10px; }
     .ring { width: min(72vw, 280px); height: min(72vw, 280px); transform: rotate(-90deg); grid-area: 1 / 1; }
     .track { fill: none; stroke: rgba(34,211,238,.12); stroke-width: 8; }
@@ -86,6 +103,8 @@ import { ymd } from '../core/util';
 })
 export class FocusPage implements OnInit {
   focus = inject(FocusService);
+  sound = inject(SoundscapeService);
+  readonly scapes = SCAPES;
   store = inject(StoreService);
   private route = inject(ActivatedRoute);
   readonly circ = 2 * Math.PI * 88;
@@ -115,7 +134,10 @@ export class FocusPage implements OnInit {
     if (this.route.snapshot.queryParamMap.get('start') && !this.focus.current()) this.start();
   }
 
-  start() { this.focus.start({ minutes: Number(this.minutes()) || 25, taskId: this.taskId || undefined, kind: this.kind }); }
+  start() {
+    if (this.kind === 'focus' && this.sound.autoPlay() && !this.sound.playing()) this.sound.start();
+    this.focus.start({ minutes: Number(this.minutes()) || 25, taskId: this.taskId || undefined, kind: this.kind });
+  }
 
   async completeTask(id: string) {
     await this.store.completeTask(id);
