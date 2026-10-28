@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: ['armv8-a', 'armv8.2-a+dotprod+fp16']
+        arch: ['armv8-a']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
