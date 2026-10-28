@@ -1,0 +1,58 @@
+Note: switching to '27b7a8a009de2f5f75d8111b6171381c920df764'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+CMAKE_BUILD_TYPE=Release
+libggml-base.so
+libggml-base.so.0
+libggml-base.so.0.27.0
+libggml-cpu.so
+libggml.so
+libggml.so.0
+libggml.so.0.27.0
+libjarvisllm.so
+libllama-common.so
+libllama-common.so.0
+libllama-common.so.0.7.0
+libllama.so
+libllama.so.0
+libllama.so.0.7.0
+mlabonne/Qwen3-0.6B-abliterated-GGUF -> qwen3-0.6b-abliterated.q8_0.gguf
+bartowski/mlabonne_Qwen3-1.7B-abliterated-GGUF -> mlabonne_Qwen3-1.7B-abliterated-Q4_K_L.gguf
+=== armv8.2-a+dotprod+fp16 nano threads=4 ===
+SYSINFO CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | DOTPROD = 1 | LLAMAFILE = 1 | 
+LOAD {"loaded":true,"path":"/tmp/nano.gguf","desc":"qwen3 0.6B Q8_0","size":633495552.0,"params":596049920.0,"n_ctx":4096,"n_ctx_train":40960,"threads":4,"kv_q8":false,"has_template":true,"supports_thinking":true,"caps":{"supports_object_arguments":true,"supports_parallel_tool_calls":true,"supports_preserve_reasoning":false,"supports_reasoning_effort":false,"supports_string_content":true,"supports_system_role":true,"supports_tool_calls":true,"supports_tools":true,"supports_typed_content":false}}
+CHAT {"content":"ready","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":19,"cached_tokens":0,"gen_tokens":1,"prompt_ms":99.439933,"gen_ms":19.649004,"tps":50.89316486474327,"format":"peg-native"}
+CHAT {"content":"Sir, I am J.A.R.V.I.S. — a calm, witty British AI assistant. What do you need?","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":57,"cached_tokens":1,"gen_tokens":25,"prompt_ms":292.807465,"gen_ms":446.435289,"tps":55.9991573605195,"format":"peg-native"}
+CHAT {"content":"The capital of France is **Paris**.","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":19,"cached_tokens":0,"gen_tokens":9,"prompt_ms":97.132204,"gen_ms":162.113047,"tps":55.516814757050376,"format":"peg-native"}
+=== armv8.2-a+dotprod+fp16 nano threads=1 ===
+SYSINFO CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | DOTPROD = 1 | LLAMAFILE = 1 | 
+LOAD {"loaded":true,"path":"/tmp/nano.gguf","desc":"qwen3 0.6B Q8_0","size":633495552.0,"params":596049920.0,"n_ctx":4096,"n_ctx_train":40960,"threads":1,"kv_q8":false,"has_template":true,"supports_thinking":true,"caps":{"supports_object_arguments":true,"supports_parallel_tool_calls":true,"supports_preserve_reasoning":false,"supports_reasoning_effort":false,"supports_string_content":true,"supports_system_role":true,"supports_tool_calls":true,"supports_tools":true,"supports_typed_content":false}}
+CHAT {"content":"ready","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":19,"cached_tokens":0,"gen_tokens":1,"prompt_ms":371.336549,"gen_ms":51.364975,"tps":19.468519161159914,"format":"peg-native"}
+CHAT {"content":"Sir, I'm J.A.R.V.I.S., a calm, witty British AI assistant. What's on your mind?","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":57,"cached_tokens":1,"gen_tokens":25,"prompt_ms":951.739625,"gen_ms":1224.052543,"tps":20.42395985610889,"format":"peg-native"}
+CHAT {"content":"The capital of France is **Paris**.","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":19,"cached_tokens":0,"gen_tokens":9,"prompt_ms":367.386243,"gen_ms":441.191107,"tps":20.399323234772275,"format":"peg-native"}
+=== armv8.2-a+dotprod+fp16 lite threads=4 ===
+SYSINFO CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | DOTPROD = 1 | LLAMAFILE = 1 | 
+LOAD {"loaded":true,"path":"/tmp/lite.gguf","desc":"qwen3 1.7B Q4_K - Medium","size":1176817664.0,"params":1720574976.0,"n_ctx":4096,"n_ctx_train":40960,"threads":4,"kv_q8":false,"has_template":true,"supports_thinking":true,"caps":{"supports_object_arguments":true,"supports_parallel_tool_calls":true,"supports_preserve_reasoning":false,"supports_reasoning_effort":false,"supports_string_content":true,"supports_system_role":true,"supports_tool_calls":true,"supports_tools":true,"supports_typed_content":false}}
+CHAT {"content":"ready","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":19,"cached_tokens":0,"gen_tokens":1,"prompt_ms":379.642471,"gen_ms":39.80585,"tps":25.121935594893717,"format":"peg-native"}
+CHAT {"content":"Hello, I'm J.A.R.V.I.S., your personal assistant. I help with tasks, answer questions, and keep you informed. If you need anything, just let me know! 😊","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":57,"cached_tokens":1,"gen_tokens":40,"prompt_ms":1073.195647,"gen_ms":1566.29805,"tps":25.537923641033707,"format":"peg-native"}
+CHAT {"content":"The capital of France is **Paris**.","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":19,"cached_tokens":0,"gen_tokens":9,"prompt_ms":376.564443,"gen_ms":350.273974,"tps":25.6941727563236,"format":"peg-native"}
+=== armv8.2-a+dotprod+fp16 lite threads=1 ===
+SYSINFO CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | DOTPROD = 1 | LLAMAFILE = 1 | 
+LOAD {"loaded":true,"path":"/tmp/lite.gguf","desc":"qwen3 1.7B Q4_K - Medium","size":1176817664.0,"params":1720574976.0,"n_ctx":4096,"n_ctx_train":40960,"threads":1,"kv_q8":false,"has_template":true,"supports_thinking":true,"caps":{"supports_object_arguments":true,"supports_parallel_tool_calls":true,"supports_preserve_reasoning":false,"supports_reasoning_effort":false,"supports_string_content":true,"supports_system_role":true,"supports_tool_calls":true,"supports_tools":true,"supports_typed_content":false}}
+CHAT {"content":"ready","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":19,"cached_tokens":0,"gen_tokens":1,"prompt_ms":1481.060726,"gen_ms":116.239267,"tps":8.602944820703318,"format":"peg-native"}
+CHAT {"content":"Hello, I'm J.A.R.V.I.S., your personal assistant. If you need help with anything, just let me know. 😊","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":57,"cached_tokens":1,"gen_tokens":29,"prompt_ms":4267.992151,"gen_ms":3392.565374,"tps":8.548103515484387,"format":"peg-native"}
+CHAT {"content":"The capital of France is **Paris**.","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":19,"cached_tokens":0,"gen_tokens":9,"prompt_ms":1478.961611,"gen_ms":1049.837826,"tps":8.572752645321431,"format":"peg-native"}
