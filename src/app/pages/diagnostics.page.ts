@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { DiagService } from '../core/diag.service';
 import { JarvisService } from '../core/jarvis.service';
 import { LlmService } from '../core/llm.service';
-import { JarvisDevice, isNative } from '../core/native';
+import { JarvisDevice, JarvisLlm, isNative } from '../core/native';
 import { OllamaService } from '../core/ollama.service';
 import { StoreService } from '../core/store.service';
 import { VoiceService } from '../core/voice.service';
@@ -73,7 +73,13 @@ export class DiagnosticsPage {
       this.push({ name: 'Model file', ok: this.llm.activeInstalled(), detail: a ? `${a.name}\nfile: ${a.file}\ninstalled: ${this.llm.files().map(f => `${f.file} (${(f.size / 1048576).toFixed(0)} MB)`).join(', ') || 'none'}` : 'no model selected' });
       const c = s.cloud;
       if (c.mode !== 'off') this.push({ name: 'Cloud brain', ok: !!(c.apiKey && c.model), detail: `mode=${c.mode} · ${c.provider} · model=${c.model || '(none)'} · key ${c.apiKey ? 'set' : 'MISSING'} · online=${navigator.onLine}\nNote: a 429 means the free tier is rate-limited; the app falls back to the phone model when one is installed.` });
-      if (this.llm.activeInstalled()) {
+      if (this.llm.activeInstalled() && a) {
+        const th = performance.now();
+        this.push({ name: 'Model checksum', ok: null, detail: 'Hashing…' });
+        try {
+          const h = await JarvisLlm.hashModel({ file: a.file });
+          this.push({ name: 'Model checksum', ok: true, detail: `${this.ms(th)} · sha256 ${h.sha256}\n${h.size} bytes · ${h.path}` });
+        } catch (e: any) { this.push({ name: 'Model checksum', ok: false, detail: String(e?.message ?? e) }); }
         const t0 = performance.now();
         this.push({ name: 'Load model', ok: null, detail: 'Loading…' });
         try { await this.llm.ensureLoaded(); const i = this.llm.info(); this.push({ name: 'Load model', ok: !!i?.loaded, detail: `${this.ms(t0)} · ctx ${i?.n_ctx} · threads ${i?.threads}${i?.error ? ' · ' + (i.message ?? i.error) : ''}` }); }

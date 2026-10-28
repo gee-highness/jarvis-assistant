@@ -167,6 +167,7 @@ export interface JarvisLlmPlugin {
   getStatus(): Promise<LlmStatus>;
   listModels(): Promise<{ models: { file: string; size: number; modified: number }[] }>;
   deleteModel(o: { file: string }): Promise<{ deleted: boolean }>;
+  hashModel(o: { file: string }): Promise<{ sha256: string; size: number; path: string }>;
   load(o: { file: string; nCtx: number; threads?: number; batch?: number }): Promise<LlmModelInfo>;
   unload(): Promise<void>;
   info(): Promise<LlmModelInfo>;
@@ -189,6 +190,7 @@ class JarvisLlmWeb extends WebPlugin {
   async getStatus(): Promise<LlmStatus> { return { available: false, error: 'web', modelsDir: '', ramTotalMb: 0, ramAvailMb: 0, cores: navigator.hardwareConcurrency ?? 0 }; }
   async listModels() { return { models: [] }; }
   async deleteModel() { return { deleted: false }; }
+  async hashModel() { return { sha256: '', size: 0, path: '' }; }
   async load() { return this.no(); }
   async unload() {}
   async info() { return { loaded: false }; }

@@ -137,6 +137,26 @@ public class JarvisLlmPlugin extends Plugin {
         call.resolve(o);
     }
 
+    /** SHA-256 of a model file, so Diagnostics can spot a corrupted download/import. */
+    @PluginMethod
+    public void hashModel(PluginCall call) {
+        String file = call.getString("file");
+        if (!safeName(file)) { call.reject("Invalid file name"); return; }
+        File f = new File(modelsDir(), file);
+        new Thread(() -> {
+            try (InputStream in = new java.io.FileInputStream(f)) {
+                java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+                byte[] buf = new byte[1 << 20];
+                int n;
+                while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
+                StringBuilder sb = new StringBuilder();
+                for (byte b : md.digest()) sb.append(String.format("%02x", b));
+                JSObject o = new JSObject(); o.put("sha256", sb.toString()); o.put("size", f.length()); o.put("path", f.getAbsolutePath());
+                call.resolve(o);
+            } catch (Exception e) { call.reject(String.valueOf(e.getMessage())); }
+        }).start();
+    }
+
     @PluginMethod
     public void deleteModel(PluginCall call) {
         String file = call.getString("file");
