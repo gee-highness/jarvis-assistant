@@ -1,0 +1,71 @@
+Note: switching to '27b7a8a009de2f5f75d8111b6171381c920df764'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+CMAKE_BUILD_TYPE=Release
+CMake Warning (dev) at /usr/local/share/cmake-3.31/Modules/FetchContent.cmake:1953 (message):
+  Calling FetchContent_Populate(kleidiai) is deprecated, call
+  FetchContent_MakeAvailable(kleidiai) instead.  Policy CMP0169 can be set to
+  OLD to allow FetchContent_Populate(kleidiai) to be called directly for now,
+  but the ability to call it with declared details will be removed completely
+  in a future version.
+Call Stack (most recent call first):
+  /tmp/llama.cpp/ggml/src/ggml-cpu/CMakeLists.txt:680 (FetchContent_Populate)
+  /tmp/llama.cpp/ggml/src/CMakeLists.txt:596 (ggml_add_cpu_backend_variant_impl)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+libggml-base.so
+libggml-base.so.0
+libggml-base.so.0.27.0
+libggml-cpu.so
+libggml.so
+libggml.so.0
+libggml.so.0.27.0
+libjarvisllm.so
+libllama-common.so
+libllama-common.so.0
+libllama-common.so.0.7.0
+libllama.so
+libllama.so.0
+libllama.so.0.7.0
+mlabonne/Qwen3-0.6B-abliterated-GGUF -> qwen3-0.6b-abliterated.q8_0.gguf
+bartowski/mlabonne_Qwen3-1.7B-abliterated-GGUF -> mlabonne_Qwen3-1.7B-abliterated-Q4_K_L.gguf
+1a19ce60118f5176ccf39cebf263c3fb6c9bb55655410c1bb1d4649881f8d385  /tmp/lite.gguf
+71a9180022fe39ecf7e38b199a9b550fabfbdde32f6b3bdefbfe26b87a5035e2  /tmp/nano.gguf
+=== armv8-a nano mode=0 ===
+SYSINFO CPU : NEON = 1 | ARM_FMA = 1 | KLEIDIAI = 1 | REPACK = 1 | 
+LOAD {"loaded":true,"path":"/tmp/nano.gguf","desc":"qwen3 0.6B Q8_0","size":633495552.0,"params":596049920.0,"n_ctx":4096,"n_ctx_train":40960,"threads":4,"kv_q8":false,"mode":0,"has_template":true,"supports_thinking":true,"caps":{"supports_object_arguments":true,"supports_parallel_tool_calls":true,"supports_preserve_reasoning":false,"supports_reasoning_effort":false,"supports_string_content":true,"supports_system_role":true,"supports_tool_calls":true,"supports_tools":true,"supports_typed_content":false}}
+CHAT {"content":"ready","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":19,"cached_tokens":0,"gen_tokens":1,"prompt_ms":29.067405,"gen_ms":12.109176,"tps":82.58200227662064,"format":"peg-native"}
+CHAT {"content":"Sir, I'm J.A.R.V.I.S., the calm, witty British AI assistant. Have a great day!","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":57,"cached_tokens":1,"gen_tokens":24,"prompt_ms":71.918289,"gen_ms":298.610042,"tps":80.3723807788085,"format":"peg-native"}
+CHAT {"content":"The capital of France is **Paris**.","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":19,"cached_tokens":0,"gen_tokens":9,"prompt_ms":28.324342,"gen_ms":113.742167,"tps":79.12632788154987,"format":"peg-native"}
+=== armv8-a nano mode=1 ===
+SYSINFO CPU : NEON = 1 | ARM_FMA = 1 | KLEIDIAI = 1 | REPACK = 1 | 
+LOAD {"loaded":true,"path":"/tmp/nano.gguf","desc":"qwen3 0.6B Q8_0","size":633495552.0,"params":596049920.0,"n_ctx":4096,"n_ctx_train":40960,"threads":4,"kv_q8":false,"mode":1,"has_template":true,"supports_thinking":true,"caps":{"supports_object_arguments":true,"supports_parallel_tool_calls":true,"supports_preserve_reasoning":false,"supports_reasoning_effort":false,"supports_string_content":true,"supports_system_role":true,"supports_tool_calls":true,"supports_tools":true,"supports_typed_content":false}}
+CHAT {"content":"ready","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":19,"cached_tokens":0,"gen_tokens":1,"prompt_ms":215.639872,"gen_ms":24.843465,"tps":40.25203408622751,"format":"peg-native"}
+CHAT {"content":"Sir, I'm J.A.R.V.I.S. — a calm, witty British AI assistant. Let me know if you need help! 😄","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":57,"cached_tokens":1,"gen_tokens":30,"prompt_ms":601.887812,"gen_ms":713.466993,"tps":42.04819605438986,"format":"peg-native"}
+CHAT {"content":"The capital of France is **Paris**.","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":19,"cached_tokens":0,"gen_tokens":9,"prompt_ms":213.258546,"gen_ms":212.748579,"tps":42.303455291233696,"format":"peg-native"}
+=== armv8-a lite mode=0 ===
+SYSINFO CPU : NEON = 1 | ARM_FMA = 1 | KLEIDIAI = 1 | REPACK = 1 | 
+LOAD {"loaded":true,"path":"/tmp/lite.gguf","desc":"qwen3 1.7B Q4_K - Medium","size":1176817664.0,"params":1720574976.0,"n_ctx":4096,"n_ctx_train":40960,"threads":4,"kv_q8":false,"mode":0,"has_template":true,"supports_thinking":true,"caps":{"supports_object_arguments":true,"supports_parallel_tool_calls":true,"supports_preserve_reasoning":false,"supports_reasoning_effort":false,"supports_string_content":true,"supports_system_role":true,"supports_tool_calls":true,"supports_tools":true,"supports_typed_content":false}}
+CHAT {"content":"ready","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":19,"cached_tokens":0,"gen_tokens":1,"prompt_ms":487.230918,"gen_ms":39.273193,"tps":25.462661006452926,"format":"peg-native"}
+CHAT {"content":"Hello, I am J.A.R.V.I.S., your personal assistant. If you have any questions or need help, feel free to ask. 😊","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":57,"cached_tokens":1,"gen_tokens":31,"prompt_ms":1416.51306,"gen_ms":1215.611091,"tps":25.501577132286958,"format":"peg-native"}
+CHAT {"content":"The capital of France is **Paris**.","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":19,"cached_tokens":0,"gen_tokens":9,"prompt_ms":487.205497,"gen_ms":388.854306,"tps":23.144915360664672,"format":"peg-native"}
+=== armv8-a lite mode=1 ===
+SYSINFO CPU : NEON = 1 | ARM_FMA = 1 | KLEIDIAI = 1 | REPACK = 1 | 
+LOAD {"loaded":true,"path":"/tmp/lite.gguf","desc":"qwen3 1.7B Q4_K - Medium","size":1176817664.0,"params":1720574976.0,"n_ctx":4096,"n_ctx_train":40960,"threads":4,"kv_q8":false,"mode":1,"has_template":true,"supports_thinking":true,"caps":{"supports_object_arguments":true,"supports_parallel_tool_calls":true,"supports_preserve_reasoning":false,"supports_reasoning_effort":false,"supports_string_content":true,"supports_system_role":true,"supports_tool_calls":true,"supports_tools":true,"supports_typed_content":false}}
+CHAT {"content":"ready","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":19,"cached_tokens":0,"gen_tokens":1,"prompt_ms":644.548731,"gen_ms":52.583463,"tps":19.017385751105817,"format":"peg-native"}
+CHAT {"content":"Sir, I'm J.A.R.V.I.S. – a highly advanced AI assistant designed to assist with a wide range of tasks, from answering questions to providing information and even offering support with daily activities. I'm here to help, so please let me know how I can assist you. 😊","reasoning":"","tool_calls":[],"finish":"length","prompt_tokens":57,"cached_tokens":1,"gen_tokens":60,"prompt_ms":1876.325593,"gen_ms":3161.011972,"tps":18.981263130755394,"format":"peg-native"}
+CHAT {"content":"The capital of France is **Paris**.","reasoning":"","tool_calls":[],"finish":"stop","prompt_tokens":19,"cached_tokens":0,"gen_tokens":9,"prompt_ms":643.068649,"gen_ms":468.77073,"tps":19.19915093674897,"format":"peg-native"}
