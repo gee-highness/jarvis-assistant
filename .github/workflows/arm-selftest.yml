@@ -1,0 +1,35 @@
+name: ARM engine self-test
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/arm-selftest.yml']
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: ['armv8-a', 'armv8.2-a+dotprod+fp16']
+    steps:
+      - name: Fetch llama.cpp
+        run: git clone --depth 1 --branch b11936 https://github.com/ggml-org/llama.cpp
+      - name: Build (${{ matrix.arch }})
+        run: |
+          cd llama.cpp
+          export CC=clang CXX=clang++
+          cmake -B b -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=OFF -DGGML_CPU_ARM_ARCH=${{ matrix.arch }} \
+            -DGGML_CPU_REPACK=OFF -DGGML_CPU_KLEIDIAI=OFF -DGGML_OPENMP=OFF -DLLAMA_CURL=OFF -DLLAMA_OPENSSL=OFF \
+            -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_SERVER=OFF -DLLAMA_BUILD_EXAMPLES=ON
+          cmake --build b -j4 --target llama-simple
+      - name: Models
+        run: |
+          get() { f=$(curl -s https://huggingface.co/api/models/$1 | jq -r '.siblings[].rfilename' | grep -i "$2" | head -1); echo "$1 -> $f"; curl -sL -o "$3" "https://huggingface.co/$1/resolve/main/$f"; ls -l "$3"; }
+          get mlabonne/Qwen3-0.6B-abliterated-GGUF 'q8_0' nano.gguf
+          get bartowski/mlabonne_Qwen3-1.7B-abliterated-GGUF 'Q4_K_L' lite.gguf
+      - name: Run
+        run: |
+          for m in nano lite; do
+            echo "=== ${{ matrix.arch }} $m ==="
+            timeout 600 ./llama.cpp/b/bin/llama-simple -m $m.gguf -n 24 "The capital of France is" 2>&1 | tail -8
+          done
