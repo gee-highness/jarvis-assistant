@@ -3,6 +3,7 @@ name: Build Jarvis APK
 on:
   push:
     branches: [main]
+    paths-ignore: ['ci/**', '.github/workflows/arm-selftest.yml']
   workflow_dispatch:
     inputs:
       abis:

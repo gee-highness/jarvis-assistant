@@ -262,7 +262,7 @@ Java_com_jarvis_assistant_LlmNative_load(JNIEnv * env, jclass, jstring jpath, ji
 
     llama_model_params mp = llama_model_default_params();
     mp.n_gpu_layers = 0;
-    mp.use_mmap = false;   // app storage may sit on FUSE, where mmap can serve stale/corrupt pages
+    mp.load_mode = LLAMA_LOAD_MODE_NONE;   // no mmap: app storage may sit on FUSE, where mmap can serve stale/corrupt pages
     llama_model * model = llama_model_load_from_file(path.c_str(), mp);
     if (!model) return to_bytes(env, error_json("load", "Could not load model file (corrupt or unsupported)."));
 
