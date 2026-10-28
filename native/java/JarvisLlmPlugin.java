@@ -144,17 +144,23 @@ public class JarvisLlmPlugin extends Plugin {
         if (!safeName(file)) { call.reject("Invalid file name"); return; }
         File f = new File(modelsDir(), file);
         new Thread(() -> {
-            try (InputStream in = new java.io.FileInputStream(f)) {
-                java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
-                byte[] buf = new byte[1 << 20];
-                int n;
-                while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
-                StringBuilder sb = new StringBuilder();
-                for (byte b : md.digest()) sb.append(String.format("%02x", b));
-                JSObject o = new JSObject(); o.put("sha256", sb.toString()); o.put("size", f.length()); o.put("path", f.getAbsolutePath());
+            try {
+                JSObject o = new JSObject(); o.put("sha256", sha256(f)); o.put("size", f.length()); o.put("path", f.getAbsolutePath());
                 call.resolve(o);
             } catch (Exception e) { call.reject(String.valueOf(e.getMessage())); }
         }).start();
+    }
+
+    private static String sha256(File f) throws Exception {
+        try (InputStream in = new java.io.FileInputStream(f)) {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] buf = new byte[1 << 20];
+            int n;
+            while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
+            StringBuilder sb = new StringBuilder();
+            for (byte b : md.digest()) sb.append(String.format("%02x", b));
+            return sb.toString();
+        }
     }
 
     @PluginMethod
@@ -336,11 +342,13 @@ public class JarvisLlmPlugin extends Plugin {
             try {
                 String repoFile = file;
                 long expected = -1;
+                String sha = "";
                 try {
                     JSONObject e = resolveRepoFile(repo, file, quant);
                     repoFile = e.getString("path");
                     JSONObject lfs = e.optJSONObject("lfs");
                     expected = lfs != null ? lfs.optLong("size", e.optLong("size", -1)) : e.optLong("size", -1);
+                    if (lfs != null) sha = lfs.optString("oid", "");   // LFS oid is the file's SHA-256
                 } catch (Exception resolveError) {
                     if (repoFile == null) throw resolveError;   // no fallback name: report the real problem
                 }
@@ -367,6 +375,7 @@ public class JarvisLlmPlugin extends Plugin {
                 t.put("dest", dest);
                 t.put("tmp", tmpName);
                 t.put("expected", expected);
+                t.put("sha256", sha);
                 prefs().edit().putString(id, t.toString()).apply();
                 startPolling();
                 JSObject o = new JSObject();
@@ -461,6 +470,7 @@ public class JarvisLlmPlugin extends Plugin {
                 if (!tmp.exists()) { status = "error"; error = "Downloaded file missing"; }
                 else if (expected > 0 && tmp.length() != expected) { status = "error"; error = "Size mismatch (" + tmp.length() + " of " + expected + " bytes)"; tmp.delete(); }
                 else if (!isGguf(tmp)) { status = "error"; error = "Downloaded file is not a GGUF model"; tmp.delete(); }
+                else if (!shaMatches(tmp, t.optString("sha256"))) { status = "error"; error = "Download corrupted (checksum mismatch), please download again"; tmp.delete(); }
                 else {
                     dest.delete();
                     if (!tmp.renameTo(dest)) { status = "error"; error = "Could not finalise model file"; }
@@ -479,6 +489,12 @@ public class JarvisLlmPlugin extends Plugin {
             out.put(row);
         }
         return out;
+    }
+
+    /** Same-size downloads can still carry bad bytes (flaky resume/storage), which makes the model emit gibberish. */
+    private static boolean shaMatches(File f, String expected) {
+        if (expected == null || expected.length() != 64) return true;   // no hash published: size check only
+        try { return expected.equalsIgnoreCase(sha256(f)); } catch (Exception e) { return false; }
     }
 
     private static boolean isGguf(File f) {
