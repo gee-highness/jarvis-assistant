@@ -1,0 +1,30 @@
+Note: switching to '27b7a8a009de2f5f75d8111b6171381c920df764'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+/tmp/b/bin/llama-simple: ELF 64-bit LSB executable, ARM aarch64, version 1 (SYSV), statically linked, BuildID[sha1]=80db271f530a209f79fd644bd3f3471b4d3084e9, with debug_info, not stripped
+=== NDK build on cortex-a53 ===
+The capital of France is Paris. The capital of Italy is Rome. The capital of Spain is Madrid.
+
+llama_perf_context_print:   graph reallocs =          0    /     0        (same size) / (changed size)
+
+~llama_context:        CPU compute buffer size is   2.9984 MiB, matches expectation of   2.9984 MiB
+=== NDK build on max ===
+The capital of France is Paris. The capital of Italy is Rome. The capital of Spain is Madrid.
+
+llama_perf_context_print:   graph reallocs =          0    /     0        (same size) / (changed size)
+
+~llama_context:        CPU compute buffer size is   2.9984 MiB, matches expectation of   2.9984 MiB
