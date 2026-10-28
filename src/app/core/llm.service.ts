@@ -273,7 +273,8 @@ export class LlmService {
       .then(res => {
         const preempted = (res.error === 'aborted' || res.finish === 'aborted') && !job.h.signal?.aborted && job.slot === 1;
         if (preempted && job.retries < 3) { job.retries++; this.queue.push(job); return; }
-        if (res.tps) this.lastTps.set(Math.round(res.tps * 10) / 10);
+        // only real, finished runs: an aborted 1-token reply used to show a bogus 0.1 tok/s
+        if (res.tps && res.finish !== 'aborted' && (res.gen_tokens ?? 0) >= 8) this.lastTps.set(Math.round(res.tps * 10) / 10);
         job.resolve(res);
       })
       .catch(e => job.reject(e))

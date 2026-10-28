@@ -440,6 +440,7 @@ Java_com_jarvis_assistant_LlmNative_chat(JNIEnv * env, jclass, jbyteArray jreq, 
     session.apply_sampling(sp);
     common_sampler_ptr smpl(common_sampler_init(g_model, sp));
     if (!smpl) return to_bytes(env, error_json("sampler", "Could not initialise the sampler (grammar)."));
+    const auto t_gen = std::chrono::steady_clock::now();   // tok/s excludes grammar setup
 
     // ---- generate ----
     std::string sent_content, sent_reasoning, raw;
@@ -521,7 +522,7 @@ Java_com_jarvis_assistant_LlmNative_chat(JNIEnv * env, jclass, jbyteArray jreq, 
 
     const auto t_end = std::chrono::steady_clock::now();
     const double prompt_ms = std::chrono::duration<double, std::milli>(t_prompt - t_start).count();
-    const double gen_ms = std::chrono::duration<double, std::milli>(t_end - t_prompt).count();
+    const double gen_ms = std::chrono::duration<double, std::milli>(t_end - t_gen).count();
 
     common_json out = common_json::object();
     out["content"] = final_msg.content;
