@@ -24,7 +24,7 @@ jobs:
           export CC=clang CXX=clang++
           cmake -S ci/selftest -B /tmp/b -DCMAKE_BUILD_TYPE=Release -DLLAMA_SRC=/tmp/llama.cpp \
             -DJARVIS_CPP=$PWD/native/cpp/jarvis_llm.cpp -DGGML_CPU_ARM_ARCH=${{ matrix.arch }} > /tmp/cmake.log
-          cmake --build /tmp/b -j4 2>&1 | grep -E "error|warning: unused|Built target jarvisllm" | head -40
+          cmake --build /tmp/b -j4 2>&1 | grep -E "error|undefined|relocation|Built target jarvisllm" | head -40
           ls /tmp/b/bin
       - name: Models
         run: |
