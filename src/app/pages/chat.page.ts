@@ -1,3 +1,4 @@
+import { RouterLink } from '@angular/router';
 import { ChangeDetectionStrategy, Component, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -8,7 +9,7 @@ import { MdPipe } from '../ui/md.pipe';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, MdPipe, DatePipe],
+  imports: [FormsModule, MdPipe, DatePipe, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="chat">
@@ -70,7 +71,7 @@ import { MdPipe } from '../ui/md.pipe';
           </div>
         }
         @if (jarvis.status()) { <div class="small muted center">{{ jarvis.status() }}</div> }
-        @if (jarvis.error()) { <div class="banner err">{{ jarvis.error() }}</div> }
+        @if (jarvis.error()) { <div class="banner err">{{ jarvis.error() }} <a routerLink="/diagnostics">Run diagnostics →</a></div> }
       </div>
 
       <form class="composer row" (ngSubmit)="send()">

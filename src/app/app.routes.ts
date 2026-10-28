@@ -20,6 +20,7 @@ export const routes: Routes = [
   { path: 'library', loadComponent: () => import('./pages/library.page').then(m => m.LibraryPage) },
   { path: 'data', loadComponent: () => import('./pages/data.page').then(m => m.DataPage) },
   { path: 'preferences', loadComponent: () => import('./pages/preferences.page').then(m => m.PreferencesPage) },
+  { path: 'diagnostics', loadComponent: () => import('./pages/diagnostics.page').then(m => m.DiagnosticsPage) },
   { path: 'brain', loadComponent: () => import('./pages/brain.page').then(m => m.BrainPage) },
   { path: 'settings', loadComponent: () => import('./pages/settings.page').then(m => m.SettingsPage) },
   { path: '**', redirectTo: 'briefing' },

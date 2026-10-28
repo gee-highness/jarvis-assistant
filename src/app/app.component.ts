@@ -13,6 +13,7 @@ import { LlmService } from './core/llm.service';
 import { ProgressService } from './core/progress.service';
 import { BackupService } from './core/backup.service';
 import { LibraryService } from './core/library.service';
+import { DiagService } from './core/diag.service';
 import { WakeService } from './core/wake.service';
 import { OllamaService } from './core/ollama.service';
 import { StoreService } from './core/store.service';
@@ -167,6 +168,7 @@ export class AppComponent implements OnInit {
   private backup = inject(BackupService);
   private library = inject(LibraryService);
   private wake = inject(WakeService);
+  private diag = inject(DiagService);
   readonly gamify = computed(() => this.store.settings().gamify);
   readonly clock = signal(hm());
   readonly sysOk = computed(() => this.ollama.state() === 'online' || (this.store.settings().engine === 'device' && this.llm.activeInstalled()));
@@ -197,6 +199,7 @@ export class AppComponent implements OnInit {
     { path: '/personality', label: 'Personality', icon: '☺' },
     { path: '/progress', label: 'Progress', icon: '★' },
     { path: '/brain', label: 'Brain', icon: '◎' },
+    { path: '/diagnostics', label: 'Diagnostics', icon: '🩺' },
     { path: '/settings', label: 'Settings', icon: '⚙' },
   ];
   readonly moreActive = computed(() => this.moreLinks.some(l => this.url().startsWith(l.path)));
