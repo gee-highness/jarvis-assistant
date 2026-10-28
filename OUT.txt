@@ -1,0 +1,60 @@
+Note: switching to '27b7a8a009de2f5f75d8111b6171381c920df764'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+CMAKE_BUILD_TYPE=Release
+[ 94%] Building CXX object build-llama/common/CMakeFiles/llama-common.dir/reasoning-budget.cpp.o
+[ 95%] Building CXX object build-llama/common/CMakeFiles/llama-common.dir/sampling.cpp.o
+[ 95%] Building CXX object build-llama/common/CMakeFiles/llama-common.dir/speculative.cpp.o
+[ 96%] Building CXX object build-llama/common/CMakeFiles/llama-common.dir/subproc.cpp.o
+[ 96%] Building CXX object build-llama/common/CMakeFiles/llama-common.dir/trie.cpp.o
+[ 96%] Building CXX object build-llama/common/CMakeFiles/llama-common.dir/unicode.cpp.o
+[ 97%] Building CXX object build-llama/common/CMakeFiles/llama-common.dir/jinja/lexer.cpp.o
+[ 97%] Building CXX object build-llama/common/CMakeFiles/llama-common.dir/jinja/parser.cpp.o
+[ 97%] Building CXX object build-llama/common/CMakeFiles/llama-common.dir/jinja/runtime.cpp.o
+[ 98%] Building CXX object build-llama/common/CMakeFiles/llama-common.dir/jinja/value.cpp.o
+[ 98%] Building CXX object build-llama/common/CMakeFiles/llama-common.dir/jinja/string.cpp.o
+[ 99%] Building CXX object build-llama/common/CMakeFiles/llama-common.dir/jinja/caps.cpp.o
+[ 99%] Linking CXX shared library ../../bin/libllama-common.so
+[ 99%] Built target llama-common
+[100%] Building CXX object CMakeFiles/jarvisllm.dir/home/runner/work/jarvis-assistant/jarvis-assistant/native/cpp/jarvis_llm.cpp.o
+/home/runner/work/jarvis-assistant/jarvis-assistant/native/cpp/jarvis_llm.cpp:265:8: error: no member named 'use_mmap' in 'llama_model_params'
+  265 |     mp.use_mmap = false;   // app storage may sit on FUSE, where mmap can serve stale/corrupt pages
+      |     ~~ ^
+1 error generated.
+libggml-base.so
+libggml-base.so.0
+libggml-base.so.0.27.0
+libggml-cpu-armv8.0_1.so
+libggml.so
+libggml.so.0
+libggml.so.0.27.0
+libllama-common.so
+libllama-common.so.0
+libllama-common.so.0.7.0
+libllama.so
+libllama.so.0
+libllama.so.0.7.0
+mlabonne/Qwen3-0.6B-abliterated-GGUF -> qwen3-0.6b-abliterated.q8_0.gguf
+bartowski/mlabonne_Qwen3-1.7B-abliterated-GGUF -> mlabonne_Qwen3-1.7B-abliterated-Q4_K_L.gguf
+=== variants nano threads=4 ===
+LOAD FAIL no jarvisllm in java.library.path: /tmp/b/bin
+=== variants nano threads=1 ===
+LOAD FAIL no jarvisllm in java.library.path: /tmp/b/bin
+=== variants lite threads=4 ===
+LOAD FAIL no jarvisllm in java.library.path: /tmp/b/bin
+=== variants lite threads=1 ===
+LOAD FAIL no jarvisllm in java.library.path: /tmp/b/bin
