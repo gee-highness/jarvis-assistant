@@ -35,7 +35,7 @@ jobs:
           exec > >(tee -a /tmp/out.txt) 2>&1
           for m in nano lite; do
             echo "=== ${{ matrix.arch }} $m ==="
-            timeout 600 ./llama.cpp/b/bin/llama-simple -m $m.gguf -n 24 "The capital of France is" 2>&1 | tail -8
+            timeout 600 ./llama.cpp/b/bin/llama-simple -m $m.gguf -n 24 "The capital of France is" 2>/dev/null; echo
           done
       - name: Publish
         if: always()
