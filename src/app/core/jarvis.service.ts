@@ -236,7 +236,7 @@ ${this.tools.catalogue(tools)}`);
         const t0 = Date.now();
         const tick = setInterval(() => {
           const sec = Math.round((Date.now() - t0) / 1000);
-          if (!streamed) this.status.set(thinking ? `Thinking… ${sec}s` : `Reading your message… ${sec}s`);
+          if (!streamed) this.status.set(sec > 40 ? `Still working… ${sec}s — tap Stop, then More → Diagnostics` : thinking ? `Thinking… ${sec}s` : `Reading your message… ${sec}s`);
           else this.status.set('');
         }, 1000);
         const res = await this.ollama.chat(convo, {

@@ -73,8 +73,14 @@ export class DiagnosticsPage {
           this.push({ name: 'Generate', ok: null, detail: 'Generating…' });
           try {
             const r = await this.llm.chat({ messages: [{ role: 'user', content: 'Reply with the single word: ready' }], max_tokens: 12, temperature: 0, think: false });
-            this.push({ name: 'Generate', ok: !r.error && !!r.content, detail: `${this.ms(t1)} · reply "${(r.content ?? '').trim().slice(0, 60)}"${r.tps ? ' · ' + r.tps.toFixed(1) + ' tok/s' : ''}${r.error ? ' · ' + (r.message ?? r.error) : ''}` });
+            this.push({ name: 'Generate', ok: !r.error && !!r.content, detail: `${this.ms(t1)} · reply "${(r.content ?? '').trim().slice(0, 60)}"${r.tps ? ' · ' + r.tps.toFixed(1) + ' tok/s' : ''} · prompt ${r.prompt_tokens ?? '?'} tok in ${Math.round(r.prompt_ms ?? 0)} ms · gen ${r.gen_tokens ?? '?'} tok · finish ${r.finish ?? '?'}${r.error ? ' · ' + (r.message ?? r.error) : ''}` });
           } catch (e: any) { this.push({ name: 'Generate', ok: false, detail: String(e?.message ?? e) }); }
+          const t2 = performance.now();
+          this.push({ name: 'Real chat', ok: null, detail: 'Running a full-size turn…' });
+          try {
+            const r = await this.llm.chat({ messages: [{ role: 'system', content: this.jarvis.persona() }, { role: 'user', content: 'Hello, who are you?' }], max_tokens: 60, think: false });
+            this.push({ name: 'Real chat', ok: !r.error && !!r.content, detail: `${this.ms(t2)} · "${(r.content ?? '').trim().slice(0, 80)}" · prompt ${r.prompt_tokens ?? '?'} tok in ${Math.round(r.prompt_ms ?? 0)} ms · ${r.tps ? r.tps.toFixed(1) + ' tok/s' : 'no tps'} · finish ${r.finish ?? '?'} · format ${r.format ?? '?'}${r.error ? ' · ' + (r.message ?? r.error) : ''}` });
+          } catch (e: any) { this.push({ name: 'Real chat', ok: false, detail: String(e?.message ?? e) }); }
         }
       }
       this.push({ name: 'Last chat error', ok: !this.jarvis.error(), detail: this.jarvis.error() || 'none' });
