@@ -7,7 +7,7 @@ public class Test {
         if (!LlmNative.ensure(a[0])) { System.out.println("LOAD FAIL " + LlmNative.error()); return; }
         System.out.println("SYSINFO " + s(LlmNative.systemInfo()));
         int threads = Integer.parseInt(a[2]);
-        System.out.println("LOAD " + s(LlmNative.load(a[1], 4096, threads, 256)));
+        System.out.println("LOAD " + s(LlmNative.load(a[1], 4096, threads, 256, Integer.parseInt(a[3]))));
         String persona = "You are J.A.R.V.I.S., a calm, witty British AI assistant. Address the user as sir. Be concise, precise and helpful. Dry humour welcome.";
         String[] reqs = {
             "{\"messages\":[{\"role\":\"user\",\"content\":\"Reply with the single word: ready\"}],\"max_tokens\":12,\"temperature\":0,\"think\":false}",

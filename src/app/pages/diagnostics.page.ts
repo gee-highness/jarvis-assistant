@@ -27,6 +27,7 @@ interface Row { name: string; ok: boolean | null; detail: string; }
         </div>
         <button class="primary" [disabled]="running()" (click)="run()">{{ running() ? 'Running…' : '▶ Run full check' }}</button>
         <button [disabled]="!rows().length" (click)="copy()">Copy report</button>
+        <button [disabled]="running()" (click)="retest()">Re-test engine</button>
       </div>
 
       @for (r of rows(); track r.name) {
@@ -82,7 +83,7 @@ export class DiagnosticsPage {
         } catch (e: any) { this.push({ name: 'Model checksum', ok: false, detail: String(e?.message ?? e) }); }
         const t0 = performance.now();
         this.push({ name: 'Load model', ok: null, detail: 'Loading…' });
-        try { await this.llm.ensureLoaded(); const i = this.llm.info(); this.push({ name: 'Load model', ok: !!i?.loaded, detail: `${this.ms(t0)} · ctx ${i?.n_ctx} · threads ${i?.threads}${i?.error ? ' · ' + (i.message ?? i.error) : ''}` }); }
+        try { await this.llm.ensureLoaded(); const i = this.llm.info(); this.push({ name: 'Load model', ok: !!i?.loaded, detail: `${this.ms(t0)} · ctx ${i?.n_ctx} · threads ${i?.threads} · engine ${i?.mode === 0 ? 'fast' : i?.mode === 1 ? 'safe' : '?'}${this.llm.health() ? ' · ' + this.llm.health() : ''}${i?.error ? ' · ' + (i.message ?? i.error) : ''}` }); }
         catch (e: any) { this.push({ name: 'Load model', ok: false, detail: `${this.ms(t0)} · ${e?.message ?? e}` }); }
         if (this.llm.info()?.loaded) {
           const t1 = performance.now();
@@ -108,6 +109,8 @@ export class DiagnosticsPage {
     } catch (e: any) { this.push({ name: 'Check failed', ok: false, detail: String(e?.message ?? e) }); }
     this.running.set(false);
   }
+
+  async retest() { await this.llm.retest(); await this.run(); }
 
   async copy() {
     const txt = this.rows().map(r => `${r.ok ? 'OK ' : 'FAIL'} ${r.name}: ${r.detail}`).join('\n') + '\n' + this.diag.errors().map(e => 'ERR ' + e.msg).join('\n');

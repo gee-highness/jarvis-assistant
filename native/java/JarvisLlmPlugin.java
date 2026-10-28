@@ -179,7 +179,8 @@ public class JarvisLlmPlugin extends Plugin {
         int nCtx = call.getInt("nCtx", 4096);
         int threads = call.getInt("threads", 0);
         int batch = call.getInt("batch", 256);
-        llmExec.execute(() -> call.resolve(parse(LlmNative.load(f.getAbsolutePath(), nCtx, threads, batch))));
+        int mode = call.getInt("mode", 1);
+        llmExec.execute(() -> call.resolve(parse(LlmNative.load(f.getAbsolutePath(), nCtx, threads, batch, mode))));
     }
 
     @PluginMethod

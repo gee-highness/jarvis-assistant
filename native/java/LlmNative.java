@@ -25,7 +25,7 @@ final class LlmNative {
     static native void init(String nativeLibDir);
     static native byte[] systemInfo();
     static native int defaultThreads();
-    static native byte[] load(String path, int nCtx, int nThreads, int nBatch);
+    static native byte[] load(String path, int nCtx, int nThreads, int nBatch, int mode);
     static native void unload();
     static native byte[] info();
     static native void stop();

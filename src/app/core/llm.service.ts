@@ -179,8 +179,24 @@ export class LlmService {
     this.loading.set(true);
     this.loadError.set('');
     try {
-      const info = await JarvisLlm.load({ file: a.file, nCtx, threads, batch: 256 });
-      if (info.error) throw new Error(info.message ?? info.error);
+      // Self-healing load: try the fast kernels first, verify the output is sane, fall back to the
+      // safe kernels if not. The verdict is remembered per model file, so this runs once.
+      const key = 'jarvis_engine_mode_' + a.file;
+      let known: string | null = null;
+      try { known = localStorage.getItem(key); } catch { /* ignore */ }
+      const modes: (0 | 1)[] = known === '0' ? [0] : known === '1' ? [1] : [0, 1];
+      let info: LlmModelInfo | null = null;
+      this.health.set('');
+      for (const mode of modes) {
+        info = await JarvisLlm.load({ file: a.file, nCtx, threads, batch: 256, mode });
+        if (info.error) throw new Error(info.message ?? info.error);
+        if (known !== null) break;
+        this.loadStage.set(mode === 0 ? 'Checking fast engine…' : 'Checking safe engine…');
+        const ok = await this.sanityCheck();
+        if (ok) { try { localStorage.setItem(key, String(mode)); } catch { /* ignore */ } break; }
+        if (mode === 1) this.health.set('The engine produced invalid text on this phone with both fast and safe settings. Try a different model (Brain), or use the cloud brain.');
+      }
+      this.loadStage.set('');
       this.info.set(info);
       return true;
     } catch (e: any) {
@@ -190,6 +206,25 @@ export class LlmService {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** Engine self-test state shown in Brain/Diagnostics. */
+  readonly health = signal('');
+  readonly loadStage = signal('');
+
+  /** Greedy one-liner with a known answer: catches broken kernels before the user sees garbage. */
+  private async sanityCheck(): Promise<boolean> {
+    try {
+      const r = await JarvisLlm.chat({ request: JSON.stringify({ messages: [{ role: 'user', content: 'What is the capital of France? Answer with one word.' }], max_tokens: 8, temperature: 0, think: false, slot: 1 }), requestId: 'sanity' });
+      return !r.error && /paris/i.test(r.content ?? '');
+    } catch { return false; }
+  }
+
+  /** Forget the verified engine mode for the active model and re-test on next load. */
+  async retest(): Promise<void> {
+    const a = this.active();
+    if (a) { try { localStorage.removeItem('jarvis_engine_mode_' + a.file); } catch { /* ignore */ } }
+    await this.unload();
   }
 
   async unload(): Promise<void> { await JarvisLlm.unload().catch(() => undefined); this.info.set(null); }

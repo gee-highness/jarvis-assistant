@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: ['armv8-a']
+        arch: ['armv8-a', 'armv8.6-a+dotprod+fp16+i8mm']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -39,9 +39,9 @@ jobs:
         run: |
           exec > >(tee -a /tmp/out.txt) 2>&1
           cd ci/selftest && javac -d /tmp/cls src/com/jarvis/assistant/*.java
-          for m in nano lite; do for t in 4 1; do
-            echo "=== ${{ matrix.arch }} $m threads=$t ==="
-            timeout 900 java -Djava.library.path=/tmp/b/bin -cp /tmp/cls com.jarvis.assistant.Test /tmp/b/bin /tmp/$m.gguf $t 2>&1 | grep -E "^(LOAD|CHAT|SYSINFO)|error|Error" | cut -c1-900
+          for m in nano lite; do for mode in 0 1; do
+            echo "=== ${{ matrix.arch }} $m mode=$mode ==="
+            timeout 900 java -Djava.library.path=/tmp/b/bin -cp /tmp/cls com.jarvis.assistant.Test /tmp/b/bin /tmp/$m.gguf 4 $mode 2>&1 | grep -E "^(LOAD|CHAT|SYSINFO)|error|Error" | cut -c1-900
           done; done
       - name: Publish
         if: always()

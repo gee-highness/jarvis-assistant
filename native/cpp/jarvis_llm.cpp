@@ -54,6 +54,7 @@ llama_context * e_ctx = nullptr;
 std::string e_model_path;
 
 int g_threads = 4;
+int g_mode = -1;                       // 0 = fast (repack/KleidiAI + flash attn auto), 1 = safe
 bool g_kv_q8 = false;
 
 std::mutex l_mu;
@@ -161,6 +162,7 @@ common_json model_info_json() {
     o["n_ctx_train"] = llama_model_n_ctx_train(g_model);
     o["threads"] = g_threads;
     o["kv_q8"] = g_kv_q8;
+    o["mode"] = g_mode;
     if (g_tmpls) {
         o["has_template"] = common_chat_templates_was_explicit(g_tmpls.get());
         o["supports_thinking"] = common_chat_templates_support_enable_thinking(g_tmpls.get());
@@ -251,17 +253,18 @@ Java_com_jarvis_assistant_LlmNative_defaultThreads(JNIEnv *, jclass) {
 
 // Load (or keep) the chat model. Returns JSON: model info, or {"error":...}.
 JNIEXPORT jbyteArray JNICALL
-Java_com_jarvis_assistant_LlmNative_load(JNIEnv * env, jclass, jstring jpath, jint n_ctx, jint n_threads, jint n_batch) {
+Java_com_jarvis_assistant_LlmNative_load(JNIEnv * env, jclass, jstring jpath, jint n_ctx, jint n_threads, jint n_batch, jint mode) {
     std::lock_guard<std::mutex> lk(g_mu);
     const std::string path = to_str(env, jpath);
     const int threads = n_threads > 0 ? n_threads : default_threads();
-    if (g_model && g_ctx && path == g_model_path && (int) n_ctx == g_n_ctx && threads == g_threads) {
+    if (g_model && g_ctx && path == g_model_path && (int) n_ctx == g_n_ctx && threads == g_threads && (int) mode == g_mode) {
         return to_bytes(env, model_info_json().dump_safe());
     }
     free_chat_model();
 
     llama_model_params mp = llama_model_default_params();
     mp.n_gpu_layers = 0;
+    mp.use_extra_bufts = mode == 0;        // weight repacking / KleidiAI kernels only in fast mode
     mp.load_mode = LLAMA_LOAD_MODE_NONE;   // no mmap: app storage may sit on FUSE, where mmap can serve stale/corrupt pages
     llama_model * model = llama_model_load_from_file(path.c_str(), mp);
     if (!model) return to_bytes(env, error_json("load", "Could not load model file (corrupt or unsupported)."));
@@ -281,7 +284,7 @@ Java_com_jarvis_assistant_LlmNative_load(JNIEnv * env, jclass, jstring jpath, ji
     cp.abort_callback = abort_cb;
     cp.abort_callback_data = nullptr;
     cp.no_perf = true;
-    cp.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_DISABLED;   // safest path on phone CPUs
+    cp.flash_attn_type = mode == 0 ? LLAMA_FLASH_ATTN_TYPE_AUTO : LLAMA_FLASH_ATTN_TYPE_DISABLED;
 
     // 8-bit KV cache (needs flash attention) halves context memory at no visible quality cost
     llama_context_params cpq = cp;
@@ -294,6 +297,7 @@ Java_com_jarvis_assistant_LlmNative_load(JNIEnv * env, jclass, jstring jpath, ji
         return to_bytes(env, error_json("memory", "Not enough memory for this model and context size. Try a smaller model or context."));
     }
     g_kv_q8 = kv_q8;
+    g_mode = (int) mode;
 
     g_model = model;
     g_ctx = ctx;

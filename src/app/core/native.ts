@@ -151,7 +151,7 @@ export interface LlmStatus {
 }
 export interface LlmModelInfo {
   loaded: boolean; path?: string; desc?: string; size?: number; params?: number; n_ctx?: number; n_ctx_train?: number;
-  threads?: number; kv_q8?: boolean; has_template?: boolean; supports_thinking?: boolean; caps?: Record<string, boolean>;
+  threads?: number; kv_q8?: boolean; mode?: number; has_template?: boolean; supports_thinking?: boolean; caps?: Record<string, boolean>;
   error?: string; message?: string;
 }
 export interface LlmChatResult {
@@ -168,7 +168,7 @@ export interface JarvisLlmPlugin {
   listModels(): Promise<{ models: { file: string; size: number; modified: number }[] }>;
   deleteModel(o: { file: string }): Promise<{ deleted: boolean }>;
   hashModel(o: { file: string }): Promise<{ sha256: string; size: number; path: string }>;
-  load(o: { file: string; nCtx: number; threads?: number; batch?: number }): Promise<LlmModelInfo>;
+  load(o: { file: string; nCtx: number; threads?: number; batch?: number; mode?: 0 | 1 }): Promise<LlmModelInfo>;
   unload(): Promise<void>;
   info(): Promise<LlmModelInfo>;
   chat(o: { request: string; requestId: string }): Promise<LlmChatResult>;

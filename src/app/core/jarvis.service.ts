@@ -51,7 +51,7 @@ export class JarvisService {
     const s = this.store.settings();
     if (s.engine === 'device') {
       try {
-        if (!this.llm.info()?.loaded) this.status.set('Loading the brain…');
+        if (!this.llm.info()?.loaded) this.status.set('Loading the brain… (first load checks the engine)');
         const ok = await this.llm.ensureLoaded();
         this.ollama.state.set(ok ? 'online' : 'offline');
         return ok;
