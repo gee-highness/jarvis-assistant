@@ -143,10 +143,19 @@ export class JarvisService {
   }
 
   // ---------------- prompt ----------------
-  private async systemPrompt(userText: string, tools: OllamaTool[], nativeTools: boolean): Promise<string> {
+  /** True when the phone's small model (Nano/Lite) is doing the talking. */
+  private isCompact(): boolean {
+    const st = this.store.settings();
+    if (st.cloud.mode !== 'off' && st.cloud.apiKey && navigator.onLine) return false;
+    const t = this.llm.active()?.catalog?.tier;
+    return t === 'nano' || t === 'lite';
+  }
+
+  private async systemPrompt(userText: string, tools: OllamaTool[], nativeTools: boolean, compact = false): Promise<string> {
     const s = this.store.settings();
     const mem = await this.memory.contextFor(userText);
-    const persona = this.persona();
+    let persona = this.persona();
+    if (compact && persona.length > 700) persona = persona.slice(0, 700).replace(/\s+\S*$/, '');
     const who = `${s.userName ? `The user's name is ${s.userName}. ` : ''}Address them as "${s.honorific}".`;
     // Static parts first, changing parts last: the on-device engine reuses the cached prefix between turns.
     const parts = [
@@ -167,7 +176,7 @@ ${this.tools.catalogue(tools)}`);
     }
     parts.push(
       `## Right now\n${prettyDate()} ${hm()} (today is ${this.store.today()}).`,
-      `## Current state\n${this.store.snapshot()}`,
+      compact ? '' : `## Current state\n${this.store.snapshot()}`,
       mem ? `## What you remember about ${s.honorific}\n${mem}` : '',
     );
     return parts.filter(Boolean).join('\n\n');
@@ -207,11 +216,15 @@ ${this.tools.catalogue(tools)}`);
 
     try {
       if (!(await this.ensureEngine())) throw new Error(this.offlineReason());
-      const { tools } = this.tools.select(clean, opts.allTools);
+      const compact = this.isCompact();
+      let { tools } = this.tools.select(clean, opts.allTools);
+      // tiny models: tools only when the message sounds like a command (keeps prefill short)
+      if (compact && !opts.allTools && !/\b(add|remind|reminder|create|set|mark|complete|finish|done|delete|remove|schedule|log|remember|snooze|start|list|show|what'?s on|plan)\b/i.test(clean)) tools = [];
+      if (compact && tools.length > 12) tools = tools.slice(0, 12);
       const model = this.store.settings().chatModel;
       const cloudOn = this.store.settings().cloud.mode !== 'off' && !!this.store.settings().cloud.apiKey && navigator.onLine;
-      const nativeTools = cloudOn || this.ollama.supportsTools(model);
-      const system = await this.systemPrompt(clean, tools, nativeTools);
+      const nativeTools = tools.length > 0 && (cloudOn || this.ollama.supportsTools(model));
+      const system = await this.systemPrompt(clean, tools, nativeTools, compact);
       const convo: OllamaMessage[] = [{ role: 'system', content: system }, ...this.historyFor(conv, prior), { role: 'user', content: clean }];
       const records: ToolCallRecord[] = [];
       const seen = new Set<string>();
@@ -220,13 +233,19 @@ ${this.tools.catalogue(tools)}`);
       for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
         let streamed = '';
         let thinking = '';
+        const t0 = Date.now();
+        const tick = setInterval(() => {
+          const sec = Math.round((Date.now() - t0) / 1000);
+          if (!streamed) this.status.set(thinking ? `Thinking… ${sec}s` : `Reading your message… ${sec}s`);
+          else this.status.set('');
+        }, 1000);
         const res = await this.ollama.chat(convo, {
           tools: nativeTools ? tools : undefined,
-          think: this.store.settings().deepThink,
+          think: compact ? false : this.store.settings().deepThink,
           signal: this.abort.signal,
           onToken: t => { streamed += t; patchReply({ content: this.visible(finalText + streamed) }); },
           onThinking: t => { thinking += t; patchReply({ thinking }); },
-        });
+        }).finally(() => clearInterval(tick));
         patchReply({ brain: res.brain });
         // models that lost native tools mid-loop (learned at runtime) fall back to the text protocol
         let calls: { id?: string; name: string; args: Record<string, unknown> }[] = res.toolCalls.map(tc => ({ id: tc.id, name: tc.function.name, args: this.parseArgs(tc.function.arguments) }));
@@ -263,7 +282,7 @@ ${this.tools.catalogue(tools)}`);
         this.status.set('');
       }
 
-      finalText = finalText.trim() || (records.length ? records.map(r => r.result).join('\n') : '…');
+      finalText = finalText.trim() || (records.length ? records.map(r => r.result).join('\n') : `I drew a blank on that, ${this.store.settings().honorific}. Try rephrasing, or pick a larger brain under Brain.`);
       const saved: Message = { id: reply.id, conversationId: conv.id, role: 'assistant', content: finalText, toolCalls: records, createdAt: reply.createdAt };
       if (this.messages().find(m => m.id === reply.id)?.thinking) saved.thinking = this.messages().find(m => m.id === reply.id)!.thinking;
       patchReply({ content: finalText, streaming: false, toolCalls: records });
