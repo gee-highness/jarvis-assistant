@@ -252,15 +252,10 @@ Java_com_jarvis_assistant_LlmNative_load(JNIEnv * env, jclass, jstring jpath, ji
 
     // 8-bit KV cache (needs flash attention) halves context memory at no visible quality cost
     llama_context_params cpq = cp;
-    cpq.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED;
-    cpq.type_k = GGML_TYPE_Q8_0;
-    cpq.type_v = GGML_TYPE_Q8_0;
-    llama_context * ctx = llama_init_from_model(model, cpq);
-    bool kv_q8 = ctx != nullptr;
-    if (!ctx) {
-        LOGW("q8 KV cache unavailable, using f16");
-        ctx = llama_init_from_model(model, cp);
-    }
+    // (disabled: quantised KV + flash attention was far too slow on some phone CPUs; plain f16 is the safe default)
+    llama_context * ctx = llama_init_from_model(model, cp);
+    bool kv_q8 = false;
+    (void) cpq;
     if (!ctx) {
         llama_model_free(model);
         return to_bytes(env, error_json("memory", "Not enough memory for this model and context size. Try a smaller model or context."));

@@ -223,6 +223,17 @@ export class LlmService {
     this.handlers.set(id, job.h);
     const onAbort = () => { if (this.running === job) JarvisLlm.stop().catch(() => undefined); };
     job.h.signal?.addEventListener('abort', onAbort);
+    // watchdog: no first token after 2 minutes -> interrupt, and give up so the UI never spins forever
+    const wd = setTimeout(() => {
+      if (this.running !== job || this.activity()?.phase !== 'prompt') return;
+      JarvisLlm.stop().catch(() => undefined);
+      setTimeout(() => {
+        if (this.running !== job) return;
+        this.handlers.delete(id); this.running = null; this.activity.set(null);
+        job.resolve({ error: 'internal', message: 'The engine stalled while reading the prompt. Open More → Diagnostics, or try a smaller brain.' });
+        this.pump();
+      }, 4000);
+    }, 120000);
     JarvisLlm.chat({ request: JSON.stringify(job.req), requestId: id })
       .then(res => {
         const preempted = (res.error === 'aborted' || res.finish === 'aborted') && !job.h.signal?.aborted && job.slot === 1;
@@ -232,7 +243,9 @@ export class LlmService {
       })
       .catch(e => job.reject(e))
       .finally(() => {
+        clearTimeout(wd);
         job.h.signal?.removeEventListener('abort', onAbort);
+        if (this.running !== job) return;   // already given up by the watchdog
         this.handlers.delete(id);
         this.running = null;
         this.activity.set(null);
