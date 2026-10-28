@@ -1,0 +1,1 @@
+213:> Task :capacitor-local-notifications:checkKotlinGradlePluginConfigurationErrors SKIPPED
