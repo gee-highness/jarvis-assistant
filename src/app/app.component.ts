@@ -39,13 +39,13 @@ import { VoiceOverlayComponent } from './ui/voice-overlay.component';
       }
       <router-outlet />
 
-      @if (focus.current(); as f) {
+      @if (focus.current(); as f) { @if (!url().startsWith('/chat') && !url().startsWith('/focus')) {
         <a class="focus-bar" routerLink="/focus">
           <span class="dot online"></span>
           <span class="grow ellipsis">{{ f.session.kind === 'focus' ? 'Focusing' : 'Break' }} · {{ f.session.label }}</span>
           <span class="mono">{{ remaining() }}</span>
         </a>
-      }
+      } }
 
       @if (jarvis.pendingConfirm(); as pc) {
         @if (!voiceOpen()) {

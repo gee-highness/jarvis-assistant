@@ -27,6 +27,8 @@ set(GGML_LLAMAFILE         OFF CACHE BOOL "" FORCE)
 # one CPU backend per ARM feature level (dotprod, i8mm, sve…), the best one is picked at runtime
 set(GGML_BACKEND_DL        ON  CACHE BOOL "" FORCE)
 set(GGML_CPU_ALL_VARIANTS  ON  CACHE BOOL "" FORCE)
+# runtime weight repacking suspected of corrupting output on some phones
+set(GGML_CPU_REPACK        OFF CACHE BOOL "" FORCE)
 
 if(ANDROID_ABI STREQUAL "arm64-v8a")
     set(GGML_CPU_KLEIDIAI OFF CACHE BOOL "" FORCE)   # produced garbage output on some phones

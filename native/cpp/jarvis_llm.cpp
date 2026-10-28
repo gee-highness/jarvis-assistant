@@ -21,6 +21,9 @@
 #include <string>
 #include <vector>
 #include <unistd.h>
+#include <dirent.h>
+#include <dlfcn.h>
+#include <sys/auxv.h>
 
 #include "llama.h"
 #include "common.h"
@@ -53,7 +56,14 @@ std::string e_model_path;
 int g_threads = 4;
 bool g_kv_q8 = false;
 
+std::mutex l_mu;
+std::string g_diag;                    // warnings/errors + backend probe, shown in Diagnostics
+
 void log_cb(ggml_log_level level, const char * text, void *) {
+    if (level == GGML_LOG_LEVEL_ERROR || level == GGML_LOG_LEVEL_WARN) {
+        std::lock_guard<std::mutex> lk(l_mu);
+        if (g_diag.size() < 4000) g_diag += text;
+    }
     int prio = ANDROID_LOG_DEBUG;
     if (level == GGML_LOG_LEVEL_ERROR) prio = ANDROID_LOG_ERROR;
     else if (level == GGML_LOG_LEVEL_WARN) prio = ANDROID_LOG_WARN;
@@ -202,6 +212,26 @@ Java_com_jarvis_assistant_LlmNative_init(JNIEnv * env, jclass, jstring jlibdir) 
     llama_log_set(log_cb, nullptr);
     const std::string dir = to_str(env, jlibdir);
     LOGI("loading ggml backends from %s", dir.c_str());
+    // probe every CPU variant ourselves so Diagnostics can show why one was (not) chosen
+    {
+        std::string probe = "hwcap=" + std::to_string(getauxval(AT_HWCAP)) + " hwcap2=" + std::to_string(getauxval(AT_HWCAP2))
+            + " dotprod=" + ((getauxval(AT_HWCAP) & (1UL << 20)) ? "1" : "0") + "\n";
+        if (DIR * d = opendir(dir.c_str())) {
+            while (dirent * e = readdir(d)) {
+                std::string n = e->d_name;
+                if (n.rfind("libggml-cpu-", 0) != 0) continue;
+                std::string full = dir + "/" + n;
+                void * h = dlopen(full.c_str(), RTLD_NOW | RTLD_LOCAL);
+                if (!h) { const char * er = dlerror(); probe += n + ": dlopen FAIL " + (er ? er : "") + "\n"; continue; }
+                auto fn = (int (*)()) dlsym(h, "ggml_backend_score");
+                probe += n + ": score " + (fn ? std::to_string(fn()) : std::string("n/a")) + "\n";
+                dlclose(h);
+            }
+            closedir(d);
+        } else probe += "cannot open " + dir + "\n";
+        std::lock_guard<std::mutex> lk(l_mu);
+        g_diag += probe;
+    }
     ggml_backend_load_all_from_path(dir.c_str());
     llama_backend_init();
     g_threads = default_threads();
@@ -210,7 +240,8 @@ Java_com_jarvis_assistant_LlmNative_init(JNIEnv * env, jclass, jstring jlibdir) 
 
 JNIEXPORT jbyteArray JNICALL
 Java_com_jarvis_assistant_LlmNative_systemInfo(JNIEnv * env, jclass) {
-    return to_bytes(env, std::string(llama_print_system_info()));
+    std::lock_guard<std::mutex> lk(l_mu);
+    return to_bytes(env, std::string(llama_print_system_info()) + "\n" + g_diag);
 }
 
 JNIEXPORT jint JNICALL
@@ -249,6 +280,7 @@ Java_com_jarvis_assistant_LlmNative_load(JNIEnv * env, jclass, jstring jpath, ji
     cp.abort_callback = abort_cb;
     cp.abort_callback_data = nullptr;
     cp.no_perf = true;
+    cp.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_DISABLED;   // safest path on phone CPUs
 
     // 8-bit KV cache (needs flash attention) halves context memory at no visible quality cost
     llama_context_params cpq = cp;
