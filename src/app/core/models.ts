@@ -349,6 +349,13 @@ export interface DeviceModel {
 
 export const DEVICE_MODELS: DeviceModel[] = [
   {
+    id: 'qwen3-0.6b-q4', name: 'Nano Swift', tier: 'nano', family: 'Qwen3 0.6B abliterated', params: '0.6B', quant: 'Q4_0',
+    repo: 'bartowski/mlabonne_Qwen3-0.6B-abliterated-GGUF', file: 'mlabonne_Qwen3-0.6B-abliterated-Q4_0.gguf',
+    sizeMb: 365, minRamGb: 2, ctx: 8192, thinking: true,
+    blurb: 'Nano at 4-bit: reads ~40% less memory per word, so older phones reply noticeably faster.',
+    strengths: ['Fastest on older phones', 'Smallest download', 'Basic tool use'],
+  },
+  {
     id: 'qwen3-0.6b', name: 'Nano', tier: 'nano', family: 'Qwen3 0.6B abliterated', params: '0.6B', quant: 'Q8_0',
     repo: 'mlabonne/Qwen3-0.6B-abliterated-GGUF', sizeMb: 639, minRamGb: 2, ctx: 8192, thinking: true,
     blurb: 'Tiny and very fast. Good for quick capture, reminders and simple commands.',
