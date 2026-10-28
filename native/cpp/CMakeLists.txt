@@ -29,7 +29,7 @@ set(GGML_BACKEND_DL        ON  CACHE BOOL "" FORCE)
 set(GGML_CPU_ALL_VARIANTS  ON  CACHE BOOL "" FORCE)
 
 if(ANDROID_ABI STREQUAL "arm64-v8a")
-    set(GGML_CPU_KLEIDIAI ON  CACHE BOOL "" FORCE)
+    set(GGML_CPU_KLEIDIAI OFF CACHE BOOL "" FORCE)   # produced garbage output on some phones
     # OpenMP's spin-waiting stalls badly on big.LITTLE phones; ggml's own thread pool is reliable
     set(GGML_OPENMP       OFF CACHE BOOL "" FORCE)
 elseif(ANDROID_ABI STREQUAL "x86_64")
