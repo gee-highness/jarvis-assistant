@@ -9,7 +9,7 @@ import { StoreService } from '../core/store.service';
 import { VoiceService } from '../core/voice.service';
 import { uid } from '../core/util';
 
-type View = 'today' | 'all' | 'matrix' | 'inbox' | 'done';
+type View = 'today' | 'all' | 'timeline' | 'matrix' | 'inbox' | 'done';
 
 @Component({
   standalone: true,
@@ -39,7 +39,43 @@ type View = 'today' | 'all' | 'matrix' | 'inbox' | 'done';
         }
       </div>
 
-      @if (view() === 'matrix') {
+      <div class="row">
+        <input class="grow" type="search" [ngModel]="query()" (ngModelChange)="query.set($event)" placeholder="Search tasks, notes, labels…" aria-label="Search tasks">
+        <button class="small" [class.primary]="selecting()" (click)="toggleSelect()">{{ selecting() ? 'Done' : 'Select' }}</button>
+      </div>
+      @if (allTags().length) {
+        <div class="row wrap tags">
+          @for (t of allTags(); track t) { <button class="small" [class.primary]="tag() === t" (click)="tag.set(tag() === t ? '' : t)">#{{ t }}</button> }
+        </div>
+      }
+      @if (selecting()) {
+        <div class="card row wrap bulk">
+          <span class="small">{{ picked().size }} selected</span><span class="grow"></span>
+          <button class="small" [disabled]="!picked().size" (click)="bulk('done')">✓ Done</button>
+          <button class="small" [disabled]="!picked().size" (click)="bulk('snooze')">Tomorrow</button>
+          <button class="small" [disabled]="!picked().size" (click)="bulk('mit')">★ MIT</button>
+          <button class="small" [disabled]="!picked().size" (click)="bulk('project')">Project…</button>
+          <button class="small" [disabled]="!picked().size" (click)="bulk('tag')">#Label…</button>
+          <button class="small danger" [disabled]="!picked().size" (click)="bulk('delete')">Delete</button>
+        </div>
+      }
+
+      @if (view() === 'timeline') {
+        @for (g of timeline(); track g.label) {
+          <div class="card">
+            <div class="upper" [style.color]="g.late ? 'var(--red)' : ''">{{ g.label }} · {{ g.tasks.length }}@if (g.minutes) { · {{ g.minutes }}m }</div>
+            <div class="list">
+              @for (t of g.tasks; track t.id) {
+                <div class="item small">
+                  <button class="check" (click)="toggle(t)" [attr.aria-label]="'Complete ' + t.title"></button>
+                  <span class="grow" (click)="edit(t)">{{ t.title }}</span>
+                  @if (t.estimateMin) { <span class="chip">{{ t.estimateMin }}m</span> }
+                </div>
+              }
+            </div>
+          </div>
+        } @empty { <div class="card empty">Nothing scheduled.</div> }
+      } @else if (view() === 'matrix') {
         <div class="matrix">
           @for (q of quadrants; track q.key) {
             <div class="card quad" [style.border-color]="q.color">
@@ -66,7 +102,8 @@ type View = 'today' | 'all' | 'matrix' | 'inbox' | 'done';
           <div class="list">
             @for (t of list(); track t.id) {
               <div class="item swipe" (touchstart)="ts($event)" (touchmove)="tm($event, t)" (touchend)="te($event, t)" (touchcancel)="reset($event)">
-                <button class="check" [class.on]="t.status === 'done'" (click)="toggle(t)"></button>
+                @if (selecting()) { <input type="checkbox" [checked]="picked().has(t.id)" (change)="pick(t.id)" [attr.aria-label]="'Select ' + t.title"> }
+                <button class="check" [class.on]="t.status === 'done'" (click)="toggle(t)" [attr.aria-label]="'Complete ' + t.title"></button>
                 <div class="grow" (click)="edit(t)">
                   <div [class.done]="t.status === 'done'">{{ t.title }}</div>
                   <div class="row wrap tags">
@@ -75,6 +112,7 @@ type View = 'today' | 'all' | 'matrix' | 'inbox' | 'done';
                     @if (t.important) { <span class="chip cyan">important</span> }
                     @if (t.estimateMin) { <span class="chip">{{ t.estimateMin }}m</span> }
                     @if (t.project) { <span class="chip violet">{{ t.project }}</span> }
+                    @for (g of t.tags ?? []; track g) { <span class="chip">#{{ g }}</span> }
                     @if (t.repeat) { <span class="chip">↻ {{ t.repeat.every }}</span> }
                     @if (t.subtasks?.length) { <span class="chip">☑ {{ subDone(t) }}/{{ t.subtasks!.length }}</span> }
                     @if (t.goalId && goalTitle(t.goalId); as gt) { <span class="chip gold">🎯 {{ gt }}</span> }
@@ -119,6 +157,7 @@ type View = 'today' | 'all' | 'matrix' | 'inbox' | 'done';
               <span class="small muted">Move:</span>
               <button class="small" (click)="snooze(e, 1)">Tomorrow</button><button class="small" (click)="snooze(e, 3)">+3 days</button><button class="small" (click)="snooze(e, 7)">Next week</button>
             </div>
+            <label class="field">Labels (comma separated)<input [ngModel]="(e.tags ?? []).join(', ')" (ngModelChange)="setTags(e, $event)" placeholder="calls, errands"></label>
             <label class="field">Notes<textarea [(ngModel)]="e.notes"></textarea></label>
             <div class="row wrap">
               <label class="row small"><input type="checkbox" [(ngModel)]="e.urgent"> Urgent</label>
@@ -140,7 +179,7 @@ type View = 'today' | 'all' | 'matrix' | 'inbox' | 'done';
     .matrix { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .quad { min-height: 150px; padding: 10px; }
     .done { text-decoration: line-through; color: var(--dim); }
-    .tags { gap: 4px; margin-top: 3px; }
+    .tags { gap: 4px; margin-top: 3px; } .wrap { flex-wrap: wrap; } .bulk { gap: 6px; }
     .swipe { touch-action: pan-y; transition: transform .18s, background .18s; border-radius: 10px; }
     .scrim { position: fixed; inset: 0; z-index: 45; background: rgba(0,0,0,.6); display: flex; align-items: flex-end; justify-content: center; }
     .sheet { width: 100%; max-width: 600px; border-radius: 18px 18px 0 0; display: flex; flex-direction: column; gap: 10px; padding-bottom: calc(20px + var(--safe-bottom)); max-height: 90vh; overflow-y: auto; }
@@ -158,12 +197,56 @@ export class TasksPage implements OnInit {
   newSub = '';
   hintSeen = (() => { try { return localStorage.getItem('jarvis_swipe_hint') === '1'; } catch { return false; } })();
   readonly project = signal('');
+  readonly query = signal('');
+  readonly tag = signal('');
+  readonly selecting = signal(false);
+  readonly picked = signal<Set<string>>(new Set());
+  readonly allTags = computed(() => [...new Set(this.store.openTasks().flatMap(t => t.tags ?? []))].sort());
+
+  readonly timeline = computed(() => {
+    const today = this.store.today();
+    const open = this.filtered(this.store.openTasks());
+    const groups = new Map<string, Task[]>();
+    for (const t of open) { const k = t.due ? (t.due < today ? 'Overdue' : t.due) : 'No date'; groups.set(k, [...(groups.get(k) ?? []), t]); }
+    const label = (k: string) => k === today ? 'Today' : /^\d{4}/.test(k) ? new Date(k + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) : k;
+    const keys = [...groups.keys()].sort((a, b) => (a === 'Overdue' ? -1 : b === 'Overdue' ? 1 : a === 'No date' ? 1 : b === 'No date' ? -1 : a.localeCompare(b)));
+    return keys.map(k => ({ label: label(k), late: k === 'Overdue', tasks: groups.get(k)!, minutes: groups.get(k)!.reduce((a, t) => a + (t.estimateMin ?? 0), 0) }));
+  });
+
+  private filtered(a: Task[]): Task[] {
+    const q = this.query().trim().toLowerCase(), tg = this.tag();
+    return a.filter(t => (!tg || t.tags?.includes(tg)) && (!q || `${t.title} ${t.notes ?? ''} ${t.project ?? ''} ${(t.tags ?? []).join(' ')}`.toLowerCase().includes(q)));
+  }
+
+  toggleSelect() { this.selecting.update(v => !v); this.picked.set(new Set()); }
+  pick(id: string) { this.picked.update(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
+  setTags(e: Task, v: string) { e.tags = v.split(',').map(x => x.trim().replace(/^#/, '')).filter(Boolean); }
+
+  async bulk(action: 'done' | 'snooze' | 'mit' | 'project' | 'tag' | 'delete') {
+    const ids = [...this.picked()];
+    if (!ids.length) return;
+    if (action === 'delete' && !confirm(`Delete ${ids.length} task(s)?`)) return;
+    let arg = '';
+    if (action === 'project') { arg = (prompt('Move to project:') ?? '').trim(); if (!arg) return; }
+    if (action === 'tag') { arg = (prompt('Add label:') ?? '').trim().replace(/^#/, ''); if (!arg) return; }
+    for (const id of ids) {
+      const t = this.store.tasks().find(x => x.id === id); if (!t) continue;
+      if (action === 'done') await this.store.completeTask(id);
+      else if (action === 'snooze') await this.store.snoozeTask(id, 1);
+      else if (action === 'delete') await this.store.deleteTask(id);
+      else if (action === 'project') await this.store.updateTask(id, { project: arg });
+      else if (action === 'tag') await this.store.updateTask(id, { tags: [...new Set([...(t.tags ?? []), arg])] });
+    }
+    if (action === 'mit') await this.store.setMits(ids);
+    JarvisDevice.haptic({ kind: 'success' }).catch(() => undefined);
+    this.picked.set(new Set());
+  }
   smart = true;
   readonly adding = signal(false);
   readonly view = signal<View>('today');
   readonly editing = signal<Task | null>(null);
   readonly views: { id: View; label: string }[] = [
-    { id: 'today', label: 'Today' }, { id: 'all', label: 'All' }, { id: 'matrix', label: 'Matrix' }, { id: 'inbox', label: 'Inbox' }, { id: 'done', label: 'Done' },
+    { id: 'today', label: 'Today' }, { id: 'all', label: 'All' }, { id: 'timeline', label: 'Timeline' }, { id: 'matrix', label: 'Matrix' }, { id: 'inbox', label: 'Inbox' }, { id: 'done', label: 'Done' },
   ];
   readonly quadrants = [
     { key: 'do', title: 'Do now', hint: 'Urgent · important', color: 'var(--red)' },
@@ -177,7 +260,7 @@ export class TasksPage implements OnInit {
       (+b.isMit - +a.isMit) || ((a.due ?? '9999') < (b.due ?? '9999') ? -1 : (a.due ?? '9999') > (b.due ?? '9999') ? 1 : 0) ||
       (+(b.urgent && b.important) - +(a.urgent && a.important)) || (+b.important - +a.important) || b.createdAt - a.createdAt;
     const proj = this.project();
-    const only = (a: Task[]) => (proj ? a.filter(t => t.project === proj) : a);
+    const only = (a: Task[]) => this.filtered(proj ? a.filter(t => t.project === proj) : a);
     return only(this.base(byPriority));
   });
   private base(byPriority: (a: Task, b: Task) => number): Task[] {
@@ -189,7 +272,7 @@ export class TasksPage implements OnInit {
       default: return [...s.openTasks()].sort(byPriority);
     }
   }
-  readonly emptyText = computed(() => ({ today: 'Nothing urgent today. Pick MITs with ★.', all: 'No open tasks. Enjoy it, sir.', inbox: 'Inbox zero.', done: 'Nothing completed yet.', matrix: '' })[this.view()]);
+  readonly emptyText = computed(() => ({ today: 'Nothing urgent today. Pick MITs with ★.', all: 'No open tasks. Enjoy it, sir.', inbox: 'Inbox zero.', done: 'Nothing completed yet.', matrix: '', timeline: '' })[this.view()]);
 
   ngOnInit() {
     if (this.route.snapshot.queryParamMap.get('add')) setTimeout(() => this.dictate(), 300);
@@ -269,7 +352,7 @@ export class TasksPage implements OnInit {
   edit(t: Task) { this.editing.set({ ...t, subtasks: t.subtasks?.map(x => ({ ...x })), repeat: t.repeat ? { ...t.repeat } : undefined }); }
 
   async save(e: Task) {
-    await this.store.updateTask(e.id, { ...e, estimateMin: e.estimateMin ? Number(e.estimateMin) : undefined, due: e.due || undefined, goalId: e.goalId || undefined, project: e.project?.trim() || undefined, repeat: e.repeat, subtasks: e.subtasks?.length ? e.subtasks : undefined, inbox: false });
+    await this.store.updateTask(e.id, { ...e, estimateMin: e.estimateMin ? Number(e.estimateMin) : undefined, due: e.due || undefined, goalId: e.goalId || undefined, project: e.project?.trim() || undefined, repeat: e.repeat, tags: e.tags?.length ? e.tags : undefined, subtasks: e.subtasks?.length ? e.subtasks : undefined, inbox: false });
     if (e.isMit) { const ids = this.store.mits().map(m => m.id); if (!ids.includes(e.id)) await this.store.setMits([...ids, e.id].slice(-3)); }
     this.editing.set(null);
   }

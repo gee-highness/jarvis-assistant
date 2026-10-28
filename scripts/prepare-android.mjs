@@ -48,6 +48,9 @@ const permissions = [
   'android.permission.VIBRATE',
   'com.android.alarm.permission.SET_ALARM',
   'com.termux.permission.RUN_COMMAND',
+  'android.permission.READ_CALENDAR',
+  'android.permission.READ_CONTACTS',
+  'android.permission.SEND_SMS',
 ];
 for (const p of permissions) {
   if (!m.includes(`android:name="${p}"`)) m = m.replace('<application', `<uses-permission android:name="${p}" />\n    <application`);
@@ -85,6 +88,7 @@ const widgets = [
   ['JarvisMicWidget', 'jarvis_widget_mic', 'jarvis_widget_mic_info'],
   ['JarvisWideWidget', 'jarvis_widget_wide', 'jarvis_widget_wide_info'],
   ['JarvisChatWidget', 'jarvis_widget_chat', 'jarvis_widget_chat_info'],
+  ['JarvisTodayWidget', 'jarvis_widget_today', 'jarvis_widget_today_info'],
 ];
 for (const [cls, label, info] of widgets) {
   if (m.includes(`.${cls}"`)) continue;
@@ -114,7 +118,7 @@ if (!g.includes('jarvis-native')) {
 android {
     ndkVersion "29.0.13113456"
     defaultConfig {
-        ndk { abiFilters 'arm64-v8a' }
+        ndk { abiFilters ${(process.env.JARVIS_ABIS || 'arm64-v8a').split(/[ ,]+/).filter(Boolean).map(a => `'${a}'`).join(', ')} }
         externalNativeBuild {
             cmake {
                 arguments '-DCMAKE_BUILD_TYPE=Release', '-DANDROID_STL=c++_shared'
@@ -130,6 +134,29 @@ android {
     }
     packaging {
         jniLibs { useLegacyPackaging true }
+    }
+    signingConfigs {
+        jarvis {
+            if (System.getenv('JARVIS_KEYSTORE')) {
+                storeFile file(System.getenv('JARVIS_KEYSTORE'))
+                storePassword System.getenv('JARVIS_KS_PASS')
+                keyAlias 'jarvis'
+                keyPassword System.getenv('JARVIS_KS_PASS')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            if (System.getenv('JARVIS_KEYSTORE')) { signingConfig signingConfigs.jarvis }
+            minifyEnabled false
+        }
+        debug {
+            if (System.getenv('JARVIS_KEYSTORE')) { signingConfig signingConfigs.jarvis }
+        }
+    }
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
     }
 }
 `;

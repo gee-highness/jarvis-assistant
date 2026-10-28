@@ -54,7 +54,7 @@ import { Memory, MemoryKind } from '../core/models';
                 </div>
                 <button class="ghost icon" [style.color]="m.memory.pinned ? 'var(--gold)' : 'var(--dim)'" (click)="mem.update(m.memory.id, { pinned: !m.memory.pinned })">📌</button>
                 <button class="ghost icon" (click)="startEdit(m.memory)">✎</button>
-                <button class="ghost icon" (click)="mem.remove(m.memory.id)">🗑</button>
+                <button class="ghost icon" (click)="mem.remove(m.memory.id)" aria-label="Forget">🗑</button>
               }
             </div>
           } @empty { <div class="empty">Nothing here yet. Jarvis learns as you talk.</div> }

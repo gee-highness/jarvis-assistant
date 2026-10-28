@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/jarvis_today_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/jarvis_widget_bg"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:contentDescription="@null"
+            android:src="@drawable/jarvis_widget_dot" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:letterSpacing="0.15"
+            android:text="TODAY"
+            android:textColor="#22D3EE"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/jarvis_today_stats"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:gravity="end"
+            android:maxLines="1"
+            android:text="0 done"
+            android:textColor="#7F9AA6"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/jarvis_today_t1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:text="Tap to set your 3 MITs"
+        android:textColor="#E6F4F8"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/jarvis_today_t2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:textColor="#E6F4F8"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/jarvis_today_t3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:textColor="#E6F4F8"
+        android:textSize="14sp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/jarvis_today_focus"
+            style="@style/JarvisWidgetChip"
+            android:text="▶ Focus" />
+
+        <TextView
+            android:id="@+id/jarvis_today_add"
+            style="@style/JarvisWidgetChip"
+            android:layout_marginStart="6dp"
+            android:text="＋ Capture" />
+
+        <TextView
+            android:id="@+id/jarvis_today_open"
+            style="@style/JarvisWidgetChip"
+            android:layout_marginStart="6dp"
+            android:text="Tasks" />
+    </LinearLayout>
+</LinearLayout>

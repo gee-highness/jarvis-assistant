@@ -54,11 +54,13 @@ import { OrbComponent } from '../ui/orb.component';
         </div>
       }
 
+      @if (store.settings().gamify) {
       <a class="card" routerLink="/progress" style="display:block;color:inherit;text-decoration:none">
         <div class="row between"><b>★ Lv {{ progress.level() }} · {{ progress.title() }}</b><span>🔥 {{ progress.streak() }}</span></div>
         <div style="height:6px;border-radius:4px;background:rgba(34,211,238,.12);margin:8px 0;overflow:hidden"><i style="display:block;height:100%;background:linear-gradient(90deg,#22d3ee,#4ade80)" [style.width.%]="progress.levelProgress().pct"></i></div>
         <div class="small muted">{{ questsDone() }}/{{ progress.quests().length }} quests done today · {{ progress.xpToday() }} XP</div>
       </a>
+      }
 
       <div class="card">
         <div class="card-head">

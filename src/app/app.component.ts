@@ -11,6 +11,9 @@ import { NotifyService } from './core/notify.service';
 import { NudgeService } from './core/nudge.service';
 import { LlmService } from './core/llm.service';
 import { ProgressService } from './core/progress.service';
+import { BackupService } from './core/backup.service';
+import { LibraryService } from './core/library.service';
+import { WakeService } from './core/wake.service';
 import { OllamaService } from './core/ollama.service';
 import { StoreService } from './core/store.service';
 import { speakable } from './core/util';
@@ -46,7 +49,7 @@ import { VoiceOverlayComponent } from './ui/voice-overlay.component';
         }
       }
 
-      @if (!url().startsWith('/welcome')) {
+      @if (!url().startsWith('/welcome') && !url().startsWith('/chat')) {
       <button class="fab" (click)="openVoice()" aria-label="Talk to Jarvis">
         <svg viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg>
       </button>
@@ -72,6 +75,7 @@ import { VoiceOverlayComponent } from './ui/voice-overlay.component';
         </div>
       }
 
+      @if (gamify()) {
       <div class="toasts" aria-live="polite">
         @for (c of progress.celebrations(); track c.id) {
           <button class="toast" [class]="'toast ' + c.kind" (click)="progress.dismiss(c.id)">
@@ -83,8 +87,9 @@ import { VoiceOverlayComponent } from './ui/voice-overlay.component';
       </div>
       @if (progress.levelUp(); as lu) {
         <div class="scrim lvl" (click)="progress.levelUp.set(null)">
-          <div class="card glow dialog lvlbox"><div class="lvlnum">{{ lu.level }}</div><div class="upper">Level up</div><h2>{{ lu.title }}</h2><p class="small muted">Well earned, sir. Tap to continue.</p></div>
+          <div class="card glow dialog lvlbox"><div class="lvlnum">{{ lu.level }}</div><div class="upper">Level up</div><h2>{{ lu.title }}</h2><p class="small muted">Well earned, {{ store.settings().honorific }}. Tap to continue.</p></div>
         </div>
+      }
       }
 
       @if (quick(); as q) {
@@ -104,7 +109,7 @@ import { VoiceOverlayComponent } from './ui/voice-overlay.component';
     .lvlbox { text-align: center; animation: tin .4s cubic-bezier(.2,.9,.3,1.4); } .lvlnum { font-size: 4rem; font-weight: 700; color: var(--cyan); }
     @keyframes tin { from { transform: translateY(-16px) scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
     .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; grid-template-columns: repeat(5, 1fr);
-      background: rgba(5, 9, 14, .94); border-top: 1px solid var(--line); backdrop-filter: blur(14px); padding: 6px 4px calc(6px + var(--safe-bottom)); }
+      background: var(--nav-bg); border-top: 1px solid var(--line); backdrop-filter: blur(14px); padding: 6px 4px calc(6px + var(--safe-bottom)); }
     .nav a, .nav button { display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: .7rem; color: var(--dim); text-decoration: none;
       background: none; border: none; min-height: 48px; padding: 4px 0; letter-spacing: .04em; }
     .nav span { font-size: 1.2rem; line-height: 1.1; }
@@ -115,7 +120,7 @@ import { VoiceOverlayComponent } from './ui/voice-overlay.component';
     .focus-bar { position: fixed; left: 12px; right: 90px; bottom: calc(84px + var(--safe-bottom)); z-index: 19; display: flex; align-items: center; gap: 8px;
       background: var(--panel-solid); border: 1px solid var(--line-strong); border-radius: 12px; padding: 10px 12px; color: var(--text); text-decoration: none; box-shadow: var(--glow); font-size: .88rem; }
     .ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .scrim { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; justify-content: center; }
+    .scrim { position: fixed; inset: 0; z-index: 40; background: var(--scrim); display: flex; align-items: flex-end; justify-content: center; }
     .sheet { width: 100%; max-width: 560px; background: var(--panel-solid); border: 1px solid var(--line); border-radius: 18px 18px 0 0;
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 16px 16px calc(84px + var(--safe-bottom)); }
     .sheet a { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 4px; border-radius: 12px; border: 1px solid var(--line);
@@ -136,6 +141,10 @@ export class AppComponent implements OnInit {
   private ollama = inject(OllamaService);
   private llm = inject(LlmService);
   readonly progress = inject(ProgressService);
+  private backup = inject(BackupService);
+  private library = inject(LibraryService);
+  private wake = inject(WakeService);
+  readonly gamify = computed(() => this.store.settings().gamify);
   private router = inject(Router);
 
   readonly voiceOpen = signal(false);
@@ -148,6 +157,9 @@ export class AppComponent implements OnInit {
     { path: '/review', label: 'Review', icon: '✎' },
     { path: '/memory', label: 'Memory', icon: '⌬' },
     { path: '/voices', label: 'Voices', icon: '♫' },
+    { path: '/library', label: 'Library', icon: '📚' },
+    { path: '/data', label: 'Backup & Sync', icon: '☁' },
+    { path: '/preferences', label: 'Preferences', icon: '🎛' },
     { path: '/goals', label: 'Goals', icon: '🎯' },
     { path: '/journal', label: 'Journal', icon: '📓' },
     { path: '/projects', label: 'Projects', icon: '📁' },
@@ -166,6 +178,28 @@ export class AppComponent implements OnInit {
   private lastAction = { action: '', at: 0 };
 
   constructor() {
+    // keep the Today widget showing the MITs
+    effect(() => {
+      if (!this.store.ready()) return;
+      const m = this.store.mits().map(t => t.title.slice(0, 70));
+      const done = this.store.doneToday().length, fm = this.store.focusMinutesToday();
+      const streak = this.store.settings().gamify ? ` · 🔥${this.progress.streak()}` : '';
+      JarvisDevice.updateTodayWidget({ t1: m[0] ?? '', t2: m[1] ?? '', t3: m[2] ?? '', stats: `${done} done · ${fm}m focus${streak}` }).catch(() => undefined);
+    });
+    // appearance: theme, text size, motion
+    effect(() => {
+      const s = this.store.settings();
+      const root = document.documentElement;
+      const dark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true;
+      root.dataset['theme'] = s.theme === 'auto' ? (dark ? 'dark' : 'light') : s.theme;
+      root.style.setProperty('--font-scale', String(s.fontScale || 1));
+      root.classList.toggle('reduce-motion', !!s.reduceMotion);
+    });
+    // the wake word only listens while nothing else owns the mic
+    effect(() => {
+      this.wake.paused = this.voiceOpen() || !!this.quick() || !!this.focus.current();
+    });
+    effect(() => { this.store.settings().wakeWord; this.wake.sync(); });
     // keep the wide home-screen widget showing the next priority
     effect(() => {
       if (!this.store.ready()) return;
@@ -193,6 +227,10 @@ export class AppComponent implements OnInit {
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(e => this.url.set((e as NavigationEnd).urlAfterRedirects));
     await this.store.init();
     await Promise.all([this.memory.init(), this.jarvis.init()]);
+    this.backup.init().catch(() => undefined);
+    this.library.init().catch(() => undefined);
+    this.wake.onWake = e => { if (e.command) this.quick.set({ mode: 'chat', preset: e.command }); else this.openVoice(); };
+    this.wake.sync();
     this.progress.init(() => this.memory.memories().length).catch(() => undefined);
     this.notify.init().catch(() => undefined);
     this.nudges.start();
@@ -235,6 +273,7 @@ export class AppComponent implements OnInit {
     this.lastAction = { action, at: Date.now() };
     switch (action) {
       case 'voice': this.openVoice(); break;
+      case 'tasks': this.router.navigateByUrl('/tasks'); break;
       case 'task': this.router.navigateByUrl('/tasks?add=1'); break;
       case 'focus': this.router.navigateByUrl('/focus?start=1'); break;
       case 'brief': this.router.navigateByUrl('/briefing?brief=1'); break;

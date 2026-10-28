@@ -46,6 +46,7 @@ export interface JarvisDevicePlugin {
   updateWidget(o: { line: string }): Promise<void>;
   /** Home-screen chat widget: last exchange + status line. */
   updateChatWidget(o: { question: string; answer: string; status?: string }): Promise<void>;
+  updateTodayWidget(o: { t1: string; t2: string; t3: string; stats: string }): Promise<void>;
   /** Short haptic feedback. */
   haptic(o: { kind: 'tick' | 'light' | 'medium' | 'success' | 'warning' }): Promise<void>;
   // ---- Termux / engine ----
@@ -122,6 +123,7 @@ class JarvisDeviceWeb extends WebPlugin {
   }
   async updateWidget() {}
   async updateChatWidget() {}
+  async updateTodayWidget() {}
   async haptic(o: { kind: string }) {
     const ms: Record<string, number | number[]> = { tick: 8, light: 12, medium: 25, success: [12, 60, 24], warning: [30, 80, 30] };
     try { navigator.vibrate?.(ms[o.kind] ?? 10); } catch { /* ignore */ }
@@ -204,3 +206,17 @@ class JarvisLlmWeb extends WebPlugin {
 export const JarvisLlm = registerPlugin<JarvisLlmPlugin>('JarvisLlm', {
   web: () => Promise.resolve(new JarvisLlmWeb() as unknown as JarvisLlmPlugin),
 });
+
+// ---------------------------------------------------------------- calendar, contacts, SMS
+export interface CalEvent { title: string; start: number; end: number; location?: string; allDay: boolean; }
+export interface JarvisDataPlugin {
+  getEvents(o: { from: number; to: number; limit?: number }): Promise<{ events: CalEvent[] }>;
+  findContacts(o: { query: string }): Promise<{ contacts: { name: string; number: string }[] }>;
+  sendSms(o: { number: string; text: string }): Promise<void>;
+}
+class JarvisDataWeb extends WebPlugin {
+  async getEvents() { return { events: [] as CalEvent[] }; }
+  async findContacts() { return { contacts: [] as { name: string; number: string }[] }; }
+  async sendSms(): Promise<void> { throw new Error('SMS is only available in the Android app'); }
+}
+export const JarvisData = registerPlugin<JarvisDataPlugin>('JarvisData', { web: () => new JarvisDataWeb() });

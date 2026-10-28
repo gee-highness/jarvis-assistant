@@ -14,6 +14,9 @@ import { ACHIEVEMENTS, ProgressService } from '../core/progress.service';
           <div class="right"><div class="big">🔥 {{ p.streak() }}</div><div class="small muted">day streak · ❄ {{ p.state().freezes }} freeze{{ p.state().freezes === 1 ? '' : 's' }}</div></div>
         </div>
         <div class="bar"><i [style.width.%]="p.levelProgress().pct"></i></div>
+        @if (!p.todayActive() && p.streak() > 0) {
+          <button class="small" style="margin-top:8px" [disabled]="p.state().freezes < 1 || p.todayFrozen()" (click)="p.useFreeze()">❄ {{ p.todayFrozen() ? 'Today is protected' : 'Use a freeze to protect today' }}</button>
+        }
         <div class="small muted">{{ p.levelProgress().into }} / {{ p.levelProgress().need }} XP to level {{ p.level() + 1 }} · {{ p.xpToday() }} XP today</div>
       </div>
 

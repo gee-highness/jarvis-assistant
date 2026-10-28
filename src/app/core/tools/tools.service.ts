@@ -4,16 +4,17 @@ import { FocusService } from '../focus.service';
 import { McpService } from '../mcp.service';
 import { MemoryService } from '../memory.service';
 import { MemoryKind, Task } from '../models';
-import { JarvisDevice, isNative } from '../native';
+import { JarvisData, JarvisDevice, isNative } from '../native';
 import { NotifyService } from '../notify.service';
 import { OllamaTool } from '../ollama.service';
 import { PlannerService } from '../planner.service';
 import { StoreService } from '../store.service';
 import { addDays, hm, prettyDate, uid, ymd } from '../util';
+import { LibraryService } from '../library.service';
 import { ProgressService } from '../progress.service';
 import { calculate, convertUnits, describeWhen, htmlToText, parseDue, parseWhen } from './helpers';
 
-export type ToolGroup = 'core' | 'tasks' | 'focus' | 'habits' | 'planning' | 'notes' | 'memory' | 'reminders' | 'phone' | 'comms' | 'calendar' | 'utility' | 'web' | 'persona' | 'goals' | 'journal' | 'templates' | 'progress';
+export type ToolGroup = 'core' | 'tasks' | 'focus' | 'habits' | 'planning' | 'notes' | 'memory' | 'reminders' | 'phone' | 'comms' | 'calendar' | 'utility' | 'web' | 'persona' | 'library' | 'goals' | 'journal' | 'templates' | 'progress';
 
 export interface ToolContext { confirm: (question: string) => Promise<boolean>; }
 
@@ -40,6 +41,7 @@ const TRIGGERS: Record<Exclude<ToolGroup, 'core'>, RegExp> = {
   comms: /sms|text |message|call |dial|phone number|email|mail|share|send/i,
   calendar: /calendar|meeting|event|appointment/i,
   utility: /calculat|math|\d\s*[-+*\/x^%]\s*\d|convert|how many|percent|time is it|what time|date|days (until|between)|clipboard|copy|paste/i,
+  library: /document|my files|pdf|library|according to|in my (notes|docs|files)|contract|manual|what does .* say/i,
   goals: /goal|milestone|objective|ambition|target|aim to|want to (run|save|learn|lose|read|build|write)/i,
   journal: /journal|mood|how (am i|i'm) feel|i feel|feeling|energy|gratitude|grateful|diary|reflect|burn ?out|stress/i,
   templates: /template|checklist|routine|project|workflow|kick ?off|set ?up a/i,
@@ -57,6 +59,7 @@ export class ToolsService {
   private planner = inject(PlannerService);
   private mcp = inject(McpService);
   private progress = inject(ProgressService);
+  private library = inject(LibraryService);
 
   private findTaskOrThrow(ref: string): Task {
     const t = this.store.findTask(String(ref ?? ''));
@@ -84,6 +87,7 @@ export class ToolsService {
         repeat: { type: 'string', enum: ['daily', 'weekdays', 'weekly', 'monthly'], description: 'Make it recurring' },
         goal: { type: 'string', description: 'Title of a goal this task serves' },
         subtasks: { type: 'array', items: { type: 'string' }, description: 'Checklist steps' },
+        labels: { type: 'array', items: { type: 'string' }, description: 'Labels such as calls, errands' },
       },
       required: ['title'],
       run: async a => {
@@ -91,6 +95,7 @@ export class ToolsService {
         const t = await this.store.addTask({
           title: String(a['title']), due: parseDue(a['due']), urgent: !!a['urgent'], important: a['important'] !== false,
           estimateMin: a['estimate_min'] ? Number(a['estimate_min']) : undefined, project: a['project'], isMit: !!a['mit'], notes: a['notes'],
+          tags: Array.isArray(a['labels']) ? a['labels'].map((x: unknown) => String(x).replace(/^#/, '')) : undefined,
           repeat: a['repeat'] ? { every: a['repeat'] } : undefined, goalId: a['goal'] ? this.store.findGoal(String(a['goal']))?.id : undefined,
           subtasks: Array.isArray(a['subtasks']) ? a['subtasks'].map((x: unknown) => ({ id: uid(), title: String(x), done: false })) : undefined,
         });
@@ -308,6 +313,44 @@ export class ToolsService {
         const existing = this.store.notes().find(n => n.title === title);
         await this.store.saveNote({ id: existing?.id, title, body: `${existing ? existing.body + '\n\n' : ''}**${hm()}** ${a['text']}`, tags: ['journal'] });
         return 'Journal updated.';
+      },
+    },
+    {
+      name: 'find_contact', group: 'comms',
+      description: 'Look up a contact\'s phone number by name.',
+      params: { name: { type: 'string', description: 'Name or part of it' } },
+      required: ['name'],
+      run: async a => {
+        const { contacts } = await JarvisData.findContacts({ query: String(a['name']) });
+        return contacts.length ? contacts.map(c => `${c.name}: ${c.number}`).join('\n') : `No contact matching "${a['name']}".`;
+      },
+    },
+    {
+      name: 'send_sms', group: 'comms', risky: true,
+      description: 'Send a text message right now (asks the user to confirm first). Use a number, or a contact name to look up.',
+      params: { to: { type: 'string', description: 'Phone number or contact name' }, text: { type: 'string', description: 'Message text' } },
+      required: ['to', 'text'],
+      run: async a => {
+        let number = String(a['to']);
+        if (!/^[+\d][\d\s()-]{4,}$/.test(number)) {
+          const { contacts } = await JarvisData.findContacts({ query: number });
+          if (!contacts.length) return `No contact matching "${number}".`;
+          if (new Set(contacts.map(c => c.number.replace(/\D/g, ''))).size > 1) return `Several matches: ${contacts.map(c => `${c.name} ${c.number}`).join('; ')}. Ask which one.`;
+          number = contacts[0].number;
+        }
+        await JarvisData.sendSms({ number, text: String(a['text']) });
+        return `Message sent to ${number}.`;
+      },
+    },
+    // ---------------- library ----------------
+    {
+      name: 'search_library', group: 'library',
+      description: 'Search the user\'s own imported documents (manuals, contracts, notes, articles) and return the most relevant passages.',
+      params: { query: { type: 'string', description: 'What to look for' } },
+      required: ['query'],
+      run: async a => {
+        const hits = await this.library.search(String(a['query']), 4);
+        return hits.length ? hits.map((h, i) => `[${i + 1}] (${h.doc}) ${h.text}`).join('\n\n') : 'Nothing relevant in the library.';
       },
     },
     // ---------------- goals ----------------
@@ -702,6 +745,19 @@ export class ToolsService {
         const end = new Date(st.getTime() + Number(a['duration_min'] ?? 60) * 60000);
         await JarvisDevice.calendarInsert({ title: String(a['title']), start: st.getTime(), end: end.getTime(), location: a['location'], description: a['description'] });
         return `Calendar event "${a['title']}" prepared for ${describeWhen(st)}.`;
+      },
+    },
+    {
+      name: 'read_calendar', group: 'calendar',
+      description: 'Read the user\'s phone calendar: events between now and a later point (default next 24 hours).',
+      params: { days: { type: 'number', description: 'How many days ahead (default 1)' }, start: { type: 'string', description: 'Optional start day, e.g. "tomorrow" or YYYY-MM-DD' } },
+      run: async a => {
+        const base = a['start'] ? parseDue(String(a['start'])) : undefined;
+        const from = base ? new Date(base + 'T00:00:00').getTime() : Date.now();
+        const to = from + Math.max(1, Number(a['days'] ?? 1)) * 86400000;
+        const { events } = await JarvisData.getEvents({ from, to, limit: 30 });
+        if (!events.length) return 'No events in that period.';
+        return events.map(e => `- ${e.allDay ? 'all day' : describeWhen(new Date(e.start))}${e.allDay ? '' : ' to ' + hm(new Date(e.end))}: ${e.title}${e.location ? ' @ ' + e.location : ''}`).join('\n');
       },
     },
     // ---------------- utility ----------------

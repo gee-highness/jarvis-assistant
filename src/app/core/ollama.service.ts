@@ -135,7 +135,14 @@ export class OllamaService {
     const cloudReady = !opts.local && c.mode !== 'off' && !!c.apiKey && !!c.model && !!c.baseUrl;
     if (cloudReady && (c.mode === 'always' || navigator.onLine)) {
       try { return await this.cloudChat(messages, opts); }
-      catch (e) { if (c.mode === 'always' || opts.signal?.aborted) throw e; /* auto: fall back to the phone model */ }
+      catch (e: any) {
+        if (opts.signal?.aborted) throw e;
+        // rate limits, outages and network errors fall back to the phone model when one is installed; otherwise explain clearly
+        const transient = /\b(429|5\d\d)\b|rate|quota|overload|network|fetch|timeout/i.test(String(e?.message ?? e));
+        const phoneReady = this.device ? this.llm.activeInstalled() : true;
+        if (c.mode === 'auto' || (transient && phoneReady)) { /* continue with the phone model below */ }
+        else throw new Error(/\b429\b|rate|quota/i.test(String(e?.message)) ? 'The cloud brain is rate-limited right now (429). Wait a minute, switch the cloud brain to Auto, or download an on-device model on the Brain page.' : e);
+      }
     }
     return this.device ? this.deviceChat(messages, opts) : this.localChat(messages, opts);
   }

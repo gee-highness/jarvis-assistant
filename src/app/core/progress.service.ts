@@ -402,8 +402,19 @@ export class ProgressService {
     }
   }
 
+  /** Spend a streak freeze to protect today (e.g. a sick day). */
+  async useFreeze(): Promise<boolean> {
+    const st = this.state(), today = this.store.today();
+    if (st.freezes < 1 || st.activeDays.includes(today) || st.frozenDays.includes(today)) return false;
+    await this.save({ ...st, freezes: st.freezes - 1, frozenDays: [...st.frozenDays, today] });
+    this.celebrate({ kind: 'streak', icon: '🧊', title: 'Today is protected', detail: `Your streak is safe. ${st.freezes - 1} freeze${st.freezes - 1 === 1 ? '' : 's'} left.` });
+    return true;
+  }
+  readonly todayFrozen = computed(() => this.state().frozenDays.includes(this.store.today()));
+
   // ---------------------------------------------------------------- helpers
   celebrate(c: Omit<Celebration, 'id'>) {
+    if (!this.store.settings().gamify) return;
     const item: Celebration = { ...c, id: uid() };
     this.celebrations.update(a => [...a.slice(-3), item]);
     const ttl = c.kind === 'xp' ? 2600 : 4800;

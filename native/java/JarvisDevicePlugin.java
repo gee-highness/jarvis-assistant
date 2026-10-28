@@ -518,6 +518,12 @@ public class JarvisDevicePlugin extends Plugin {
         call.resolve();
     }
 
+    @PluginMethod
+    public void updateTodayWidget(PluginCall call) {
+        JarvisTodayWidget.save(getContext(), call.getString("t1"), call.getString("t2"), call.getString("t3"), call.getString("stats"));
+        call.resolve();
+    }
+
     // =====================================================================
     // HAPTICS
     // =====================================================================

@@ -1,7 +1,7 @@
 import Dexie, { Table } from 'dexie';
 import {
   Conversation, DayPlan, FocusSession, Goal, Habit, JournalEntry, Memory, Message, Note, ProgressState, Reminder, Review, Settings, Task,
-  TaskTemplate, XpEvent,
+  TaskTemplate, XpEvent, LibDoc, LibChunk, BackupSnapshot,
 } from './models';
 
 export class JarvisDb extends Dexie {
@@ -21,6 +21,9 @@ export class JarvisDb extends Dexie {
   templates!: Table<TaskTemplate, string>;
   xp!: Table<XpEvent, string>;
   progress!: Table<ProgressState, string>;
+  docs!: Table<LibDoc, string>;
+  chunks!: Table<LibChunk, string>;
+  backups!: Table<BackupSnapshot, string>;
 
   constructor() {
     super('jarvis');
@@ -45,11 +48,25 @@ export class JarvisDb extends Dexie {
       xp: 'id, ref, date, kind, at',
       progress: 'id',
     });
+    this.version(3).stores({
+      tasks: 'id, status, due, isMit, inbox, createdAt, doneAt, goalId, project, *tags',
+      docs: 'id, addedAt',
+      chunks: 'id, docId',
+      backups: 'id, at',
+    });
+    // any local change marks the data as dirty for sync
+    for (const t of this.tables) {
+      if (t.name === 'backups') continue;
+      const mark = () => { try { localStorage.setItem('jarvis_dirty_at', String(Date.now())); } catch { /* ignore */ } };
+      t.hook('creating', () => { mark(); });
+      t.hook('updating', () => { mark(); });
+      t.hook('deleting', () => { mark(); });
+    }
   }
 
   async exportAll(): Promise<Record<string, unknown[]>> {
     const out: Record<string, unknown[]> = {};
-    for (const t of this.tables) out[t.name] = await t.toArray();
+    for (const t of this.tables) if (t.name !== 'backups') out[t.name] = await t.toArray();
     return out;
   }
 

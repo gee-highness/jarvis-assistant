@@ -212,7 +212,7 @@ import { VoiceService } from '../core/voice.service';
               }
             </div>
             <button class="small" (click)="connectMcp(srv)">↻</button>
-            <button class="small danger" (click)="removeMcp(srv)">✕</button>
+            <button class="small danger" (click)="removeMcp(srv)" aria-label="Remove server">✕</button>
           </div>
         }
         <div class="grid2">

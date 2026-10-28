@@ -14,6 +14,8 @@ export interface Task {
   project?: string;
   goalId?: ID;
   repeat?: Repeat;
+  /** Free-form labels, e.g. "calls", "errands". */
+  tags?: string[];
   /** Checklist inside a task. */
   subtasks?: { id: ID; title: string; done: boolean }[];
   /** For repeating tasks: id of the next occurrence once it has been created. */
@@ -170,6 +172,13 @@ export interface ProgressState {
   perfectDays: string[];
 }
 
+export interface SyncSettings { enabled: boolean; url: string; user: string; pass: string; passphrase: string; lastSync: number; lastRemote: number; }
+
+// ---------------- library (documents you can ask questions about) ----------------
+export interface LibDoc { id: ID; name: string; chars: number; chunks: number; addedAt: number; }
+export interface LibChunk { id: ID; docId: ID; idx: number; text: string; embedding?: number[]; embedModel?: string; }
+export interface BackupSnapshot { id: ID; at: number; bytes: number; json: string; }
+
 export interface Reminder { id: ID; title: string; at: number; notificationId: number; done: boolean; }
 
 export interface McpServer { id: ID; name: string; url: string; token?: string; enabled: boolean; }
@@ -243,6 +252,17 @@ export interface Settings {
   onboarded: boolean;
   /** First-run welcome flow finished. */
   welcomed?: boolean;
+  /** XP, levels, quests and celebrations. */
+  gamify: boolean;
+  theme: 'dark' | 'light' | 'auto';
+  fontScale: number;
+  reduceMotion: boolean;
+  /** Hands-free "Hey Jarvis" while the app is open. */
+  wakeWord: boolean;
+  wakePhrase: string;
+  autoBackup: boolean;
+  /** Encrypted cloud sync through any WebDAV server (Nextcloud, ownCloud, a NAS…). */
+  sync: SyncSettings;
 }
 
 export const DEFAULT_PERSONA =
@@ -282,6 +302,14 @@ export const DEFAULT_SETTINGS: Settings = {
   mcpServers: [],
   cloud: { mode: 'off', provider: 'groq', baseUrl: 'https://api.groq.com/openai/v1', apiKey: '', model: '' },
   onboarded: false,
+  gamify: true,
+  theme: 'dark',
+  fontScale: 1,
+  reduceMotion: false,
+  wakeWord: false,
+  wakePhrase: 'hey jarvis',
+  autoBackup: true,
+  sync: { enabled: false, url: '', user: '', pass: '', passphrase: '', lastSync: 0, lastRemote: 0 },
 };
 
 export const RECOMMENDED_MODELS = [

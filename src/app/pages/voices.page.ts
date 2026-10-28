@@ -84,7 +84,7 @@ const SAMPLE = 'Good evening, sir. Three priorities today, one overdue item, and
         <div class="list">
           @for (voice of filtered(); track voice.id) {
             <div class="item" [class.active]="voice.id === v().voiceId">
-              <button class="ghost icon" (click)="toggleFav(voice.id)" [style.color]="v().favourites.includes(voice.id) ? 'var(--gold)' : 'var(--dim)'">★</button>
+              <button class="ghost icon" (click)="toggleFav(voice.id)" aria-label="Favourite" [style.color]="v().favourites.includes(voice.id) ? 'var(--gold)' : 'var(--dim)'">★</button>
               <div class="grow" (click)="select(voice)">
                 <div class="ellipsis">{{ voice.name }}</div>
                 <div class="row wrap small" style="gap:4px">
@@ -94,7 +94,7 @@ const SAMPLE = 'Good evening, sir. Three priorities today, one overdue item, and
                   <span class="chip">{{ qualityLabel(voice.quality) }}</span>
                 </div>
               </div>
-              <button class="small" (click)="preview(voice)">▶</button>
+              <button class="small" (click)="preview(voice)" aria-label="Preview voice">▶</button>
               <button class="small" [class.primary]="voice.id === v().voiceId" (click)="select(voice)">{{ voice.id === v().voiceId ? 'Active' : 'Use' }}</button>
             </div>
           } @empty { @if (!loading()) { <div class="empty">No voices match. Try “Get more voices”.</div> } }

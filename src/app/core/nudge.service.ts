@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { FocusService } from './focus.service';
 import { NotifyService } from './notify.service';
+import { ProgressService } from './progress.service';
 import { StoreService } from './store.service';
 import { hm, minutesOf } from './util';
 
@@ -10,6 +11,7 @@ export class NudgeService {
   private store = inject(StoreService);
   private focus = inject(FocusService);
   private notify = inject(NotifyService);
+  private progress = inject(ProgressService);
   private sent = new Set<string>();
 
   start() {
@@ -37,6 +39,10 @@ export class NudgeService {
       const last = this.store.sessions().find(x => x.kind === 'focus');
       const since = last ? (Date.now() - (last.end ?? last.start)) / 60_000 : Infinity;
       if (since > 90) this.once(`gap-${Math.floor(now / 90)}`, 'Focus check', `Ninety minutes without a focus block, ${h}. One short sprint?`, '/focus');
+    }
+    if (s.gamify && now >= 19 * 60 + 30 && this.progress.streak() >= 3 && !this.progress.todayActive() && !this.progress.todayFrozen()) {
+      const f = this.progress.state().freezes;
+      this.once('daystreak', 'Your streak is at risk', `${this.progress.streak()}-day streak, ${h}. One small win keeps it alive${f ? ` (or use a freeze: you have ${f})` : ''}.`, '/tasks');
     }
     if (now >= 19 * 60) {
       const atRisk = this.store.activeHabits().filter(x => x.cadence === 'daily' && !x.log.includes(this.store.today()) && this.store.streak(x) >= 2);

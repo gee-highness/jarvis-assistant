@@ -41,15 +41,15 @@ import { hm, minutesOf } from '../core/util';
                   <div class="small dim">{{ duration(b) }} min · {{ b.kind }}</div>
                 </div>
                 <div class="col acts">
-                  @if (b.kind !== 'break' && b.kind !== 'fixed') { <button class="small" (click)="startBlock(b)">▶</button> }
-                  <button class="small ghost" (click)="removeBlock($index)">✕</button>
+                  @if (b.kind !== 'break' && b.kind !== 'fixed') { <button class="small" (click)="startBlock(b)" aria-label="Start block">▶</button> }
+                  <button class="small ghost" (click)="removeBlock($index)" aria-label="Remove block">✕</button>
                 </div>
               </div>
             }
           </div>
           <div class="row" style="margin-top:10px">
             <input [(ngModel)]="newLabel" placeholder="Add block label">
-            <button (click)="addBlock()" [disabled]="!newLabel.trim()">＋</button>
+            <button (click)="addBlock()" [disabled]="!newLabel.trim()" aria-label="Add block">＋</button>
           </div>
         </div>
       } @else {

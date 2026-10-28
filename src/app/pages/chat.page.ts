@@ -76,8 +76,8 @@ import { MdPipe } from '../ui/md.pipe';
       <form class="composer row" (ngSubmit)="send()">
         <button type="button" class="icon" [class.primary]="voice.state() === 'listening'" (click)="dictate()" aria-label="Dictate">🎙</button>
         <textarea name="draft" [(ngModel)]="draft" rows="1" placeholder="Ask, command, capture…" (keydown.enter)="onEnter($event)" #box></textarea>
-        @if (jarvis.busy()) { <button type="button" class="danger icon" (click)="jarvis.stop()">■</button> }
-        @else { <button type="submit" class="primary icon" [disabled]="!draft.trim()">➤</button> }
+        @if (jarvis.busy()) { <button type="button" class="danger icon" (click)="jarvis.stop()" aria-label="Stop">■</button> }
+        @else { <button type="submit" class="primary icon" [disabled]="!draft.trim()" aria-label="Send">➤</button> }
       </form>
     </div>
   `,

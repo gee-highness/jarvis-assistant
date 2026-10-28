@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { JarvisService } from '../core/jarvis.service';
 import { LlmService } from '../core/llm.service';
 import { DEVICE_EMBED_MODEL, DEVICE_MODELS, DeviceModel, EngineKind, deviceModelFile } from '../core/models';
 import { JarvisDevice, isNative } from '../core/native';
@@ -81,6 +82,10 @@ import { MemoryService } from '../core/memory.service';
               <button class="small" [disabled]="speedBusy() || !llm.activeInstalled()" (click)="speed()">⏱ Speed test</button>
               <span class="small muted">{{ speedResult() }}</span>
             </div>
+            <div class="row wrap" style="margin-top:6px">
+              <button class="small" [disabled]="capBusy() || !llm.activeInstalled()" (click)="capability()">🧪 Capability test</button>
+              <span class="small muted">{{ capResult() }}</span>
+            </div>
           </div>
         }
 
@@ -151,7 +156,7 @@ import { MemoryService } from '../core/memory.service';
               <div class="grow"><div class="mono ellipsis">{{ f.file }}</div><div class="dim">{{ mb(f.size) }} MB</div></div>
               @if (s().deviceModel !== 'file:' + f.file) { <button class="small primary" (click)="use('file:' + f.file)">Use</button> }
               @else { <span class="chip cyan">active</span> }
-              <button class="small danger" (click)="remove(f.file, f.file)">✕</button>
+              <button class="small danger" (click)="remove(f.file, f.file)" aria-label="Delete model">✕</button>
             </div>
           }
         </div>
@@ -196,6 +201,7 @@ export class BrainPage implements OnInit {
   readonly llm = inject(LlmService);
   private store = inject(StoreService);
   private ollama = inject(OllamaService);
+  private jarvis = inject(JarvisService);
   private memory = inject(MemoryService);
 
   readonly isNative = isNative();
@@ -209,6 +215,8 @@ export class BrainPage implements OnInit {
   readonly msgErr = signal(false);
   readonly speedBusy = signal(false);
   readonly speedResult = signal('');
+  readonly capBusy = signal(false);
+  readonly capResult = signal('');
   readonly importing = signal(false);
   readonly ramGb = computed(() => ((this.llm.status()?.ramTotalMb ?? 0) / 1024).toFixed(1));
   readonly freeGb = computed(() => ((this.llm.status()?.freeBytes ?? 0) / 1073741824).toFixed(1));
@@ -271,6 +279,28 @@ export class BrainPage implements OnInit {
       if (f) { this.note(`Imported ${f}. Tap Use to switch to it.`); }
     } catch (e: any) { this.note(e?.message ?? String(e), true); }
     finally { this.importing.set(false); }
+  }
+
+  /** Checks that the active model can actually call tools and follow the persona. */
+  async capability() {
+    this.capBusy.set(true); this.capResult.set('Testing…');
+    const tool = { type: 'function' as const, function: { name: 'add_task', description: 'Create a task', parameters: { type: 'object' as const, properties: { title: { type: 'string', description: 'Task title' }, due: { type: 'string', description: 'Due date' } }, required: ['title'] } } };
+    const cases: [string, (r: { content: string; toolCalls: { function: { name: string; arguments: unknown } }[] }) => boolean][] = [
+      ['Add a task to call the dentist tomorrow', r => r.toolCalls.some(c => c.function.name === 'add_task' && /dentist/i.test(JSON.stringify(c.function.arguments)))],
+      ['Remind me nothing. Just say hello in one short sentence.', r => r.toolCalls.length === 0 && r.content.trim().length > 0],
+      ['Create a task: buy milk', r => r.toolCalls.some(c => c.function.name === 'add_task' && /milk/i.test(JSON.stringify(c.function.arguments)))],
+    ];
+    let pass = 0; const t0 = Date.now();
+    try {
+      await this.jarvis.ensureEngine();
+      for (const [prompt, ok] of cases) {
+        const r = await this.ollama.chat([{ role: 'system', content: 'You are a task assistant. Use tools when an action is requested.' }, { role: 'user', content: prompt }], { tools: [tool], think: false, temperature: 0.1, background: false, maxTokens: 120 });
+        if (ok(r)) pass++;
+      }
+      const secs = Math.round((Date.now() - t0) / 1000);
+      this.capResult.set(`${pass}/${cases.length} passed in ${secs}s ${pass === cases.length ? '· tools work' : pass > 0 ? '· mostly works; a bigger model is more reliable' : '· poor tool use, try a larger model'}`);
+    } catch (e: any) { this.capResult.set(e?.message ?? 'Failed'); }
+    finally { this.capBusy.set(false); }
   }
 
   async speed() {

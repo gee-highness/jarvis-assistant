@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp" android:minHeight="130dp"
+    android:minResizeWidth="140dp" android:minResizeHeight="100dp"
+    android:targetCellWidth="3" android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/jarvis_widget_today"
+    android:previewLayout="@layout/jarvis_widget_today"
+    android:description="@string/jarvis_widget_today"
+    android:widgetCategory="home_screen" />
