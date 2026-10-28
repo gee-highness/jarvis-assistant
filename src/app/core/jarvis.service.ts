@@ -151,13 +151,17 @@ export class JarvisService {
     return t === 'nano' || t === 'lite';
   }
 
-  private async systemPrompt(userText: string, tools: OllamaTool[], nativeTools: boolean, compact = false): Promise<string> {
+  /**
+   * Returns the static system prompt and the per-turn context. The context (clock, state, memory) rides on the
+   * latest user message: inside the system prompt it changed every minute and forced the on-device engine to
+   * re-read the tools and the whole history on every turn.
+   */
+  private async systemPrompt(userText: string, tools: OllamaTool[], nativeTools: boolean, compact = false): Promise<{ system: string; context: string }> {
     const s = this.store.settings();
     const mem = await this.memory.contextFor(userText);
     let persona = this.persona();
     if (compact && persona.length > 700) persona = persona.slice(0, 700).replace(/\s+\S*$/, '');
     const who = `${s.userName ? `The user's name is ${s.userName}. ` : ''}Address them as "${s.honorific}".`;
-    // Static parts first, changing parts last: the on-device engine reuses the cached prefix between turns.
     const parts = [
       persona,
       who,
@@ -174,12 +178,12 @@ You can use these tools. To call one, reply ONLY with a line like:
 You may call several, one per line. After results come back, answer the user normally.
 ${this.tools.catalogue(tools)}`);
     }
-    parts.push(
+    const context = [
       `## Right now\n${prettyDate()} ${hm()} (today is ${this.store.today()}).`,
       compact ? '' : `## Current state\n${this.store.snapshot()}`,
       mem ? `## What you remember about ${s.honorific}\n${mem}` : '',
-    );
-    return parts.filter(Boolean).join('\n\n');
+    ];
+    return { system: parts.filter(Boolean).join('\n\n'), context: context.filter(Boolean).join('\n\n') };
   }
 
   private historyFor(conv: Conversation, msgs: UiMessage[]): OllamaMessage[] {
@@ -224,8 +228,9 @@ ${this.tools.catalogue(tools)}`);
       const model = this.store.settings().chatModel;
       const cloudOn = this.store.settings().cloud.mode !== 'off' && !!this.store.settings().cloud.apiKey && navigator.onLine;
       const nativeTools = tools.length > 0 && (cloudOn || this.ollama.supportsTools(model));
-      const system = await this.systemPrompt(clean, tools, nativeTools, compact);
-      const convo: OllamaMessage[] = [{ role: 'system', content: system }, ...this.historyFor(conv, prior), { role: 'user', content: clean }];
+      const { system, context } = await this.systemPrompt(clean, tools, nativeTools, compact);
+      const convo: OllamaMessage[] = [{ role: 'system', content: system }, ...this.historyFor(conv, prior),
+        { role: 'user', content: `[Context, not from the user]\n${context}\n\n[User message]\n${clean}` }];
       const records: ToolCallRecord[] = [];
       const seen = new Set<string>();
       let finalText = '';
