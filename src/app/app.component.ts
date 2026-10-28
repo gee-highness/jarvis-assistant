@@ -16,7 +16,7 @@ import { LibraryService } from './core/library.service';
 import { WakeService } from './core/wake.service';
 import { OllamaService } from './core/ollama.service';
 import { StoreService } from './core/store.service';
-import { speakable } from './core/util';
+import { hm, speakable } from './core/util';
 import { QuickChatComponent, QuickMode } from './ui/quick-chat.component';
 import { VoiceOverlayComponent } from './ui/voice-overlay.component';
 
@@ -27,6 +27,15 @@ import { VoiceOverlayComponent } from './ui/voice-overlay.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (store.ready()) {
+      @if (!url().startsWith('/welcome')) {
+        <div class="sysbar" aria-hidden="true">
+          <b>J.A.R.V.I.S</b>
+          <span class="st"><span class="dot" [class.online]="sysOk()" [class.offline]="!sysOk()"></span>{{ sysLabel() }}</span>
+          <span class="sp"></span>
+          @if (gamify()) { <span>LV {{ progress.level() }}</span> }
+          <span>{{ clock() }}</span>
+        </div>
+      }
       <router-outlet />
 
       @if (focus.current(); as f) {
@@ -97,7 +106,15 @@ import { VoiceOverlayComponent } from './ui/voice-overlay.component';
       }
       @if (voiceOpen()) { <j-voice-overlay (closed)="voiceOpen.set(false)" /> }
     } @else {
-      <div class="boot"><div class="upper">Initialising J.A.R.V.I.S.</div></div>
+      <div class="boot">
+        <div class="bootlog mono">
+          <div style="--d:0s">&gt; BOOT J.A.R.V.I.S. core</div>
+          <div style="--d:.25s">&gt; mounting local memory ........ <b>OK</b></div>
+          <div style="--d:.5s">&gt; neural engine ........ <b>STANDBY</b></div>
+          <div style="--d:.75s">&gt; voice interface ........ <b>OK</b></div>
+          <div style="--d:1s" class="caret">&gt; all systems nominal</div>
+        </div>
+      </div>
     }
   `,
   styles: [`
@@ -128,6 +145,12 @@ import { VoiceOverlayComponent } from './ui/voice-overlay.component';
     .sheet a span { font-size: 1.4rem; color: var(--cyan); }
     .dialog { width: calc(100% - 32px); max-width: 480px; margin-bottom: 30vh; }
     .boot { height: 100vh; display: grid; place-items: center; }
+    .bootlog { font-size: .8rem; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
+    .bootlog div { opacity: 0; animation: bl .3s forwards; animation-delay: var(--d); } .bootlog b { color: var(--cyan); }
+    @keyframes bl { to { opacity: 1; } }
+    .sysbar { position: fixed; top: 0; left: 0; right: 0; z-index: 19; height: var(--sysbar); padding: var(--safe-top) 14px 0; display: flex; align-items: center; gap: 10px;
+      background: linear-gradient(180deg, var(--nav-bg), transparent); font-family: var(--mono); font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); pointer-events: none; }
+    .sysbar b { color: var(--cyan); font-weight: 600; } .sysbar .sp { flex: 1; } .sysbar .st { display: inline-flex; align-items: center; gap: 5px; }
   `],
 })
 export class AppComponent implements OnInit {
@@ -145,6 +168,14 @@ export class AppComponent implements OnInit {
   private library = inject(LibraryService);
   private wake = inject(WakeService);
   readonly gamify = computed(() => this.store.settings().gamify);
+  readonly clock = signal(hm());
+  readonly sysOk = computed(() => this.ollama.state() === 'online' || (this.store.settings().engine === 'device' && this.llm.activeInstalled()));
+  readonly sysLabel = computed(() => this.llm.loading() ? 'loading core' : this.busyLabel());
+  private busyLabel() {
+    if (this.jarvis.busy()) return 'thinking';
+    if (this.store.settings().engine === 'device') return this.llm.activeInstalled() ? 'on-device · offline' : 'no brain installed';
+    return this.ollama.state() === 'online' ? 'online' : 'brain offline';
+  }
   private router = inject(Router);
 
   readonly voiceOpen = signal(false);
@@ -227,6 +258,7 @@ export class AppComponent implements OnInit {
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(e => this.url.set((e as NavigationEnd).urlAfterRedirects));
     await this.store.init();
     await Promise.all([this.memory.init(), this.jarvis.init()]);
+    setInterval(() => this.clock.set(hm()), 20_000);
     this.backup.init().catch(() => undefined);
     this.library.init().catch(() => undefined);
     this.wake.onWake = e => { if (e.command) this.quick.set({ mode: 'chat', preset: e.command }); else this.openVoice(); };

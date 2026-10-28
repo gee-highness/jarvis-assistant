@@ -1,0 +1,29 @@
+name: Publish website
+
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The site is plain static files; publish them to the gh-pages branch (Settings → Pages → Deploy from branch).
+      - name: Push site to gh-pages
+        run: |
+          cd "$(mktemp -d)"
+          cp -r "$GITHUB_WORKSPACE/site/." .
+          touch .nojekyll
+          git init -q
+          git config user.name "jarvis-ci"
+          git config user.email "jarvis-ci@users.noreply.github.com"
+          git checkout -q -b gh-pages
+          git add -A
+          git commit -qm "site ${{ github.sha }}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" gh-pages

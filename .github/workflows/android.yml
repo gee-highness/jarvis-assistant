@@ -22,10 +22,7 @@ jobs:
     env:
       NDK_VERSION: "29.0.13113456"
       CMAKE_VERSION: "3.31.6"
-      # Stable signing key so every build installs over the previous one and keeps your data.
-      # (Private repo: this key only guards app updates on your own devices.)
-      JARVIS_KEYSTORE: ${{ github.workspace }}/signing/jarvis.jks
-      JARVIS_KS_PASS: "6oc8l4FsPxHLhvibIkIVesV4"
+      JARVIS_KS_PASS: "jarvis-release"
       JARVIS_ABIS: ${{ github.event.inputs.abis || 'arm64-v8a' }}
     steps:
       - uses: actions/checkout@v4
@@ -73,6 +70,23 @@ jobs:
           set -o pipefail
           npx ng build --configuration production 2>&1 | tee -a build.log
 
+      # Stable signing: the keystore lives in the repo secret JARVIS_KEYSTORE_B64 (never in git).
+      # Without it the build falls back to a debug-signed APK, which cannot update over earlier builds.
+      - name: Signing key
+        env:
+          KS_B64: ${{ secrets.JARVIS_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/jarvis.jks"
+            echo "JARVIS_KEYSTORE=$RUNNER_TEMP/jarvis.jks" >> "$GITHUB_ENV"
+            echo "GRADLE_TASK=assembleRelease" >> "$GITHUB_ENV"
+            echo "APK_PATH=release/app-release.apk" >> "$GITHUB_ENV"
+          else
+            echo "GRADLE_TASK=assembleDebug" >> "$GITHUB_ENV"
+            echo "APK_PATH=debug/app-debug.apk" >> "$GITHUB_ENV"
+            echo "::warning::JARVIS_KEYSTORE_B64 secret missing: building a debug-signed APK"
+          fi
+
       - name: Prepare Android project
         run: |
           set -o pipefail
@@ -83,12 +97,12 @@ jobs:
         run: |
           set -o pipefail
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee -a ../build.log
+          ./gradlew $GRADLE_TASK --no-daemon --stacktrace 2>&1 | tee -a ../build.log
 
       - name: Rename APK
         run: |
           mkdir -p out
-          cp android/app/build/outputs/apk/release/app-release.apk out/jarvis.apk
+          cp android/app/build/outputs/apk/$APK_PATH out/jarvis.apk
           ls -la out
           unzip -l out/jarvis.apk | grep -E "\.so$" | tee -a build.log
 
