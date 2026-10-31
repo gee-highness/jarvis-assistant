@@ -51,7 +51,7 @@ export function fixTypo(w: string): string {
   let best = w, bd = max + 1;
   for (const t of TYPO_TARGETS) {
     if (Math.abs(t.length - w.length) > max || t[0] !== w[0] && t[1] !== w[1]) continue;
-    if (w.slice(0, -1) === t.slice(0, -1) || w + 's' === t || t + 's' === w || w + 'ed' === t || t + 'ed' === w) continue;
+    if (((w.startsWith(t) || t.startsWith(w)) && Math.abs(w.length - t.length) <= 3) || w.slice(0, -1) === t.slice(0, -1) || w + 's' === t || t + 's' === w || w + 'ed' === t || t + 'ed' === w) continue;
     const dist = osa(w, t);
     if (dist < bd) { bd = dist; best = t; }
   }
@@ -72,6 +72,7 @@ export function normalize(raw: string): Normalized {
   for (const [re, w] of EMOJI_WORDS) s = s.replace(re, w);
   s = s.toLowerCase().replace(/[’‘`´]/g, "'").replace(/[“”]/g, '"');
   for (const [re, rep] of CONTRACTIONS) s = s.replace(re, rep);
+  s = s.replace(/\b(\w+)'s\b/g, '$1');
   s = s.replace(/(\d)\s*(am|pm)\b/g, '$1$2').replace(/([a-z])\1{2,}/g, '$1$1');
   const words = s.replace(/[^a-z0-9:%.'\s+\-*/^=]/g, ' ').split(/\s+/).filter(Boolean)
     .map(w => w.replace(/^'+|'+$/g, '').replace(/\.+$/, ''))
@@ -196,14 +197,14 @@ export function bestFuzzy<T>(query: string, items: T[], key: (t: T) => string, m
 export type Emotion = 'happy' | 'excited' | 'grateful' | 'sad' | 'lonely' | 'anxious' | 'angry' | 'tired' | 'bored' | 'sick' | 'proud' | 'love' | 'neutral';
 
 const LEX: Record<Exclude<Emotion, 'neutral'>, string[]> = {
-  happy: ['happy', 'glad', 'great', 'good', 'awesome', 'amazing', 'fantastic', 'wonderful', 'nice', 'cool', 'joy', 'fun', 'smile', 'haha', 'yay', 'brilliant', 'lovely', 'chilled', 'relaxed', 'blessed'],
+  happy: ['happy', 'glad', 'great', 'good', 'awesome', 'amazing', 'fantastic', 'wonderful', 'nice', 'cool', 'joy', 'fun', 'smile', 'haha', 'yay', 'brilliant', 'lovely', 'chilled', 'relaxed', 'blessed', 'buzzing', 'elated', 'delighted', 'ecstatic', 'over the moon', 'cheerful', 'jolly', 'on cloud nine', 'on top of the world', 'thrilled to bits'],
   excited: ['excited', 'pumped', 'hyped', 'cannot wait', 'stoked', 'thrilled', 'lets go', 'let us go', 'fired up', 'buzzing'],
   grateful: ['grateful', 'thankful', 'appreciate', 'blessed'],
-  sad: ['sad', 'down', 'depressed', 'unhappy', 'cry', 'crying', 'heartbroken', 'hurt', 'miserable', 'awful', 'terrible', 'upset', 'low', 'broken', 'lost', 'gutted', 'devastated', 'disappointed', 'rough day', 'bad day'],
+  sad: ['sad', 'down', 'depressed', 'unhappy', 'cry', 'crying', 'heartbroken', 'hurt', 'miserable', 'awful', 'terrible', 'upset', 'low', 'broken', 'lost', 'gutted', 'devastated', 'disappointed', 'rough day', 'bad day', 'crushed', 'bummed', 'glum', 'down in the dumps', 'heavy hearted', 'hopeless', 'numb', 'grieving', 'miserable'],
   lonely: ['lonely', 'alone', 'no friends', 'nobody', 'no one cares', 'isolated', 'left out'],
-  anxious: ['anxious', 'nervous', 'worried', 'stress', 'stressed', 'panic', 'overwhelm', 'overwhelmed', 'scared', 'afraid', 'fear', 'pressure', 'freaking out', 'tense'],
-  angry: ['angry', 'mad', 'furious', 'pissed', 'annoyed', 'irritated', 'frustrated', 'hate', 'fed up', 'sick of', 'livid', 'rage'],
-  tired: ['tired', 'exhausted', 'sleepy', 'drained', 'burnt out', 'burned out', 'burnout', 'fatigued', 'no energy', 'knackered', 'worn out'],
+  anxious: ['anxious', 'nervous', 'worried', 'stress', 'stressed', 'panic', 'overwhelm', 'overwhelmed', 'scared', 'afraid', 'fear', 'pressure', 'freaking out', 'tense', 'nerves are shot', 'my nerves', 'jittery', 'on edge', 'uneasy', 'apprehensive', 'panicky', 'wound up', 'dreading', 'terrified', 'dread'],
+  angry: ['angry', 'mad', 'furious', 'pissed', 'annoyed', 'irritated', 'frustrated', 'hate', 'fed up', 'sick of', 'livid', 'rage', 'fuming', 'seething', 'raging', 'boiling', 'ticked off', 'hacked off', 'outraged', 'infuriated', 'enraged'],
+  tired: ['tired', 'exhausted', 'sleepy', 'drained', 'burnt out', 'burned out', 'burnout', 'fatigued', 'no energy', 'knackered', 'worn out', 'wiped out', 'shattered', 'zonked', 'dead on my feet', 'running on empty', 'sleep deprived', 'sleepless'],
   bored: ['bored', 'boring', 'nothing to do', 'meh', 'dull'],
   sick: ['sick', 'ill', 'fever', 'flu', 'headache', 'migraine', 'cold', 'pain', 'nauseous', 'not feeling well', 'unwell'],
   proud: ['proud', 'nailed it', 'did it', 'achieved', 'finished', 'won', 'promoted', 'passed', 'got the job', 'crushed it', 'smashed it'],

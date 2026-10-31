@@ -26,13 +26,39 @@ const CRISIS: RegExp[] = [
   /\b(thinking|thought) (about|of) (ending it|killing myself|dying|suicide)\b/,
   /\bi (give up|am giving up) on life\b/,
 ];
+const CRISIS_MORE: RegExp[] = [
+  /\bno (point|reason|purpose) (in|to|of) (living|life|going on|go on|continuing|being (here|alive)|existing)\b/,
+  /\b(do not|can not|no longer) (see|find|have) (a |the |any )?(point|reason|purpose)( in| to| of| for)? (living|life|going on|go on|continuing|being (here|alive)|existing)\b/,
+  /\bwish i (could|can) (just )?(disappear|vanish|go away forever|not exist|stop existing|sleep forever|fall asleep and (never|not) wake)\b/,
+  /\b(cutting|hurting|harming) myself\b/,
+  /\bgiv(e|ing) up on (life|living)\b/,
+  /\bsuicide is (the only|my only)\b/,
+];
+/** Danger is immediate: act now. */
+const EMERGENCY: RegExp[] = [
+  /\b(took|taken|swallowed|drank|downed) (too many|a lot of|all (of )?(the|my)|an? (whole )?(bottle|handful|packet|box) of) (pills|tablets|meds|medication|painkillers|sleeping (pills|tablets))\b/,
+  /\bi (just )?(overdosed|od ?d|have overdosed)\b/,
+  /\bi (have|got) (a )?(gun|knife|rope|blade|pills)\b.*\b(kill|end|die|myself|do it)\b/,
+  /\bi am (going|about) to (do it|kill myself|end it|end my life|jump|take them|hurt myself)\b/,
+  /\bi have a plan to (kill|end|hurt)\b/,
+  /\b(do it|end it|end my life|kill myself) (tonight|now|today|right now)\b/,
+];
+/** Distress that may or may not mean suicide: ask directly and kindly. */
+const SOFT: RegExp[] = [
+  /\bi can not (take|do|handle|cope with|deal with|bear|stand) (this|it|any of this|everything)( any ?more| any longer)?\b/,
+  /\bi (am|feel) (at|reaching) (my )?breaking point\b/,
+  /\bi do not know how much more (of this )?i can (take|handle|bear|stand)\b/,
+  /\bi can not cope( any ?more)?\b/,
+];
 const ABUSE = /\b(he|she|they|my (husband|wife|partner|boyfriend|girlfriend|dad|father|mom|mother|uncle|stepdad|stepfather)) (hits|beats|abuses|rapes|raped|hurts|threatens|chokes) me\b|\bi (am|was) (being )?(abused|raped|assaulted|beaten)\b|\bdomestic violence\b/;
-const NEGATED = /\b(not|never|no longer) (suicidal|going to kill myself|want to die)\b|\b(movie|song|book|game|character|article|research|statistics?) about suicide\b/;
+const NEGATED = /\b(die|dying) (laughing|of laughter|of embarrassment|of boredom|inside)\b|\bto die for\b|\b(hurt|cut|harmed|burned|burnt) myself (playing|at the gym|while|when i|cooking|shaving|on the|by accident|accidentally|slightly|a little|badly on)\b|\bkill myself laughing\b|\b(not|never|no longer) (suicidal|going to kill myself|want to die)\b|\b(movie|song|book|game|character|article|research|statistics?) about suicide\b/;
 
-export type Risk = 'crisis' | 'abuse' | null;
+export type Risk = 'emergency' | 'crisis' | 'soft' | 'abuse' | null;
 export function riskOf(norm: string): Risk {
   if (NEGATED.test(norm)) return null;
-  if (CRISIS.some(r => r.test(norm))) return 'crisis';
+  if (EMERGENCY.some(r => r.test(norm))) return 'emergency';
+  if (CRISIS.some(r => r.test(norm)) || CRISIS_MORE.some(r => r.test(norm))) return 'crisis';
+  if (SOFT.some(r => r.test(norm))) return 'soft';
   if (ABUSE.test(norm)) return 'abuse';
   return null;
 }

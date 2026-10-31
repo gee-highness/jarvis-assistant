@@ -93,8 +93,8 @@ export function learnFacts(norm: string, raw: string, now = new Date()): Learned
     out.push({ text: `User wants to ${tidy(m[1])}`, kind: 'goal', importance: 4, echo: `you want to ${tidy(m[1])}` });
   }
   // upcoming events → follow-ups ("i have an interview tomorrow")
-  if ((m = norm.match(/\bi (?:have|got) (a |an |my |the )?([a-z][a-z ]{2,30}?) (today|tonight|tomorrow|on [a-z]+|next week|this weekend|on the \d+\w*|in \d+ days)\b/))
-      && !/\b(task|reminder|alarm|meeting with you|question|idea|problem)\b/.test(m[2])) {
+  if (!/^(do|did|does|have|has|will|can|could|would|are|is|am|what|when|where|who|how|why)\b/.test(norm) && (m = norm.match(/\bi (?:have|got) (a |an |my |the )?([a-z][a-z ]{2,30}?) (today|tonight|tomorrow|on [a-z]+|next week|this weekend|on the \d+\w*|in \d+ days)\b/))
+      && !/\b(task|reminder|alarm|meeting with you|question|idea|problem)\b/.test(m[2]) && !/^(any|some|no|many|much|more|less)\b/.test(m[2])) {
     const e = extract(m[3], now);
     const det = (m[1] ?? (/^[aeiou]/.test(m[2]) ? 'an ' : 'a ')).trim();
     const day = e.date ? new Date(e.date + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) : m[3];

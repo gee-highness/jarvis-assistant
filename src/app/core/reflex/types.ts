@@ -154,6 +154,8 @@ export interface Out {
   quiet?: boolean;
   /** Ask the LLM (hybrid mode) instead. */
   defer?: boolean;
+  /** Overrides the reported intent (e.g. a fallback that delegated to research). */
+  intent?: string;
   /** Remember as "content" so "another one" repeats this symbol. */
   content?: string;
 }
