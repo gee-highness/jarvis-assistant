@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { JarvisService } from '../core/jarvis.service';
+import { ReflexService } from '../core/reflex/reflex.service';
 import { JournalEntry } from '../core/models';
 import { JarvisDevice } from '../core/native';
 import { OllamaService } from '../core/ollama.service';
@@ -81,6 +82,7 @@ export class JournalPage {
   readonly store = inject(StoreService);
   private ollama = inject(OllamaService);
   private jarvis = inject(JarvisService);
+  private reflex = inject(ReflexService);
   readonly moods = MOODS; readonly tags = TAGS;
   readonly mood = signal(this.store.todayJournal()?.mood ?? 3);
   readonly energy = signal(this.store.todayJournal()?.energy ?? 3);
@@ -137,6 +139,11 @@ export class JournalPage {
   async reflect() {
     this.busy.set(true); this.reflection.set('');
     try {
+      if (this.jarvis.reflexMode()) {
+        await this.reflex.init();
+        this.reflection.set(this.reflex.engine.reflectJournal(this.days().slice(-14)));
+        return;
+      }
       if (!(await this.jarvis.ensureEngine())) { this.reflection.set('The brain is offline. Download a model on the Brain page.'); return; }
       const recent = this.days().slice(-10).map(e => `${e.date} mood ${e.mood}/5 energy ${e.energy}/5: ${e.text.slice(0, 220)}${e.gratitude ? ' | grateful: ' + e.gratitude : ''}`).join('\n');
       this.reflection.set(await this.ollama.complete(this.jarvis.persona() + '\nYou are reflecting on the user\'s journal. Notice patterns, name one strength, one watch-out, and suggest one small experiment. Max 120 words.', recent, { temperature: 0.6, background: false, maxTokens: 300 }));
