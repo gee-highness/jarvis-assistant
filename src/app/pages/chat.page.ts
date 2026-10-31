@@ -94,7 +94,7 @@ import { MdPipe } from '../ui/md.pipe';
     .msg { display: flex; flex-direction: column; gap: 4px; max-width: 92%; }
     .msg.user { align-self: flex-end; align-items: flex-end; }
     .bubble { padding: 10px 13px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); word-wrap: break-word; overflow-wrap: anywhere; }
-    .user .bubble { background: rgba(34,211,238,.14); border-color: var(--line-strong); }
+    .user .bubble { background: rgba(var(--accent-rgb), .14); border-color: var(--line-strong); }
     .tools { display: flex; flex-wrap: wrap; gap: 4px; }
     .tool summary { list-style: none; cursor: pointer; }
     .tool .pre, .think .pre { white-space: pre-wrap; background: rgba(0,0,0,.35); border-radius: 8px; padding: 6px 8px; margin-top: 4px; max-height: 200px; overflow-y: auto; }

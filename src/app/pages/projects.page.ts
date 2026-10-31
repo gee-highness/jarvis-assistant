@@ -85,7 +85,7 @@ function parseLines(s: string): TaskTemplate['items'] {
   `,
   styles: [`
     .proj { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
-    .bar { height: 6px; border-radius: 4px; background: rgba(34,211,238,.12); overflow: hidden; } .bar i { display: block; height: 100%; background: linear-gradient(90deg,#22d3ee,#4ade80); }
+    .bar { height: 6px; border-radius: 4px; background: rgba(var(--accent-rgb), .12); overflow: hidden; } .bar i { display: block; height: 100%; background: linear-gradient(90deg,var(--cyan),#4ade80); }
     .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; } .tpl { display: flex; flex-direction: column; gap: 6px; } .ti { font-size: 1.6rem; } .wrap { flex-wrap: wrap; gap: 6px; }
     .scrim { position: fixed; inset: 0; z-index: 45; background: rgba(0,0,0,.6); display: flex; align-items: flex-end; justify-content: center; }
     .sheet { width: 100%; max-width: 600px; border-radius: 18px 18px 0 0; display: flex; flex-direction: column; gap: 10px; padding-bottom: calc(20px + var(--safe-bottom)); max-height: 90vh; overflow-y: auto; }

@@ -22,6 +22,9 @@ export const routes: Routes = [
   { path: 'preferences', loadComponent: () => import('./pages/preferences.page').then(m => m.PreferencesPage) },
   { path: 'diagnostics', loadComponent: () => import('./pages/diagnostics.page').then(m => m.DiagnosticsPage) },
   { path: 'brain', loadComponent: () => import('./pages/brain.page').then(m => m.BrainPage) },
+  { path: 'theme', loadComponent: () => import('./pages/theme.page').then(m => m.ThemePage) },
+  { path: 'pet', loadComponent: () => import('./pages/pet.page').then(m => m.PetPage) },
+  { path: 'senses', loadComponent: () => import('./pages/senses.page').then(m => m.SensesPage) },
   { path: 'settings', loadComponent: () => import('./pages/settings.page').then(m => m.SettingsPage) },
   { path: '**', redirectTo: 'briefing' },
 ];

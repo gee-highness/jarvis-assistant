@@ -10,6 +10,7 @@ import { StoreService } from './store.service';
 import { ToolsService } from './tools/tools.service';
 import { extractJson, hm, prettyDate, sleep, uid } from './util';
 import { VoiceService } from './voice.service';
+import { ReflexService } from './reflex/reflex.service';
 
 export interface UiMessage extends Message { streaming?: boolean; brain?: 'phone' | 'cloud'; }
 export interface PendingConfirm { question: string; resolve: (ok: boolean) => void; }
@@ -26,6 +27,7 @@ export class JarvisService {
   private tools = inject(ToolsService);
   private voice = inject(VoiceService);
   private llm = inject(LlmService);
+  private reflex = inject(ReflexService);
 
   readonly conversations = signal<Conversation[]>([]);
   readonly currentId = signal<string | null>(null);
@@ -46,6 +48,7 @@ export class JarvisService {
   // ---------------- engine ----------------
   /** Make sure some brain is reachable; wakes Ollama in Termux if needed. */
   async ensureEngine(): Promise<boolean> {
+    if (this.reflexMode()) return true;
     const c = this.store.settings().cloud;
     if (c.mode !== 'off' && c.apiKey && c.model && navigator.onLine) return true;
     const s = this.store.settings();
@@ -78,6 +81,9 @@ export class JarvisService {
     this.status.set('');
     return false;
   }
+
+  /** True when the LLM-free Reflex brain answers (the default). */
+  reflexMode(): boolean { return this.store.settings().brain !== 'llm'; }
 
   offlineReason(): string {
     const s = this.store.settings();
@@ -200,6 +206,7 @@ ${this.tools.catalogue(tools)}`);
   async send(text: string, opts: { speak?: boolean; allTools?: boolean } = {}): Promise<string> {
     const clean = text.trim();
     if (!clean || this.busy()) return '';
+    if (this.reflexMode()) return this.sendReflex(clean, opts);
     this.error.set('');
     this.busy.set(true);
     this.voice.setThinking(true);
@@ -308,6 +315,73 @@ ${this.tools.catalogue(tools)}`);
     }
   }
 
+  // ---------------- reflex (no LLM) ----------------
+  /** One turn on the Reflex brain: understand → act → compose, then "type" the reply out like a model would. */
+  private async sendReflex(clean: string, opts: { speak?: boolean }): Promise<string> {
+    this.error.set('');
+    this.busy.set(true);
+    this.voice.setThinking(true);
+    const ac = new AbortController();
+    this.abort = ac;
+    const conv = await this.ensureConversation(clean);
+    const userMsg: UiMessage = { id: uid(), conversationId: conv.id, role: 'user', content: clean, createdAt: Date.now() };
+    this.messages.update(a => [...a, userMsg]);
+    await db.messages.put(userMsg);
+    const reply: UiMessage = { id: uid(), conversationId: conv.id, role: 'assistant', content: '', toolCalls: [], createdAt: Date.now() + 1, streaming: true, brain: 'phone' };
+    this.messages.update(a => [...a, reply]);
+    const patchReply = (p: Partial<UiMessage>) => this.messages.update(a => a.map(m => (m.id === reply.id ? { ...m, ...p } : m)));
+    try {
+      this.reflex.onStatus = t => this.status.set(t);
+      const r = await this.reflex.respond(clean, this.confirm);
+      if (r.intent === 'meta.stop') this.voice.stopSpeaking();
+      const records: ToolCallRecord[] = r.tools.map(t => ({ name: t.name, args: t.args, ok: t.ok, result: t.result }));
+      if (records.length) patchReply({ toolCalls: records });
+      // speech starts immediately; the text streams in word by word
+      const speaking = opts.speak ? this.voice.speak(r.text) : Promise.resolve();
+      await this.typeOut(r.text, t => patchReply({ content: t }), ac.signal);
+      const saved: Message = { id: reply.id, conversationId: conv.id, role: 'assistant', content: r.text, toolCalls: records, createdAt: reply.createdAt };
+      patchReply({ content: r.text, streaming: false, toolCalls: records });
+      await db.messages.put(saved);
+      const msgs = this.messages().filter(m => m.conversationId === conv.id);
+      await this.touch(conv, msgs.length <= 2 ? { title: this.titleFor(clean) } : {});
+      await speaking;
+      return r.text;
+    } catch (e: any) {
+      const msg = e?.message ?? String(e);
+      this.error.set(msg);
+      patchReply({ content: `⚠️ ${msg}`, streaming: false });
+      await db.messages.put({ id: reply.id, conversationId: conv.id, role: 'assistant', content: `⚠️ ${msg}`, createdAt: reply.createdAt });
+      return '';
+    } finally {
+      this.busy.set(false);
+      this.voice.setThinking(false);
+      this.status.set('');
+      this.abort = null;
+    }
+  }
+
+  /** Streams text in natural chunks (~0.4–1.2 s total) so replies feel generated, not pasted. */
+  private async typeOut(text: string, onText: (t: string) => void, signal: AbortSignal): Promise<void> {
+    if (this.store.settings().reduceMotion || text.length < 4) { onText(text); return; }
+    const tokens = text.match(/\S+\s*|\s+/g) ?? [text];
+    const budget = Math.min(1200, 380 + text.length * 4);
+    const step = Math.max(8, Math.min(45, budget / tokens.length));
+    let out = '';
+    for (let i = 0; i < tokens.length; i++) {
+      if (signal.aborted) break;
+      out += tokens[i];
+      onText(out);
+      const pause = /[.!?]\s*$/.test(tokens[i]) ? step * 2.2 : /[,;:]\s*$/.test(tokens[i]) ? step * 1.5 : step;
+      await sleep(pause * (0.7 + Math.random() * 0.6));
+    }
+    onText(text);
+  }
+
+  private titleFor(text: string): string {
+    const words = text.replace(/[^\p{L}\p{N}\s'-]/gu, ' ').split(/\s+/).filter(Boolean).slice(0, 6).join(' ');
+    return (words.charAt(0).toUpperCase() + words.slice(1)).slice(0, 48) || 'Chat';
+  }
+
   /** Background upkeep: memory extraction, summarisation, titling. Never blocks the UI. */
   private afterTurn(conv: Conversation, userText: string, reply: string) {
     (async () => {
@@ -341,6 +415,12 @@ ${this.tools.catalogue(tools)}`);
   }
 
   async reviewFeedback(kind: 'daily' | 'weekly', review: { wins: string; blockers: string; energy: number; notes?: string }): Promise<string> {
+    if (this.reflexMode()) {
+      await this.reflex.init();
+      const fb = this.reflex.engine.review(kind, review);
+      this.memory.add(`${kind === 'daily' ? 'Daily' : 'Weekly'} review ${this.store.today()}: wins: ${review.wins.slice(0, 160)}; blockers: ${review.blockers.slice(0, 160)}; energy ${review.energy}/5`, 'event', 2).catch(() => undefined);
+      return fb;
+    }
     const s = this.store.settings();
     const stats = this.store.snapshot();
     const system = `${this.persona()}\nYou are reviewing the user's ${kind} shutdown. Be candid, specific, encouraging but honest. Max 130 words. End with ${kind === 'daily' ? "3 suggested MITs for tomorrow as a numbered list" : "3 outcomes for next week as a numbered list"}.`;
@@ -356,6 +436,13 @@ ${this.tools.catalogue(tools)}`);
     const system = `Convert the user's note into tasks. Today is ${this.store.today()} (${new Date().toLocaleDateString(undefined, { weekday: 'long' })}).
 Return JSON: {"tasks":[{"title":"verb-first title","due":"YYYY-MM-DD or null","urgent":bool,"important":bool,"estimate_min":number|null,"project":string|null}]}`;
     let tasks: any[] = [];
+    if (this.reflexMode()) {
+      await this.reflex.init();
+      const drafts = this.reflex.engine.capture(text);
+      for (const t of drafts) await this.store.addTask({ title: t.title, due: t.due, urgent: t.urgent, important: true });
+      if (!drafts.length) await this.store.addTask({ title: text, inbox: true });
+      return Math.max(1, drafts.length);
+    }
     try {
       if (await this.ensureEngine()) tasks = extractJson<{ tasks: any[] }>(await this.ollama.complete(system, text, { format: 'json', background: false }))?.tasks ?? [];
     } catch { tasks = []; }

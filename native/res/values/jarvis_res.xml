@@ -5,6 +5,7 @@
     <string name="jarvis_widget_wide">Jarvis · next priority</string>
     <string name="jarvis_widget_chat">Jarvis · chat</string>
     <string name="jarvis_widget_today">Jarvis · today</string>
+    <string name="jarvis_widget_pet">Jarvis · pet</string>
     <style name="JarvisWidgetChip">
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">30dp</item>
