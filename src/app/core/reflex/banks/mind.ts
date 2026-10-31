@@ -28,7 +28,7 @@ export const MIND: Bank = {
     { id: 'research.ask', kind: 'info', topic: 'web',
       examples: ['who invented the telephone', 'what is the capital of japan', 'how tall is mount everest', 'when did world war 2 end', 'what is the weather in johannesburg', 'news today', 'who won the game last night', 'what is quantum computing', 'explain black holes', 'tell me about nelson mandela', 'price of bitcoin', 'how far is the moon', 'what does photosynthesis mean', 'who is the president of south africa', 'how many people live in eswatini', 'what is the weather like', 'will it rain tomorrow', 'define serendipity', 'why is the sky blue', 'how does a car engine work'],
       patterns: [/^(who|what|when|where|which|why|how) (is|are|was|were|did|does|do|many|much|far|tall|long|old|big)\b/, /\b(weather|forecast|news|headlines|price of|exchange rate|population of|capital of)\b/, /^(define|explain|tell me about)\b/, /\bwill it rain\b/],
-      not: [/\b(my|me|mine|you|your|yourself|we|our)\b/, /\b(task|todo|reminder|alarm|timer|habit|streak|level|xp|journal|note|focus|schedule|agenda|plan)\b/, /\bwhat time\b|\bwhat (is the )?(date|day)\b/, /\b\d+\s*([-+*/x^%]|plus|minus|times|divided)\s*\d+/] },
+      not: [/\b(nothing|nobody|everything|everyone)\b/, /\b(not|never) work(ing|s)\b/, /\d\s*(%|percent)/, /\b(my|me|mine|you|your|yourself|we|our)\b/, /\b(task|todo|reminder|alarm|timer|habit|streak|level|xp|journal|note|focus|schedule|agenda|plan)\b/, /\bwhat time\b|\bwhat (is the )?(date|day)\b/, /\b\d+\s*([-+*/x^%]|plus|minus|times|divided)\s*\d+/] },
   ],
   rules: {
     'r.chat.activity': ['#act.go# #act.tail#', '[toughLove>65] Good. #act.tail#', '[enthusiasm>65] Let’s go! #act.tail#'],
@@ -42,7 +42,7 @@ export const MIND: Bank = {
     ],
     urlBit: ['[has:url] ({url})', ''],
     'r.mind.source.none': ['I haven’t looked anything up yet, #h#. Ask me a question and I’ll search for it.', 'Nothing yet. Ask me something and I’ll look it up.'],
-    'r.mind.yousaid': ['{found}', 'Here’s what I said: {found}'],
+    'r.mind.yousaid': ['{found}'],
     'r.mind.topic': ['{found}', '#said.open# {found}'],
     'r.mind.topic.none': ['We haven’t really talked about anything yet{when}, #h#.', 'Nothing much{when}. What’s on your mind?'],
     'r.mind.when': ['{found}'],

@@ -13,7 +13,18 @@ const CRISIS: RegExp[] = [
   /\bbetter off (dead|without me)\b/,
   /\b(overdose|slit my|jump off|jump in front)\b/,
   /\b(self ?harm|self ?harming)\b/,
-  /\bcan not (go on|do this anymore|take it anymore)\b/,
+  /\bcan not (go on|do this anymore|take it anymore|keep (going|doing this))\b/,
+  /\bi do not want to (be here|be around|exist|go on|continue|do this|wake up|be alive|live)( any ?more| any longer)?\b/,
+  /\b(wish|hope) (i|that i) (was|were|am) (dead|gone|not here|never born)\b/,
+  /\b(wish|hope) i (would not|will not|did not) wake up\b/,
+  /\b(i am|i feel) (done|finished) with (life|everything|living)\b/,
+  /\b(life is|it is) not worth (living|it anymore)\b/,
+  /\bwhat is the point of (living|going on|being alive|me being here)\b/,
+  /\b(everyone|everybody|they|my family) (would be|will be) better off without me\b/,
+  /\b(no one|nobody) would (miss|notice|care if) (me|i)\b/,
+  /\bi want (it all|everything|this|my life) to (end|stop)\b/,
+  /\b(thinking|thought) (about|of) (ending it|killing myself|dying|suicide)\b/,
+  /\bi (give up|am giving up) on life\b/,
 ];
 const ABUSE = /\b(he|she|they|my (husband|wife|partner|boyfriend|girlfriend|dad|father|mom|mother|uncle|stepdad|stepfather)) (hits|beats|abuses|rapes|raped|hurts|threatens|chokes) me\b|\bi (am|was) (being )?(abused|raped|assaulted|beaten)\b|\bdomestic violence\b/;
 const NEGATED = /\b(not|never|no longer) (suicidal|going to kill myself|want to die)\b|\b(movie|song|book|game|character|article|research|statistics?) about suicide\b/;

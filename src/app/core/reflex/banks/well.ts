@@ -64,6 +64,13 @@ export const WELL: Bank = {
       'I’m really glad you told me, #h#. You matter, and you don’t have to carry this alone. Please reach out to someone right now:\n{help}\n\nIf you can, tell someone near you how you’re feeling, or let me open your phone app to call. Are you safe right now?',
       'Thank you for telling me. That took courage, and I’m staying right here with you. Please talk to a person who can help tonight:\n{help}\n\nWould you like me to call one of these, or message someone you trust? Are you safe at this moment?',
     ],
+    'well.safety.no': [
+      'Thank you for being honest with me. Your safety matters most right now. Please call {emergency} or go to the nearest emergency room, or ask someone near you to stay with you. These people can also help right now:\n{help}\n\nI’m staying right here. Is there someone I can message or call for you?',
+    ],
+    'well.safety.yes': [
+      'I’m really glad. I’m here and I’m listening: what has been weighing on you? And if the feeling gets stronger, these are always there:\n{help}',
+      'Okay. Thank you for telling me. Would you like to talk about what’s been going on? I’m not going anywhere. If it gets heavier, please use one of these:\n{help}',
+    ],
     'r.well.abuse': [
       'I’m so sorry that is happening to you. It is not your fault, and you deserve to be safe. If you are in danger, please call for help now:\n{help}\n\nWould you like me to help you contact someone you trust?',
     ],

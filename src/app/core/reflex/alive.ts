@@ -87,6 +87,7 @@ export interface SpiceCtx {
   now: Date;
   intentKind: string;
   quiet: boolean;
+  intent?: string;
   emotionNegative: boolean;
   missingProfile: string[];
 }
@@ -113,9 +114,9 @@ export function chooseSpice(c: SpiceCtx): { sym?: string; vars?: Record<string, 
   const cur = (traits['curiosity'] ?? 50) / 100;
   const hour = now.getHours();
   const cands: { w: number; out: { sym?: string; vars?: Record<string, unknown>; ask?: string }; kind: string }[] = [];
-  if (state.overdue > 0) cands.push({ w: pro * 0.5, out: { sym: 'spice.overdue' }, kind: 'overdue' });
+  if (state.overdue > 0 && !/^(task\.(list|done|move|delete)|plan\.|focus\.)/.test(c.intent ?? '')) cands.push({ w: pro * 0.5, out: { sym: 'spice.overdue' }, kind: 'overdue' });
   if (state.habitsLeft.length && hour >= 17) cands.push({ w: pro * 0.6, out: { sym: 'spice.habits' }, kind: 'habits' });
-  if (state.mits.length && !chatty) cands.push({ w: pro * 0.25, out: { sym: 'spice.mit' }, kind: 'mit' });
+  if (state.mits.length && !chatty && !/^(task|focus|plan)\./.test(c.intent ?? '')) cands.push({ w: pro * 0.25, out: { sym: 'spice.mit' }, kind: 'mit' });
   if (hour >= 23 || hour < 4) cands.push({ w: 0.5, out: { sym: 'spice.late' }, kind: 'late' });
   if (inner.userMood < -0.35) cands.push({ w: (traits['emotional'] ?? 50) / 100 * 0.6, out: { sym: 'spice.mood.low' }, kind: 'mood' });
   if (state.streak >= 3 && !chatty) cands.push({ w: 0.15, out: { sym: 'spice.streak' }, kind: 'streak' });

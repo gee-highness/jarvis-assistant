@@ -194,6 +194,7 @@ export function finish(s: string): string {
   let t = s.replace(/[ \t]+/g, ' ')
     .replace(/ +([,.!?;:])/g, '$1')
     .replace(/([,;:])(?=[.!?])/g, '')
+    .replace(/([.!?]),(?=\s)/g, '$1')
     .replace(/,{2,}/g, ',')
     .replace(/\.{4,}/g, '...')
     .replace(/(^|[^.])\.\.(?!\.)/g, '$1.')

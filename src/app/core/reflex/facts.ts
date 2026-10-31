@@ -41,6 +41,10 @@ export function learnFacts(norm: string, raw: string, now = new Date()): Learned
     const name = nameCase(keep(BAD_NAME.test(words[1] ?? 'x') || !words[1] ? words[0] : m[2]));
     out.push({ text: `User's ${m[1]} is ${name}`, kind: 'person', importance: 4, echo: `your ${m[1]} is ${name}` });
   }
+  const named = raw.match(new RegExp(`\\b[Mm]y (${RELATIONS}) ([A-Z][a-z]{1,20})\\b`));
+  if (named && !BAD_NAME.test(named[2].toLowerCase()) && !out.some(o => o.kind === 'person')) {
+    out.push({ text: `User's ${named[1].toLowerCase()} is ${named[2]}`, kind: 'person', importance: 4, echo: `your ${named[1].toLowerCase()} is ${named[2]}` });
+  }
   if ((m = norm.match(new RegExp(`\\b([a-z]+) is my (${RELATIONS})\\b`))) && !BAD_NAME.test(m[1]) && !/^(this|that|he|she|it|who|what|there|which)$/.test(m[1])) {
     const name = nameCase(keep(m[1]));
     out.push({ text: `User's ${m[2]} is ${name}`, kind: 'person', importance: 4, echo: `${name} is your ${m[2]}` });

@@ -117,7 +117,7 @@ export const KNOWLEDGE: Rules = {
     'Every morning in a #place#, #hero:a# #heroHabit#.',
   ],
   'story.problem': [
-    'One day, #villain:a# stole the #treasure#.', 'But a great #disaster# threatened everything.', 'Then came the #disaster#, and everyone lost hope, except our #heroShort#.',
+    'One day, #villain:a# stole the #treasure#.', 'But a terrible #disaster# threatened everything.', 'Then came the #disaster#, and everyone lost hope, except our #heroShort#.',
     'One evening, a strange message arrived: the #treasure# was in danger.', 'Trouble began when #villain:a# challenged the #heroShort# to #contest:a#.',
   ],
   'story.turn': [
@@ -135,7 +135,7 @@ export const KNOWLEDGE: Rules = {
   heroHabit: ['counted the clouds', 'wrote three goals on a leaf', 'swept the same street', 'practised a song nobody had heard', 'watered a plant that never grew'],
   villain: ['jealous storm', 'sneaky fox', 'bored king', 'gang of procrastination goblins', 'shadow made of excuses', 'clever crow', 'rogue algorithm', 'giant who hated noise'],
   treasure: ['golden compass', 'last seed of the great tree', 'town’s laughter', 'map of tomorrow', 'singing stone', 'recipe for the perfect bread', 'key to the moon', 'lantern that never went out'],
-  disaster: ['drought', 'flood of forgotten tasks', 'great silence', 'endless winter', 'storm of doubts', 'blackout that lasted a week', 'fog that made everyone forget their dreams'],
+  disaster: ['drought', 'flood of forgotten tasks', 'long silence', 'endless winter', 'storm of doubts', 'blackout that lasted a week', 'fog that made everyone forget their dreams'],
   ally: ['wise owl', 'talking teapot', 'forgetful ghost', 'band of fireflies', 'retired pirate', 'kind stranger', 'very small but very loud dog', 'library cat'],
   item: ['rusty key', 'notebook', 'single candle', 'borrowed umbrella', 'whistle', 'jar of honey', 'pocket watch', 'piece of chalk'],
   contest: ['race to the mountain top', 'riddle contest', 'dance-off', 'chess match', 'staring contest', 'baking competition'],

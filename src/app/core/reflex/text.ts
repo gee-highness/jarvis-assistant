@@ -11,7 +11,7 @@ const CONTRACTIONS: [RegExp, string][] = [
 ];
 
 const SLANG: Record<string, string> = {
-  u: 'you', ur: 'your', r: 'are', y: 'why', ya: 'you', yu: 'you', pls: 'please', plz: 'please', pleez: 'please', thx: 'thanks', thanx: 'thanks',
+  tommorow: 'tomorrow', tomorow: 'tomorrow', tommorrow: 'tomorrow', tomoro: 'tomorrow', tomorro: 'tomorrow', tmorrow: 'tomorrow', u: 'you', ur: 'your', r: 'are', y: 'why', ya: 'you', yu: 'you', pls: 'please', plz: 'please', pleez: 'please', thx: 'thanks', thanx: 'thanks',
   ty: 'thanks', tnx: 'thanks', wanna: 'want to', gonna: 'going to', gotta: 'got to', lemme: 'let me', gimme: 'give me', kinda: 'kind of',
   sorta: 'sort of', dunno: 'do not know', idk: 'i do not know', hru: 'how are you', wyd: 'what are you doing', wbu: 'what about you', hbu: 'how about you',
   rn: 'right now', tmr: 'tomorrow', tmrw: 'tomorrow', tomoz: 'tomorrow', '2moro': 'tomorrow', '2day': 'today', '2nite': 'tonight', tonite: 'tonight',
@@ -26,16 +26,57 @@ const SLANG: Record<string, string> = {
   omw: 'on my way', tbh: 'to be honest', ngl: 'not going to lie', imo: 'in my opinion', fr: 'for real', smh: 'shaking my head', asap: 'as soon as possible', bro: 'bro', bru: 'bro', bra: 'bro', boet: 'bro', mfana: 'bro', lekker: 'nice', eish: 'damn',
 };
 
+const TYPO_TARGETS = ('remind reminder reminders tomorrow tonight today yesterday minutes hours seconds schedule appointment meeting calendar habit habits journal remember forget '
+  + 'complete finish finished delete remove priority priorities overdue weather forecast search launch flashlight battery briefing summary progress calculate convert '
+  + 'thanks please morning evening afternoon focus session pomodoro alarm timer message email contact settings notification question answer explain define motivate '
+  + 'tasks task goals goal notes note music navigate directions achieve achievement productivity sleep tired stressed anxious worried depressed lonely angry frustrated').split(' ');
+const TYPO_KEEP = new Set(['melting', 'whether', 'finnish', 'hours', 'forced', 'remote', 'remove', 'nights', 'tonight']);
+
+/** Optimal-string-alignment distance (counts a swap of two letters as one edit). */
+function osa(a: string, b: string): number {
+  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 0; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) {
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+  }
+  return d[a.length][b.length];
+}
+
+const TYPO_SET = new Set(TYPO_TARGETS);
+/** Repairs a mistyped command word ("remnd" → "remind", "wether" → "weather"); leaves everything else alone. */
+export function fixTypo(w: string): string {
+  if (w.length < 5 || /\d/.test(w) || TYPO_SET.has(w) || TYPO_KEEP.has(w)) return w;
+  const max = w.length >= 8 ? 2 : 1;
+  let best = w, bd = max + 1;
+  for (const t of TYPO_TARGETS) {
+    if (Math.abs(t.length - w.length) > max || t[0] !== w[0] && t[1] !== w[1]) continue;
+    if (w.slice(0, -1) === t.slice(0, -1) || w + 's' === t || t + 's' === w || w + 'ed' === t || t + 'ed' === w) continue;
+    const dist = osa(w, t);
+    if (dist < bd) { bd = dist; best = t; }
+  }
+  return bd <= max ? best : w;
+}
+
+const EMOJI_WORDS: [RegExp, string][] = [
+  [/[😂🤣😆😹]/gu, ' haha '], [/[😊🙂😀😄😁😃🥳]/gu, ' nice '], [/[❤💙💚💜🧡💛🖤🤍😍🥰😘💕💖]/gu, ' thanks '], [/[😢😭😞😔☹🥺😿]/gu, ' i am sad '],
+  [/[😡😠🤬]/gu, ' i am angry '], [/[😴🥱]/gu, ' i am tired '], [/[🙏]/gu, ' thanks '], [/[👍👌✅✔💪]/gu, ' ok '], [/[👎❌]/gu, ' no '], [/[🤔🙄😐😑]/gu, ' hmm '],
+  [/[😱😨😰]/gu, ' i am anxious '], [/[🤒🤧🤕]/gu, ' i am sick '],
+];
+
 export interface Normalized { raw: string; text: string; question: boolean; exclaim: boolean; }
 
 /** Lower-cases, expands contractions and texting slang, strips noise. Keeps digits, ':' and '%'. */
 export function normalize(raw: string): Normalized {
-  let s = raw.toLowerCase().replace(/[’‘`´]/g, "'").replace(/[“”]/g, '"');
+  let s = raw;
+  for (const [re, w] of EMOJI_WORDS) s = s.replace(re, w);
+  s = s.toLowerCase().replace(/[’‘`´]/g, "'").replace(/[“”]/g, '"');
   for (const [re, rep] of CONTRACTIONS) s = s.replace(re, rep);
   s = s.replace(/(\d)\s*(am|pm)\b/g, '$1$2').replace(/([a-z])\1{2,}/g, '$1$1');
   const words = s.replace(/[^a-z0-9:%.'\s+\-*/^=]/g, ' ').split(/\s+/).filter(Boolean)
     .map(w => w.replace(/^'+|'+$/g, '').replace(/\.+$/, ''))
-    .map(w => SLANG[w] ?? w);
+    .map(w => SLANG[w] ?? w)
+    .map(fixTypo);
   return { raw, text: words.join(' ').replace(/\s+/g, ' ').trim(), question: /\?\s*$/.test(raw) || /^(what|who|where|when|why|how|is|are|do|does|did|can|could|will|would|should|have|has)\b/.test(words[0] ?? ''), exclaim: /!/.test(raw) };
 }
 
@@ -139,7 +180,10 @@ export function fuzzy(a: string, b: string): number {
   let hit = 0;
   ta.forEach(t => { if (tb.has(t)) hit++; });
   const jac = ta.size && tb.size ? hit / (ta.size + tb.size - hit) : 0;
-  return Math.max(ed, jac);
+  // every meaningful word of the shorter phrase appears in the longer one: strong match
+  const small = ta.size <= tb.size ? ta : tb, big = ta.size <= tb.size ? tb : ta;
+  const contain = small.size && [...small].every(w => big.has(w)) ? 0.72 : 0;
+  return Math.max(ed, jac, contain);
 }
 
 export function bestFuzzy<T>(query: string, items: T[], key: (t: T) => string, min = 0.55): T | undefined {

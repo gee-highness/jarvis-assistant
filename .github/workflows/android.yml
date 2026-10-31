@@ -80,6 +80,14 @@ jobs:
           set -o pipefail
           npm install --no-audit --no-fund 2>&1 | tee -a build.log
 
+      - name: Reflex brain tests
+        continue-on-error: true
+        run: |
+          npx --yes esbuild scripts/reflex-test.ts --bundle --platform=node --outfile="$RUNNER_TEMP/rt.cjs" --log-level=warning
+          npx --yes esbuild scripts/reflex-fuzz.ts --bundle --platform=node --outfile="$RUNNER_TEMP/rf.cjs" --log-level=warning
+          node "$RUNNER_TEMP/rt.cjs" | tail -n 6
+          node "$RUNNER_TEMP/rf.cjs" | tail -n 4
+
       - name: Build web app
         run: |
           set -o pipefail
