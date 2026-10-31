@@ -6,6 +6,7 @@ import { LlmService } from '../llm.service';
 import { MemoryService } from '../memory.service';
 import { OllamaService } from '../ollama.service';
 import { ProgressService } from '../progress.service';
+import { SenseService } from '../sense.service';
 import { StoreService } from '../store.service';
 import { ToolContext, ToolsService } from '../tools/tools.service';
 import { ymd } from '../util';
@@ -28,6 +29,7 @@ export class ReflexService {
   private focus = inject(FocusService);
   private ollama = inject(OllamaService);
   private llm = inject(LlmService);
+  private sense = inject(SenseService);
   private db = new ReflexDb();
   private confirmFn: ToolContext['confirm'] = async () => true;
 
@@ -41,7 +43,7 @@ export class ReflexService {
     profile: () => {
       const s = this.store.settings();
       const p = s.personality;
-      return { honorific: s.honorific || 'sir', userName: s.userName, name: p.name || 'Jarvis', role: p.role, traits: { ...p.traits }, emoji: p.emoji, language: p.language, swearing: p.swearing, catchphrases: p.catchphrases, likes: p.likes };
+      return { honorific: s.honorific || 'sir', userName: s.userName, name: p.name || 'Jarvis', role: p.role, traits: { ...p.traits }, pet: s.pet?.enabled ? { name: s.pet.name, speaks: s.pet.speaks, personality: s.pet.personality } : undefined, emoji: p.emoji, language: p.language, swearing: p.swearing, catchphrases: p.catchphrases, likes: p.likes };
     },
     state: () => this.snapshot(),
     runTool: (name, args) => this.tools.run(name, args, { confirm: q => this.confirmFn(q) }),
@@ -58,6 +60,10 @@ export class ReflexService {
     kvGet: async <T>(k: string) => (await this.db.kv.get(k))?.v as T | undefined,
     kvSet: async (k, v) => { await this.db.kv.put({ k, v }); },
     now: () => new Date(),
+    country: () => countryCode(),
+    senseDays: () => this.sense.days(),
+    usage: d => this.sense.usage(d),
+    moodHistory: () => this.store.journal().map(j => ({ date: j.date, mood: j.mood, energy: j.energy })),
   };
 
   readonly engine = new ReflexEngine(this.host);
@@ -124,4 +130,24 @@ export class ReflexService {
       goals: st.activeGoals().map(g => g.title), docs: this.library.docs().length, memories: this.memory.memories().length,
     };
   }
+}
+
+const TZ: Record<string, string> = {
+  'Africa/Mbabane': 'SZ', 'Africa/Johannesburg': 'ZA', 'Africa/Maseru': 'LS', 'Africa/Gaborone': 'BW', 'Africa/Windhoek': 'NA', 'Africa/Maputo': 'MZ', 'Africa/Harare': 'ZW',
+  'Africa/Lusaka': 'ZM', 'Africa/Nairobi': 'KE', 'Africa/Lagos': 'NG', 'Europe/London': 'GB', 'Europe/Dublin': 'IE', 'Europe/Paris': 'FR', 'Europe/Madrid': 'ES',
+  'Europe/Berlin': 'DE', 'Europe/Amsterdam': 'NL', 'Asia/Kolkata': 'IN', 'Asia/Calcutta': 'IN', 'Asia/Tokyo': 'JP', 'Asia/Seoul': 'KR', 'Asia/Shanghai': 'CN',
+  'Pacific/Auckland': 'NZ', 'America/Toronto': 'CA', 'America/Vancouver': 'CA', 'America/Edmonton': 'CA', 'America/Winnipeg': 'CA', 'America/Halifax': 'CA',
+  'America/Mexico_City': 'MX', 'America/Sao_Paulo': 'BR',
+};
+/** Best guess of the user's country: time zone first (follows travel), then the locale. */
+export function countryCode(): string {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (TZ[tz]) return TZ[tz];
+    if (tz.startsWith('Australia/')) return 'AU';
+    if (tz.startsWith('America/') && /New_York|Chicago|Denver|Los_Angeles|Phoenix|Anchorage|Detroit|Indiana|Kentucky|Boise/.test(tz)) return 'US';
+    if (tz.startsWith('Pacific/Honolulu')) return 'US';
+  } catch { /* ignore */ }
+  const loc = (typeof navigator !== 'undefined' ? navigator.language : '') || '';
+  return (loc.split('-')[1] ?? '').toUpperCase();
 }

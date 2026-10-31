@@ -9,6 +9,9 @@ import { CHAT } from './banks/chat';
 import { COMMON } from './banks/common';
 import { EXTRA } from './banks/extra';
 import { MIND } from './banks/mind';
+import { WELL } from './banks/well';
+import { PET, PET_MOODS } from './banks/pet';
+import { ITEMS, SCALE, ScreenKind, ScreenResult, band, healthInsights, helpText, parseScore, riskOf, sleepLine, sleepOf, todayHealth, trendReport } from './wellbeing';
 import { EpisodicMemory, Episode, LiveState, ago, span, windowOf } from './episodic';
 import { Finding, Researcher, cleanQuery, isKnowledgeQuestion } from './research';
 import { KNOWLEDGE, RIDDLES } from './banks/knowledge';
@@ -62,10 +65,11 @@ export class ReflexEngine {
   private lookupBusy = false;
 
   constructor(private host: ReflexHost, extraBanks: Bank[] = []) {
-    for (const b of [CHAT, ACTIONS, EXTRA, MIND, ...extraBanks]) { this.intents.push(...b.intents); this.grammar.add(b.rules); }
+    for (const b of [CHAT, ACTIONS, EXTRA, MIND, WELL, ...extraBanks]) { this.intents.push(...b.intents); this.grammar.add(b.rules); }
     this.grammar.add(COMMON);
     this.grammar.add(KNOWLEDGE);
     this.grammar.add(ALIVE_RULES);
+    this.grammar.add(PET);
     this.registerHandlers();
   }
 
@@ -136,6 +140,15 @@ export class ReflexEngine {
     let ranked: Ranked[] = [];
 
     if (!text) { out = { sym: 'r.chat.ack' }; intent = 'chat.ack'; conf = 1; }
+
+    // 0) safety first: crisis language overrides everything, in every country
+    const risk = text ? riskOf(text) : null;
+    if (risk) {
+      this.ds.pending = undefined;
+      out = { sym: risk === 'abuse' ? 'r.well.abuse' : 'r.well.crisis', vars: { help: helpText(this.host.country?.()) }, quiet: true, topic: 'feelings' };
+      intent = risk === 'abuse' ? 'well.abuse' : 'well.crisis'; conf = 1;
+      this.inner.lastCrisis = now.getTime();
+    }
 
     // 1) answer to a question Jarvis asked
     const pend = this.ds.pending;
@@ -319,6 +332,14 @@ export class ReflexEngine {
     return this.style(this.say('r.chat.greet'), 'greeting');
   }
 
+  /** Pet speech for the widget and pet page. */
+  petLine(vars: Record<string, unknown>): { line: string; status: string; reactions: string[] } {
+    const c = this.ctx({ ...vars, moodLabel: PET_MOODS[String(vars['mood'])] ?? String(vars['mood']) });
+    const reactions: string[] = [];
+    for (let i = 0; i < 6; i++) reactions.push(this.grammar.expand('#pet.react#', c));
+    return { line: this.grammar.expand('#pet.line#', c), status: this.grammar.expand('#pet.status#', c), reactions: [...new Set(reactions)] };
+  }
+
   /** Learned phrases (for the Brain page). */
   learnedPhrases() { return [...this.learned]; }
   async forgetLearned() { this.learned = []; await this.host.kvSet('learned', []); this.model = new IntentModel(this.intents, []); }
@@ -382,6 +403,13 @@ export class ReflexEngine {
       if (cps.length) t += ' ' + cps[Math.floor(Math.random() * cps.length)] + '.';
     }
     if (p.swearing === 'free' && Math.random() < 0.05 && /^(Done|Sorted|On it)/.test(t)) t = t.replace(/^(Done|Sorted|On it)/, '$1, damn right');
+    // pet mode: the pup does the talking
+    if (p.pet?.speaks && !/^(I’m really glad you told me|Thank you for telling me|I’m so sorry that is happening)/.test(t)) {
+      const c = this.ctx({ p: p.pet.personality });
+      const act = this.grammar.expand('#pet.act#', c);
+      const bark = Math.random() < 0.35 ? ' ' + this.grammar.expand('#pet.bark#', c) : '';
+      t = `${act} ${t}${bark}`.trim();
+    }
     if (p.emoji !== 'none' && topic && EMOJI[topic] && !/\p{Extended_Pictographic}/u.test(t) && Math.random() < (p.emoji === 'lots' ? 0.75 : 0.3)) {
       const e = EMOJI[topic];
       t += ' ' + e[Math.floor(Math.random() * e.length)];
@@ -470,6 +498,31 @@ export class ReflexEngine {
           return { out: { sym: 'learn.gotit', vars: { a }, quiet: true }, intent: 'learn.profile' };
         }
         return null;
+      }
+      case 'screen': {
+        const kind = p.data!['kind'] as ScreenKind;
+        const answers = (p.data!['answers'] as number[]) ?? [];
+        const items = ITEMS[kind];
+        if (/^(stop|cancel|quit|later|not now|skip it|enough)\b/.test(h.text)) return { out: { sym: 'learn.skip' }, intent: 'well.screen' };
+        const sc = parseScore(h.text);
+        if (sc === undefined) return { out: { sym: 'well.screen.again', vars: { scale: SCALE }, pending: { kind: 'screen', data: p.data }, quiet: true }, intent: 'well.screen' };
+        answers.push(sc);
+        if (kind === 'phq9' && answers.length === 9 && sc > 0) {
+          this.saveScreen(kind, answers);
+          return { out: { sym: 'r.well.crisis', vars: { help: helpText(this.host.country?.()) }, quiet: true }, intent: 'well.crisis' };
+        }
+        if (answers.length < items.length) return { out: { sym: 'well.screen.next', vars: { item: items[answers.length] }, pending: { kind: 'screen', data: { ...p.data, answers } }, quiet: true }, intent: 'well.screen' };
+        const score = answers.reduce((a, b) => a + b, 0);
+        this.saveScreen(kind, answers);
+        const b = band(kind, score);
+        const chain = p.data!['then'] as ScreenKind | undefined;
+        if ((kind === 'phq2' || kind === 'gad2') && b.level >= 2) {
+          const full: ScreenKind = kind === 'phq2' ? 'phq9' : 'gad7';
+          return { out: { sym: 'r.well.screen.offer', vars: { band: b.label, full: scrName(full) }, pending: { kind: 'confirm', intent: 'well.screen', utter: full, raw: full }, quiet: true }, intent: 'well.screen' };
+        }
+        const done = this.say('r.well.screen.done', { name: scrName(kind), score, band: b.label, level: b.level });
+        if (chain) return { out: { text: `${done}\n\n${this.say('r.well.screen.start', { name: scrName(chain), item: ITEMS[chain][0], scale: SCALE })}`, pending: { kind: 'screen', data: { kind: chain, answers: [] } }, quiet: true }, intent: 'well.screen' };
+        return { out: { text: done, quiet: true }, intent: 'well.screen' };
       }
       case 'riddle': {
         const r = RIDDLES[Number(p.data?.['i'] ?? 0)];
@@ -589,6 +642,12 @@ export class ReflexEngine {
     }, 400);
   }
 
+  private saveScreen(kind: ScreenKind, items: number[]) {
+    const r: ScreenResult = { kind, score: items.reduce((a, b) => a + b, 0), items: [...items], t: Date.now() };
+    this.inner.screens = [...(this.inner.screens ?? []).slice(-60), r];
+    this.persist();
+  }
+
   /** Answers questions that were asked offline, in the background, once the phone is online. */
   private lookupLater() {
     const q = this.inner.lookups?.[0];
@@ -619,7 +678,7 @@ export class ReflexEngine {
     }
     this.host.status?.('Looking that up…');
     let f: Finding | undefined;
-    try { f = await this.researcher.ask(raw, { city: await this.city(), now }); } finally { this.host.status?.(''); }
+    try { f = await this.researcher.ask(raw, { city: await this.city(), now, fahrenheit: this.host.country?.() === 'US' }); } finally { this.host.status?.(''); }
     if (!f?.answer) return { sym: 'r.research.none', topic: 'web' };
     const vars = { answer: f.answer.trim().replace(/([^.!?])$/, '$1.'), source: f.source, ago: ago(f.t, now) };
     return { sym: f.cached && now - f.t > 3600_000 ? 'r.research.cached' : f.confidence < 0.5 ? 'r.research.unsure' : 'r.research.found', vars, topic: 'web', quiet: true };
@@ -940,6 +999,7 @@ export class ReflexEngine {
     H['phone.open'] = async h => {
       const app = capFirst(restoreCase(strip(h.text, /^(please )?(can you )?(open|launch|start|run)( up)?( the| my)?\b|\b(app|application|for me|please)\b/g), h.raw));
       if (/^settings?$/i.test(app)) return H['phone.settings']({ ...h, text: 'main settings' });
+      if (/\.[a-z]{2,}$/i.test(app)) { const r = await this.tool('open_url', { url: /^https?:/.test(app) ? app : `https://${app}` }); return r.ok ? { sym: 'r.phone.done', vars: { what: `Opening ${app}.` } } : fail(r.result); }
       const r = await this.tool('open_app', { name: app });
       return r.ok && !/not found|could not|no app/i.test(r.result) ? { sym: 'r.phone.open', vars: { app }, topic: 'phone' } : { sym: 'r.phone.open.fail', vars: { app, result: r.result } };
     };
@@ -1014,6 +1074,81 @@ export class ReflexEngine {
       if (!hits[0]) return { sym: 'r.info.library.none' };
       return { sym: 'r.info.library', vars: { doc: hits[0].doc, snippet: bestSentence(hits[0].text, q) }, topic: 'docs', quiet: true };
     };
+    // ---------------- device skills
+    const enc = encodeURIComponent;
+    H['phone.navigate'] = async h => {
+      const dest = restoreCase(strip(h.text, /^(please )?(navigate|directions|take me|drive me|route|how do i get|show me the way|open maps)( to)?\b/), h.raw);
+      if (!dest) return { sym: 'r.reminder.ask.what' };
+      const r = await this.tool('open_url', { url: `https://www.google.com/maps/dir/?api=1&destination=${enc(dest)}` });
+      return r.ok ? { sym: 'r.phone.done', vars: { what: `Opening directions to ${dest}.` } } : fail(r.result);
+    };
+    H['phone.play'] = async h => {
+      const spotify = /\bspotify\b/.test(h.text);
+      let q = strip(h.text, /^(please )?(play|put on|search|find)( some| me)?\b|\b(on|in) (youtube|spotify)\b|\b(youtube|spotify)( for)?\b/g);
+      if (!q || /^(some )?(music|songs?)$/.test(q)) q = this.host.profile().likes || 'relaxing music';
+      const url = spotify ? `https://open.spotify.com/search/${enc(q)}` : `https://www.youtube.com/results?search_query=${enc(q)}`;
+      const r = await this.tool('open_url', { url });
+      return r.ok ? { sym: 'r.phone.done', vars: { what: `Playing ${restoreCase(q, h.raw)} on ${spotify ? 'Spotify' : 'YouTube'}.` }, topic: 'fun' } : fail(r.result);
+    };
+    H['phone.share'] = async () => {
+      const last = this.ds.lastBot;
+      if (!last) return { sym: 'r.chat.test' };
+      const r = await this.tool('share_text', { text: last });
+      return r.ok ? { sym: 'r.phone.done', vars: { what: 'Share sheet is open.' } } : fail(r.result);
+    };
+    H['phone.copy'] = async () => {
+      const last = this.ds.lastBot ?? '';
+      const r = await this.tool('clipboard_write', { text: last });
+      return r.ok ? { sym: 'r.phone.done', vars: { what: 'Copied to your clipboard.' } } : fail(r.result);
+    };
+    H['phone.paste'] = async () => { const r = await this.tool('clipboard_read', {}); return { text: r.result, quiet: true }; };
+
+    // ---------------- wellbeing
+    H['well.checkin'] = async () => ({ sym: 'r.well.checkin', pending: { kind: 'slot', intent: 'mood.log', slot: 'mood', utter: 'my mood is', raw: 'my mood is' }, quiet: true, topic: 'feelings' });
+    H['well.screen'] = async h => {
+      const t = h.text;
+      const kind: ScreenKind = /\bphq ?9|full depression\b/.test(t) ? 'phq9' : /\bgad ?7|full anxiety\b/.test(t) ? 'gad7' : /\banxi/.test(t) ? 'gad2' : 'phq2';
+      const then: ScreenKind | undefined = kind === 'phq2' && !/\bdepress/.test(t) ? 'gad2' : undefined;
+      return { sym: 'r.well.screen.start', vars: { name: scrName(kind), item: ITEMS[kind][0], scale: SCALE }, pending: { kind: 'screen', data: { kind, answers: [], then } }, quiet: true, topic: 'feelings' };
+    };
+    H['well.report'] = async () => ({ sym: 'r.well.report', vars: { report: [trendReport(this.host.moodHistory?.() ?? [], this.inner.userMood, (this.inner.screens ?? []) as ScreenResult[], now().getTime()), ...healthInsights(this.host.senseDays?.() ?? [], this.host.moodHistory?.() ?? [])].join(' ') }, quiet: true, topic: 'feelings' });
+    H['health.sleep'] = async h => {
+      const days = this.host.senseDays?.() ?? [];
+      if (!days.length) return { sym: 'r.health.off' };
+      const d = /\byesterday|night before\b/.test(h.text) ? days[1] : days[0];
+      const line = sleepLine(d) || sleepLine(days[1]);
+      if (!line) return { text: this.say('r.health.off') };
+      const h0 = sleepOf(d) ?? sleepOf(days[1]) ?? 0;
+      return { sym: 'r.health', vars: { body: `You slept ${line}.`, short: h0 < 6.5 ? 1 : 0 }, topic: 'sleep' };
+    };
+    H['health.steps'] = async h => {
+      const days = this.host.senseDays?.() ?? [];
+      if (!days.length || days[0].steps === undefined) return { sym: 'r.health.off' };
+      const d = /\byesterday\b/.test(h.text) ? days[1] : days[0];
+      const steps = d?.steps ?? 0;
+      const km = (steps * 0.00075).toFixed(1);
+      return { sym: 'r.health', vars: { body: `${/\byesterday\b/.test(h.text) ? 'Yesterday' : 'Today'}: ${steps.toLocaleString()} steps, roughly ${km} km.`, lowSteps: steps < 4000 && now().getHours() >= 15 ? 1 : 0 }, topic: 'fitness' };
+    };
+    H['health.screen'] = async h => {
+      const days = this.host.senseDays?.() ?? [];
+      if (!days.length) return { sym: 'r.health.off' };
+      let body = todayHealth(days[0], undefined) || 'No screen data for today yet.';
+      if (this.host.usage && /\bapps?\b|most|which/.test(h.text)) {
+        try {
+          const u = await this.host.usage(0);
+          body = `Today: ${Math.round(u.totalMinutes / 6) / 10} h total. Top apps: ${u.apps.slice(0, 4).map(a => `${a.app} ${a.minutes}m`).join(', ')}.`;
+        } catch { body += ' (Grant usage access in Health & senses to see per-app time.)'; }
+      }
+      return { sym: 'r.health', vars: { body, highScreen: (days[0].screenOnMs ?? 0) > 5 * 3600_000 ? 1 : 0 }, quiet: true, topic: 'phone' };
+    };
+    H['health.report'] = async () => {
+      const days = this.host.senseDays?.() ?? [];
+      const ins = healthInsights(days, this.host.moodHistory?.() ?? []);
+      const body = [todayHealth(days[0], days[1]), ...ins].filter(Boolean).join(' ');
+      return body ? { sym: 'r.health', vars: { body }, quiet: true, topic: 'fitness' } : { sym: 'r.health.off' };
+    };
+    H['well.help'] = async () => ({ sym: 'r.well.help', vars: { help: helpText(this.host.country?.()) }, quiet: true, topic: 'feelings' });
+
     H['info.web'] = async h => this.research(h.raw, h.text);
     H['research.ask'] = async h => this.research(h.raw, h.text);
 
@@ -1248,3 +1383,5 @@ function bestSentence(passage: string, q: string): string {
   }
   return best.slice(0, 420);
 }
+
+const scrName = (k: string) => k.toUpperCase().replace(/(\d)$/, '-$1');

@@ -11,6 +11,9 @@ import { NotifyService } from './core/notify.service';
 import { NudgeService } from './core/nudge.service';
 import { LlmService } from './core/llm.service';
 import { ReflexService } from './core/reflex/reflex.service';
+import { ThemeService } from './core/theme.service';
+import { PetService } from './core/pet.service';
+import { SenseService } from './core/sense.service';
 import { ProgressService } from './core/progress.service';
 import { BackupService } from './core/backup.service';
 import { LibraryService } from './core/library.service';
@@ -122,7 +125,7 @@ import { VoiceOverlayComponent } from './ui/voice-overlay.component';
   styles: [`
     .toasts { position: fixed; top: calc(10px + var(--safe-top, 0px)); left: 0; right: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
     .toast { pointer-events: auto; display: flex; align-items: center; gap: 10px; width: min(92vw, 420px); text-align: left; padding: 10px 14px; border-radius: 14px;
-      background: var(--panel-solid); border: 1px solid rgba(74,222,128,.5); color: inherit; box-shadow: 0 8px 30px -8px rgba(34,211,238,.5); animation: tin .3s cubic-bezier(.2,.9,.3,1.3); }
+      background: var(--panel-solid); border: 1px solid rgba(74,222,128,.5); color: inherit; box-shadow: 0 8px 30px -8px rgba(var(--accent-rgb), .5); animation: tin .3s cubic-bezier(.2,.9,.3,1.3); }
     .toast small { display: block; opacity: .7; } .toast .ti { font-size: 1.4rem; }
     .toast.level, .toast.achievement, .toast.perfect { border-color: rgba(250,204,21,.7); }
     .lvlbox { text-align: center; animation: tin .4s cubic-bezier(.2,.9,.3,1.4); } .lvlnum { font-size: 4rem; font-weight: 700; color: var(--cyan); }
@@ -132,10 +135,10 @@ import { VoiceOverlayComponent } from './ui/voice-overlay.component';
     .nav a, .nav button { display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: .7rem; color: var(--dim); text-decoration: none;
       background: none; border: none; min-height: 48px; padding: 4px 0; letter-spacing: .04em; }
     .nav span { font-size: 1.2rem; line-height: 1.1; }
-    .nav .on { color: var(--cyan); text-shadow: 0 0 10px rgba(34,211,238,.6); }
+    .nav .on { color: var(--cyan); text-shadow: 0 0 10px rgba(var(--accent-rgb), .6); }
     .fab { position: fixed; right: 18px; bottom: calc(76px + var(--safe-bottom)); z-index: 21; width: 62px; height: 62px; border-radius: 50%;
-      background: radial-gradient(circle at 50% 40%, #67e8f9, #0891b2); color: #04121a; border: 2px solid rgba(255,255,255,.25);
-      box-shadow: 0 0 24px rgba(34,211,238,.55), 0 6px 18px rgba(0,0,0,.5); padding: 0; }
+      background: radial-gradient(circle at 50% 40%, var(--cyan-2), var(--accent-deep)); color: #04121a; border: 2px solid rgba(255,255,255,.25);
+      box-shadow: 0 0 24px rgba(var(--accent-rgb), .55), 0 6px 18px rgba(0,0,0,.5); padding: 0; }
     .focus-bar { position: fixed; left: 12px; right: 90px; bottom: calc(84px + var(--safe-bottom)); z-index: 19; display: flex; align-items: center; gap: 8px;
       background: var(--panel-solid); border: 1px solid var(--line-strong); border-radius: 12px; padding: 10px 12px; color: var(--text); text-decoration: none; box-shadow: var(--glow); font-size: .88rem; }
     .ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -143,7 +146,7 @@ import { VoiceOverlayComponent } from './ui/voice-overlay.component';
     .sheet { width: 100%; max-width: 560px; background: var(--panel-solid); border: 1px solid var(--line); border-radius: 18px 18px 0 0;
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 16px 16px calc(84px + var(--safe-bottom)); }
     .sheet a { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 4px; border-radius: 12px; border: 1px solid var(--line);
-      color: var(--text); text-decoration: none; font-size: .85rem; background: rgba(34,211,238,.04); }
+      color: var(--text); text-decoration: none; font-size: .85rem; background: rgba(var(--accent-rgb), .04); }
     .sheet a span { font-size: 1.4rem; color: var(--cyan); }
     .dialog { width: calc(100% - 32px); max-width: 480px; margin-bottom: 30vh; }
     .boot { height: 100vh; display: grid; place-items: center; }
@@ -170,6 +173,9 @@ export class AppComponent implements OnInit {
   private library = inject(LibraryService);
   private wake = inject(WakeService);
   private reflex = inject(ReflexService);
+  private theme = inject(ThemeService);
+  private pet = inject(PetService);
+  private sense = inject(SenseService);
   private diag = inject(DiagService);
   readonly gamify = computed(() => this.store.settings().gamify);
   readonly clock = signal(hm());
@@ -200,6 +206,9 @@ export class AppComponent implements OnInit {
     { path: '/journal', label: 'Journal', icon: '📓' },
     { path: '/projects', label: 'Projects', icon: '📁' },
     { path: '/personality', label: 'Personality', icon: '☺' },
+    { path: '/theme', label: 'Theme', icon: '🎨' },
+    { path: '/pet', label: 'Pet', icon: '🐶' },
+    { path: '/senses', label: 'Health & senses', icon: '💓' },
     { path: '/progress', label: 'Progress', icon: '★' },
     { path: '/brain', label: 'Brain', icon: '◎' },
     { path: '/diagnostics', label: 'Diagnostics', icon: '🩺' },
@@ -228,7 +237,7 @@ export class AppComponent implements OnInit {
       const s = this.store.settings();
       const root = document.documentElement;
       const dark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true;
-      root.dataset['theme'] = s.theme === 'auto' ? (dark ? 'dark' : 'light') : s.theme;
+      void dark; // theme + colours are applied by ThemeService
       root.style.setProperty('--font-scale', String(s.fontScale || 1));
       root.classList.toggle('reduce-motion', !!s.reduceMotion);
     });
@@ -275,6 +284,8 @@ export class AppComponent implements OnInit {
     this.mcp.connectAll().catch(() => undefined);
     // warm up the brain in the background so the first question is fast
     this.reflex.init().catch(() => undefined);
+    this.sense.init().catch(() => undefined);
+    this.pet.init().catch(() => undefined);
     this.llm.init().then(() => this.jarvis.ensureEngine()).then(ok => {
       if (!ok) return;
       if (this.store.settings().engine === 'ollama') this.ollama.listModels().catch(() => undefined);
@@ -300,7 +311,7 @@ export class AppComponent implements OnInit {
         else if (canGoBack && !this.url().startsWith('/briefing')) history.back();
         else App.minimizeApp();
       });
-      App.addListener('resume', () => { this.jarvis.ensureEngine().catch(() => undefined); });
+      App.addListener('resume', () => { this.jarvis.ensureEngine().catch(() => undefined); this.sense.refresh().catch(() => undefined); this.pet.collectTaps().catch(() => undefined); });
     }
   }
 
@@ -313,6 +324,7 @@ export class AppComponent implements OnInit {
     switch (action) {
       case 'voice': this.openVoice(); break;
       case 'tasks': this.router.navigateByUrl('/tasks'); break;
+      case 'pet': this.router.navigateByUrl('/pet'); break;
       case 'task': this.router.navigateByUrl('/tasks?add=1'); break;
       case 'focus': this.router.navigateByUrl('/focus?start=1'); break;
       case 'brief': this.router.navigateByUrl('/briefing?brief=1'); break;

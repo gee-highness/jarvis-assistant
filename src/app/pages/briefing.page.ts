@@ -57,7 +57,7 @@ import { OrbComponent } from '../ui/orb.component';
       @if (store.settings().gamify) {
       <a class="card" routerLink="/progress" style="display:block;color:inherit;text-decoration:none">
         <div class="row between"><b>★ Lv {{ progress.level() }} · {{ progress.title() }}</b><span>🔥 {{ progress.streak() }}</span></div>
-        <div style="height:6px;border-radius:4px;background:rgba(34,211,238,.12);margin:8px 0;overflow:hidden"><i style="display:block;height:100%;background:linear-gradient(90deg,#22d3ee,#4ade80)" [style.width.%]="progress.levelProgress().pct"></i></div>
+        <div style="height:6px;border-radius:4px;background:rgba(var(--accent-rgb), .12);margin:8px 0;overflow:hidden"><i style="display:block;height:100%;background:linear-gradient(90deg,var(--cyan),#4ade80)" [style.width.%]="progress.levelProgress().pct"></i></div>
         <div class="small muted">{{ questsDone() }}/{{ progress.quests().length }} quests done today · {{ progress.xpToday() }} XP</div>
       </a>
       }
@@ -131,10 +131,10 @@ import { OrbComponent } from '../ui/orb.component';
     .hero { display: flex; align-items: center; gap: 14px; }
     .stat { text-align: center; padding: 12px 6px; }
     .big { font-size: 1.6rem; color: var(--cyan); }
-    .item.now { background: rgba(34,211,238,.08); border-radius: 8px; }
+    .item.now { background: rgba(var(--accent-rgb), .08); border-radius: 8px; }
     .bars { display: flex; align-items: flex-end; gap: 5px; height: 110px; }
     .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
-    .bar { width: 100%; min-height: 2px; background: linear-gradient(180deg, var(--cyan), rgba(34,211,238,.25)); border-radius: 4px 4px 1px 1px; }
+    .bar { width: 100%; min-height: 2px; background: linear-gradient(180deg, var(--cyan), rgba(var(--accent-rgb), .25)); border-radius: 4px 4px 1px 1px; }
     .bar.today { background: linear-gradient(180deg, var(--gold), rgba(251,191,36,.3)); }
     .tiny { font-size: .62rem; color: var(--dim); font-family: var(--mono); }
   `],

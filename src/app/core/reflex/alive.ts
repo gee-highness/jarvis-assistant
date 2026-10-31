@@ -28,6 +28,8 @@ export interface InnerState {
   birthday?: string; // MM-DD
   /** Questions asked while offline, answered later. */
   lookups?: { q: string; t: number }[];
+  lastCrisis?: number;
+  screens?: { kind: 'phq2' | 'gad2' | 'phq9' | 'gad7'; score: number; items: number[]; t: number }[];
   lookedUp?: { q: string; t: number; answer: string; source: string; told?: boolean }[];
   lastBirthdayYear?: number;
 }

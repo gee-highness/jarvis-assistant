@@ -71,11 +71,11 @@ const TAGS = ['work', 'family', 'health', 'money', 'learning', 'rest', 'stress',
   `,
   styles: [`
     .stack { display: flex; flex-direction: column; gap: 12px; } h2 { margin: 18px 0 8px; } .wrap { flex-wrap: wrap; gap: 6px; }
-    .scale { display: flex; gap: 6px; } .scale button { flex: 1; font-size: 1.2rem; padding: 8px 0; } .scale button.on { border-color: var(--cyan); background: rgba(34,211,238,.16); transform: scale(1.06); }
+    .scale { display: flex; gap: 6px; } .scale button { flex: 1; font-size: 1.2rem; padding: 8px 0; } .scale button.on { border-color: var(--cyan); background: rgba(var(--accent-rgb), .16); transform: scale(1.06); }
     .chart { width: 100%; height: 90px; } .chart polyline { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
-    .l1 { stroke: #22d3ee; } .l2 { stroke: #facc15; } .dot1 { color: #22d3ee; margin-right: 12px; } .dot2 { color: #facc15; }
+    .l1 { stroke: var(--cyan); } .l2 { stroke: #facc15; } .dot1 { color: var(--cyan); margin-right: 12px; } .dot2 { color: #facc15; }
     .ok { color: #86efac; } .hist { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-    .bubble { margin-top: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(34,211,238,.08); border: 1px solid var(--line); }
+    .bubble { margin-top: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(var(--accent-rgb), .08); border: 1px solid var(--line); }
   `],
 })
 export class JournalPage {

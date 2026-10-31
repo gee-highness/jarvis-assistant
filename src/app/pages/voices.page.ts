@@ -104,7 +104,7 @@ const SAMPLE = 'Good evening, sir. Three priorities today, one overdue item, and
   `,
   styles: [`
     .preset { flex-direction: column; align-items: flex-start; text-align: left; gap: 2px; min-height: 60px; }
-    .item.active { background: rgba(34,211,238,.08); border-radius: 10px; }
+    .item.active { background: rgba(var(--accent-rgb), .08); border-radius: 10px; }
     .ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   `],
 })

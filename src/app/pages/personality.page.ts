@@ -87,7 +87,7 @@ const PROBES = ["I'm so behind on everything today.", 'I finished my big task!',
     .preset.on { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan) inset; } .pi { font-size: 1.5rem; } .preset small { opacity: .7; }
     .stack { display: flex; flex-direction: column; gap: 12px; } .trait input[type=range] { width: 100%; accent-color: var(--cyan); }
     h2 { margin: 18px 0 8px; } pre { white-space: pre-wrap; } .wrap { flex-wrap: wrap; gap: 6px; }
-    .bubble { padding: 10px 12px; border-radius: 14px; background: rgba(34,211,238,.08); border: 1px solid var(--line); }
+    .bubble { padding: 10px 12px; border-radius: 14px; background: rgba(var(--accent-rgb), .08); border: 1px solid var(--line); }
   `],
 })
 export class PersonalityPage {

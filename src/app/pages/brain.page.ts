@@ -222,12 +222,12 @@ import { BrainMode } from '../core/models';
   styles: [`
     .phone .right { text-align: right; }
     .model { gap: 8px; transition: border-color .2s, transform .2s; }
-    .model.active { border-color: rgba(34,211,238,.55); box-shadow: 0 0 0 1px rgba(34,211,238,.25), 0 8px 30px -12px rgba(34,211,238,.45); }
+    .model.active { border-color: rgba(var(--accent-rgb), .55); box-shadow: 0 0 0 1px rgba(var(--accent-rgb), .25), 0 8px 30px -12px rgba(var(--accent-rgb), .45); }
     .model.heavy { opacity: .8; }
     .model .name { font-size: 1.05rem; letter-spacing: .02em; }
-    .tag { font-size: .72rem; padding: 2px 8px; border-radius: 999px; background: rgba(34,211,238,.08); border: 1px solid rgba(34,211,238,.2); color: var(--muted); }
+    .tag { font-size: .72rem; padding: 2px 8px; border-radius: 999px; background: rgba(var(--accent-rgb), .08); border: 1px solid rgba(var(--accent-rgb), .2); color: var(--muted); }
     .stats { display: flex; flex-wrap: wrap; gap: 6px; }
-    .progress { height: 6px; border-radius: 3px; background: rgba(34,211,238,.12); overflow: hidden; }
+    .progress { height: 6px; border-radius: 3px; background: rgba(var(--accent-rgb), .12); overflow: hidden; }
     .progress div { height: 100%; background: linear-gradient(90deg, var(--cyan), #7dd3fc); transition: width .4s; }
   `],
 })

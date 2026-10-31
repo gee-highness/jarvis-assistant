@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/jarvis_pet_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/jarvis_widget_bg"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="10dp">
+
+    <ImageView
+        android:id="@+id/jarvis_pet_img"
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:contentDescription="Pet"
+        android:scaleType="fitCenter"
+        android:src="@drawable/jarvis_widget_orb" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/jarvis_pet_line"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/jarvis_widget_pill"
+            android:maxLines="4"
+            android:ellipsize="end"
+            android:padding="8dp"
+            android:text="Tap me!"
+            android:textColor="#E6F4F8"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/jarvis_pet_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="#8AA3B3"
+            android:textSize="11sp" />
+    </LinearLayout>
+</LinearLayout>

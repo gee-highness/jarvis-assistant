@@ -59,11 +59,11 @@ import { hm, minutesOf } from '../core/util';
   `,
   styles: [`
     .timeline { display: flex; flex-direction: column; gap: 8px; }
-    .block { display: flex; gap: 10px; align-items: center; padding: 10px; border-radius: 12px; border: 1px solid var(--line); border-left: 4px solid var(--cyan); background: rgba(34,211,238,.04); }
+    .block { display: flex; gap: 10px; align-items: center; padding: 10px; border-radius: 12px; border: 1px solid var(--line); border-left: 4px solid var(--cyan); background: rgba(var(--accent-rgb), .04); }
     .block.break { border-left-color: var(--green); }
     .block.admin { border-left-color: var(--gold); }
     .block.fixed { border-left-color: var(--violet); }
-    .block.now { box-shadow: var(--glow); border-color: var(--line-strong); background: rgba(34,211,238,.1); }
+    .block.now { box-shadow: var(--glow); border-color: var(--line-strong); background: rgba(var(--accent-rgb), .1); }
     .block.past { opacity: .5; }
     .times { display: flex; flex-direction: column; gap: 3px; width: 92px; }
     .times input { padding: 3px 5px; font-size: .78rem; }

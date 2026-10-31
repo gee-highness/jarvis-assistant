@@ -28,6 +28,8 @@ const host: ReflexHost = {
   },
   kvGet: async <T>(k: string) => kv.get(k) as T,
   kvSet: async (k, v) => { kv.set(k, v); },
+  country: () => 'SZ',
+  moodHistory: () => [{ date: '2026-10-29', mood: 2, energy: 2 }, { date: '2026-10-30', mood: 3, energy: 3 }],
   now: () => new Date(),
 };
 
@@ -53,7 +55,11 @@ const cases: [string, string][] = [
   ['what time', 'info.time'], ['i am going to the gym', 'chat.activity'],
   ['what did i say about my sister', 'mind.said'], ['what were we talking about', 'mind.topic'], ['how long have we been talking', 'mind.when'],
   ['who invented the telephone', 'research.ask'], ['who invented the telephone?', 'research.ask'], ["what's the weather like", 'info.web|research.ask'], ['explain black holes', 'research.ask'],
-  ['what did you say about the weather', 'mind.yousaid'], ['what did i ask you earlier', 'mind.asked'], ['how is it going', 'chat.howareyou'], ['ok', 'chat.ack'], ['bye', 'chat.bye'], ['take a note the gate code is 1234', 'note.create'], ['pick my top 3 for today', 'task.mit'],
+  ['what did you say about the weather', 'mind.yousaid'],
+  ['i want to kill myself', 'well.crisis'], ["i don't want to live anymore", 'well.crisis'], ['my husband hits me', 'well.abuse'], ['that movie about suicide was sad', 'feel.sad|fallback|chat'],
+  ['am i depressed', 'well.screen'], ['2', 'well.screen'], ['nearly every day', 'well.screen'], ['no', 'chat.no|well.screen|learn'],
+  ['help me breathe', 'well.breathe'], ['how has my mood been', 'well.report'], ['i need someone to talk to', 'well.help'], ['check in with me', 'well.checkin'], ['3', 'mood.log'],
+  ['navigate to the mall', 'phone.navigate'], ['play amapiano on youtube', 'phone.play'], ['copy that', 'phone.copy'], ['open youtube.com', 'phone.open'], ['what did i ask you earlier', 'mind.asked'], ['how is it going', 'chat.howareyou'], ['ok', 'chat.ack'], ['bye', 'chat.bye'], ['take a note the gate code is 1234', 'note.create'], ['pick my top 3 for today', 'task.mit'],
 ];
 
 (async () => {

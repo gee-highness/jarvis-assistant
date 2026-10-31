@@ -75,13 +75,13 @@ export type QuickMode = 'chat' | 'capture';
     .qc-scrim { position: fixed; inset: 0; z-index: 45; background: rgba(0,0,0,.5); display: flex; align-items: flex-end; justify-content: center; animation: fade .18s ease-out; }
     .qc { width: 100%; max-width: 620px; max-height: 82vh; display: flex; flex-direction: column; gap: 10px; background: var(--panel-solid);
       border: 1px solid var(--line-strong); border-bottom: none; border-radius: 22px 22px 0 0; padding: 8px 14px calc(12px + var(--safe-bottom));
-      box-shadow: 0 -10px 40px -10px rgba(34,211,238,.35); animation: rise .24s cubic-bezier(.2,.9,.3,1.2); }
+      box-shadow: 0 -10px 40px -10px rgba(var(--accent-rgb), .35); animation: rise .24s cubic-bezier(.2,.9,.3,1.2); }
     .grab { width: 42px; height: 4px; border-radius: 2px; background: var(--line-strong); align-self: center; }
     .log { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 60px; max-height: 52vh; }
     .msg { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
     .msg.user { align-items: flex-end; }
-    .bubble { max-width: 88%; padding: 8px 12px; border-radius: 14px; background: rgba(34,211,238,.06); border: 1px solid var(--line); font-size: .93rem; }
-    .msg.user .bubble { background: rgba(34,211,238,.16); border-color: rgba(34,211,238,.35); }
+    .bubble { max-width: 88%; padding: 8px 12px; border-radius: 14px; background: rgba(var(--accent-rgb), .06); border: 1px solid var(--line); font-size: .93rem; }
+    .msg.user .bubble { background: rgba(var(--accent-rgb), .16); border-color: rgba(var(--accent-rgb), .35); }
     .tools { display: flex; flex-wrap: wrap; gap: 4px; }
     .chips { display: flex; flex-wrap: wrap; gap: 6px; }
     .composer { align-items: flex-end; gap: 6px; }

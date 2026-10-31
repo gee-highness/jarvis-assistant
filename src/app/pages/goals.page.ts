@@ -89,8 +89,8 @@ const blank = (): Draft => ({ title: '', why: '', area: 'personal', targetDate: 
   styles: [`
     .goal { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; } .gt { font-size: 1.05rem; }
     .pct { font-size: 1.3rem; color: var(--cyan); }
-    .bar { height: 8px; border-radius: 5px; background: rgba(34,211,238,.12); overflow: hidden; }
-    .bar i { display: block; height: 100%; background: linear-gradient(90deg, #22d3ee, #4ade80); transition: width .5s; }
+    .bar { height: 8px; border-radius: 5px; background: rgba(var(--accent-rgb), .12); overflow: hidden; }
+    .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--cyan), #4ade80); transition: width .5s; }
     .metric input { width: 90px; } .dim { text-decoration: line-through; opacity: .6; } .wrap { flex-wrap: wrap; gap: 6px; }
     h2 { margin: 18px 0 8px; }
     .scrim { position: fixed; inset: 0; z-index: 45; background: rgba(0,0,0,.6); display: flex; align-items: flex-end; justify-content: center; }

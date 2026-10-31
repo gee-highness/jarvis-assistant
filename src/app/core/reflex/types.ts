@@ -58,6 +58,7 @@ export interface HostProfile {
   name: string;
   role: string;
   traits: Record<string, number>;
+  pet?: { name: string; speaks: boolean; personality: string };
   emoji: 'none' | 'some' | 'lots';
   language: string;
   swearing: 'none' | 'mild' | 'free';
@@ -88,9 +89,17 @@ export interface ReflexHost {
   kvGet<T>(key: string): Promise<T | undefined>;
   kvSet(key: string, v: unknown): Promise<void>;
   now(): Date;
+  /** ISO country code from locale/timezone (for help lines and units). */
+  country?(): string;
+  /** Logged moods (journal/check-ins). */
+  moodHistory?(): { date: string; mood: number; energy: number }[];
+  /** Passive daily signals from the always-on service, newest first. */
+  senseDays?(): { date: string; steps?: number; unlocks?: number; screenOnMs?: number; sleepStart?: number; sleepEnd?: number; lateOns?: number; notifTotal?: number; firstUnlock?: number }[];
+  /** Top apps by screen time (needs usage access). */
+  usage?(dayOffset: number): Promise<{ apps: { app: string; minutes: number }[]; totalMinutes: number }>;
 }
 
-export type PendingKind = 'slot' | 'confirm' | 'choice' | 'profile' | 'teach' | 'web' | 'riddle' | 'game' | 'name';
+export type PendingKind = 'slot' | 'confirm' | 'choice' | 'profile' | 'teach' | 'web' | 'riddle' | 'game' | 'name' | 'screen';
 
 export interface Pending {
   kind: PendingKind;

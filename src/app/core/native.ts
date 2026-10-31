@@ -222,3 +222,45 @@ class JarvisDataWeb extends WebPlugin {
   async sendSms(): Promise<void> { throw new Error('SMS is only available in the Android app'); }
 }
 export const JarvisData = registerPlugin<JarvisDataPlugin>('JarvisData', { web: () => new JarvisDataWeb() });
+
+// ---------------------------------------------------------------- always-on senses (opt-in)
+export interface SenseDay {
+  date: string; steps?: number; unlocks?: number; screenOnMs?: number; firstUnlock?: number; lastOff?: number;
+  sleepStart?: number; sleepEnd?: number; lateOns?: number; notifTotal?: number; notif?: Record<string, number>;
+}
+export interface SenseStatus { available: boolean; running: boolean; usageAccess: boolean; notificationAccess: boolean; activity: boolean; }
+export interface JarvisSensePlugin {
+  start(): Promise<SenseStatus>;
+  stop(): Promise<SenseStatus>;
+  getStatus(): Promise<SenseStatus>;
+  requestActivity(): Promise<SenseStatus>;
+  openUsageAccess(): Promise<void>;
+  openNotificationAccess(): Promise<void>;
+  getDays(o: { days: number }): Promise<{ days: SenseDay[] }>;
+  getUsage(o: { dayOffset: number }): Promise<{ apps: { app: string; pkg: string; minutes: number }[]; totalMinutes: number }>;
+  clear(): Promise<void>;
+}
+class JarvisSenseWeb extends WebPlugin {
+  private st: SenseStatus = { available: false, running: false, usageAccess: false, notificationAccess: false, activity: false };
+  async start() { return this.st; }
+  async stop() { return this.st; }
+  async getStatus() { return this.st; }
+  async requestActivity() { return this.st; }
+  async openUsageAccess() {}
+  async openNotificationAccess() {}
+  async getDays() { return { days: [] as SenseDay[] }; }
+  async getUsage(): Promise<{ apps: { app: string; pkg: string; minutes: number }[]; totalMinutes: number }> { throw new Error('Android only'); }
+  async clear() {}
+}
+export const JarvisSense = registerPlugin<JarvisSensePlugin>('JarvisSense', { web: () => new JarvisSenseWeb() });
+
+// ---------------------------------------------------------------- pet widget
+export interface JarvisPetPlugin {
+  update(o: { idle?: string; happy?: string; line: string; status: string; reactions?: string }): Promise<void>;
+  takeTaps(): Promise<{ taps: number }>;
+}
+class JarvisPetWeb extends WebPlugin {
+  async update() {}
+  async takeTaps() { return { taps: 0 }; }
+}
+export const JarvisPet = registerPlugin<JarvisPetPlugin>('JarvisPet', { web: () => new JarvisPetWeb() });

@@ -80,14 +80,14 @@ export class Researcher {
     return { answer: c.a, source: c.src, url: c.url, confidence: c.c, cached: true, t: c.t };
   }
 
-  async ask(raw: string, opts: { city?: string; now: number }): Promise<Finding | undefined> {
+  async ask(raw: string, opts: { city?: string; now: number; fahrenheit?: boolean }): Promise<Finding | undefined> {
     const q = cleanQuery(normalize(raw).text);
     if (!q) return undefined;
     const hit = this.recall(q, opts.now);
     if (hit) return hit;
     let f: Finding | undefined;
     try {
-      if (/\b(weather|forecast|temperature|rain|sunny|cold|hot outside|umbrella)\b/.test(q)) f = await this.weather(q, opts.city, opts.now);
+      if (/\b(weather|forecast|temperature|rain|sunny|cold|hot outside|umbrella)\b/.test(q)) f = await this.weather(q, opts.city, opts.now, !!opts.fahrenheit);
       f ??= await this.instant(q, opts.now);
       if (!f || f.confidence < 0.6) {
         const wiki = /^(who|what) (is|was|are|were)\b|^tell me about\b|^(who|what)'?s\b/.test(q) || q.split(' ').length <= 3 ? await this.wiki(q, opts.now) : undefined;
@@ -108,7 +108,8 @@ export class Researcher {
   }
 
   // ---------------- sources
-  private async weather(q: string, city: string | undefined, now: number): Promise<Finding | undefined> {
+  private async weather(q: string, city: string | undefined, now: number, f = false): Promise<Finding | undefined> {
+    const U = f ? 'F' : 'C';
     const place = q.match(/\b(?:in|at|for) ([a-z][a-z .'-]{2,40}?)(?: today| tomorrow| now| this week| tonight)?$/)?.[1] ?? city ?? '';
     const j = JSON.parse(await this.http(`https://wttr.in/${encodeURIComponent(place)}?format=j1`));
     const cur = j.current_condition?.[0];
@@ -119,8 +120,8 @@ export class Researcher {
     const d = days[tomorrow ? 1 : 0];
     const rain = d ? Math.max(...(d.hourly ?? []).map((h: { chanceofrain: string }) => +h.chanceofrain || 0)) : 0;
     const answer = tomorrow && d
-      ? `Tomorrow in ${area}: ${d.mintempC}–${d.maxtempC}°C, ${(d.hourly?.[4]?.weatherDesc?.[0]?.value ?? '').toLowerCase()}, ${rain}% chance of rain.`
-      : `Right now in ${area}: ${cur.temp_C}°C (feels like ${cur.FeelsLikeC}°C), ${String(cur.weatherDesc?.[0]?.value ?? '').toLowerCase()}. Today ${d?.mintempC}–${d?.maxtempC}°C with up to ${rain}% chance of rain.`;
+      ? `Tomorrow in ${area}: ${d['mintemp' + U]}–${d['maxtemp' + U]}°${U}, ${(d.hourly?.[4]?.weatherDesc?.[0]?.value ?? '').toLowerCase()}, ${rain}% chance of rain.`
+      : `Right now in ${area}: ${cur['temp_' + U]}°${U} (feels like ${cur['FeelsLike' + U]}°${U}), ${String(cur.weatherDesc?.[0]?.value ?? '').toLowerCase()}. Today ${d?.['mintemp' + U]}–${d?.['maxtemp' + U]}°${U} with up to ${rain}% chance of rain.`;
     return { answer, source: 'wttr.in', url: 'https://wttr.in', confidence: 0.95, t: now };
   }
 

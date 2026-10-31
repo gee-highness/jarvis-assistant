@@ -244,7 +244,7 @@ import { VoiceService } from '../core/voice.service';
     .step.ok b::after { content: ' ✓'; color: var(--green); }
     .step p { margin: 0; }
     .cmd { white-space: pre-wrap; word-break: break-all; background: rgba(0,0,0,.45); border: 1px solid var(--line); border-radius: 8px; padding: 8px; margin: 0; }
-    .progress { height: 6px; border-radius: 3px; background: rgba(34,211,238,.12); overflow: hidden; }
+    .progress { height: 6px; border-radius: 3px; background: rgba(var(--accent-rgb), .12); overflow: hidden; }
     .progress div { height: 100%; background: var(--cyan); transition: width .3s; }
     .small-tabs button { padding: 4px 10px; font-size: .78rem; }
     label.btn { cursor: pointer; }

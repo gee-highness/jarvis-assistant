@@ -46,7 +46,7 @@ import { MdPipe } from '../ui/md.pipe';
   styles: [`
     .stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; } .err { color: var(--red); }
     .drop { display: block; text-align: center; padding: 18px; border: 1px dashed var(--line-strong); border-radius: 12px; cursor: pointer; }
-    .bubble { padding: 10px 12px; border-radius: 14px; background: rgba(34,211,238,.08); border: 1px solid var(--line); } .hit { border-left: 2px solid var(--line-strong); padding-left: 8px; }
+    .bubble { padding: 10px 12px; border-radius: 14px; background: rgba(var(--accent-rgb), .08); border: 1px solid var(--line); } .hit { border-left: 2px solid var(--line-strong); padding-left: 8px; }
   `],
 })
 export class LibraryPage implements OnInit {
