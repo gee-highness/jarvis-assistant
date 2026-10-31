@@ -13,5 +13,5 @@ jobs:
     steps:
       - uses: actions/cache/restore@v4
         with:
-          path: ~/.android/debug.keystore
-          key: jarvis-debug-keystore-v1
+          path: .ci/jarvis-debug.jks
+          key: jarvis-debug-keystore-v2
