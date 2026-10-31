@@ -97,6 +97,10 @@ export class Researcher {
         const web = await this.web(q, opts.now);
         if (web && (!f || web.confidence > f.confidence)) f = web;
       }
+      if (!f || f.confidence < 0.5) {
+        const wk = await this.wiki(q, opts.now, true).catch(() => undefined);
+        if (wk && (!f || wk.confidence > f.confidence)) f = wk;
+      }
     } catch { /* network issues: fall through */ }
     if (f && f.answer) {
       this.cache[this.key(q)] = { a: f.answer, src: f.source, url: f.url, t: opts.now, ttl: VOLATILE.test(q) ? 3600_000 : 30 * 864e5, c: f.confidence };
@@ -137,13 +141,18 @@ export class Researcher {
     return undefined;
   }
 
-  private async wiki(q: string, now: number): Promise<Finding | undefined> {
-    const subject = q.replace(/^(who|what) (is|was|are|were) (the |a |an )?|^tell me about |^(who|what)'?s /, '').replace(/\b(in|for) (short|summary)\b/, '').trim();
+  private async wiki(q: string, now: number, strict = false): Promise<Finding | undefined> {
+    const subject = (strict ? q.replace(/^(who|what|when|where|which|why|how)( (is|are|was|were|did|does|do|many|much))?( the| a| an)?\s+/, '') : q).replace(/^(who|what) (is|was|are|were) (the |a |an )?|^tell me about |^(who|what)'?s /, '').replace(/\b(in|for) (short|summary)\b/, '').trim();
     const s = JSON.parse(await this.http(`https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(subject)}&limit=1&namespace=0&format=json&origin=*`));
     const title = s?.[1]?.[0];
     if (!title) return undefined;
     const j = JSON.parse(await this.http(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g, '_'))}`));
     if (!j.extract || j.type === 'disambiguation') return undefined;
+    if (strict) {
+      // a loose title match: only trust it when a sentence really answers the question
+      const b = bestSentences(j.extract, q);
+      return b.score >= 1.0 ? { answer: b.text, source: 'Wikipedia', url: j.content_urls?.desktop?.page, confidence: Math.min(0.78, 0.4 + b.score / 4), t: now } : undefined;
+    }
     const lead = j.extract.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ');
     return { answer: lead, source: 'Wikipedia', url: j.content_urls?.desktop?.page, confidence: 0.75, t: now };
   }
@@ -184,6 +193,7 @@ export class Researcher {
 
 /** Is this an open knowledge question worth researching (vs. chit-chat or a command)? */
 export function isKnowledgeQuestion(norm: string): boolean {
+  if (/\b(nothing|nobody|everything|everyone)\b|\b(not|never) work(ing|s)\b|\d\s*(%|percent)/.test(norm)) return false;
   if (/\b(my|me|i|mine|you|your|yourself)\b/.test(norm.replace(/\b(can|could|would|will) you (tell|find|look|search|check)\b.*?\b(what|who|when|where|how|why|if|whether)\b/, ''))) return false;
   return /^(who|what|when|where|which|why|how|is|are|was|were|does|do|did|can|will|has|have)\b/.test(norm) && norm.split(' ').length >= 3
     || /^(tell me about|explain|define|meaning of|what does .* mean)\b/.test(norm)

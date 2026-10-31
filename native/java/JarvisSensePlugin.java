@@ -4,7 +4,6 @@ import android.Manifest;
 import android.app.AppOpsManager;
 import android.app.usage.UsageStats;
 import android.app.usage.UsageStatsManager;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
@@ -55,7 +54,6 @@ public class JarvisSensePlugin extends Plugin {
         o.put("available", true);
         o.put("running", JarvisCoreService.enabled(c));
         o.put("usageAccess", hasUsage());
-        o.put("notificationAccess", hasNotif());
         o.put("activity", Build.VERSION.SDK_INT < 29 || getPermissionState("activity") == PermissionState.GRANTED);
         return o;
     }
@@ -75,12 +73,6 @@ public class JarvisSensePlugin extends Plugin {
     @PluginMethod
     public void openUsageAccess(PluginCall call) {
         Intent i = new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        try { getContext().startActivity(i); call.resolve(); } catch (Exception e) { call.reject(e.getMessage()); }
-    }
-
-    @PluginMethod
-    public void openNotificationAccess(PluginCall call) {
-        Intent i = new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try { getContext().startActivity(i); call.resolve(); } catch (Exception e) { call.reject(e.getMessage()); }
     }
 
@@ -146,9 +138,4 @@ public class JarvisSensePlugin extends Plugin {
         return mode == AppOpsManager.MODE_ALLOWED;
     }
 
-    private boolean hasNotif() {
-        String flat = Settings.Secure.getString(getContext().getContentResolver(), "enabled_notification_listeners");
-        ComponentName me = new ComponentName(getContext(), JarvisNotificationListener.class);
-        return flat != null && flat.contains(me.flattenToString());
-    }
 }

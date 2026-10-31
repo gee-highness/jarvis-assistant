@@ -41,6 +41,10 @@ export function learnFacts(norm: string, raw: string, now = new Date()): Learned
     const name = nameCase(keep(BAD_NAME.test(words[1] ?? 'x') || !words[1] ? words[0] : m[2]));
     out.push({ text: `User's ${m[1]} is ${name}`, kind: 'person', importance: 4, echo: `your ${m[1]} is ${name}` });
   }
+  const named = raw.match(new RegExp(`\\b[Mm]y (${RELATIONS}) ([A-Z][a-z]{1,20})\\b`));
+  if (named && !BAD_NAME.test(named[2].toLowerCase()) && !out.some(o => o.kind === 'person')) {
+    out.push({ text: `User's ${named[1].toLowerCase()} is ${named[2]}`, kind: 'person', importance: 4, echo: `your ${named[1].toLowerCase()} is ${named[2]}` });
+  }
   if ((m = norm.match(new RegExp(`\\b([a-z]+) is my (${RELATIONS})\\b`))) && !BAD_NAME.test(m[1]) && !/^(this|that|he|she|it|who|what|there|which)$/.test(m[1])) {
     const name = nameCase(keep(m[1]));
     out.push({ text: `User's ${m[2]} is ${name}`, kind: 'person', importance: 4, echo: `${name} is your ${m[2]}` });
@@ -89,8 +93,8 @@ export function learnFacts(norm: string, raw: string, now = new Date()): Learned
     out.push({ text: `User wants to ${tidy(m[1])}`, kind: 'goal', importance: 4, echo: `you want to ${tidy(m[1])}` });
   }
   // upcoming events → follow-ups ("i have an interview tomorrow")
-  if ((m = norm.match(/\bi (?:have|got) (a |an |my |the )?([a-z][a-z ]{2,30}?) (today|tonight|tomorrow|on [a-z]+|next week|this weekend|on the \d+\w*|in \d+ days)\b/))
-      && !/\b(task|reminder|alarm|meeting with you|question|idea|problem)\b/.test(m[2])) {
+  if (!/^(do|did|does|have|has|will|can|could|would|are|is|am|what|when|where|who|how|why)\b/.test(norm) && (m = norm.match(/\bi (?:have|got) (a |an |my |the )?([a-z][a-z ]{2,30}?) (today|tonight|tomorrow|on [a-z]+|next week|this weekend|on the \d+\w*|in \d+ days)\b/))
+      && !/\b(task|reminder|alarm|meeting with you|question|idea|problem)\b/.test(m[2]) && !/^(any|some|no|many|much|more|less)\b/.test(m[2])) {
     const e = extract(m[3], now);
     const det = (m[1] ?? (/^[aeiou]/.test(m[2]) ? 'an ' : 'a ')).trim();
     const day = e.date ? new Date(e.date + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) : m[3];

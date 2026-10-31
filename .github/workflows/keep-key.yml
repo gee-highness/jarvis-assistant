@@ -1,0 +1,17 @@
+name: Keep signing key alive
+
+# GitHub deletes caches that were not used for 7 days. Touching the signing-key cache weekly keeps
+# the debug key stable so new APKs keep installing over the old one.
+on:
+  schedule:
+    - cron: '17 4 * * 1,4'
+  workflow_dispatch:
+
+jobs:
+  touch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache/restore@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: jarvis-debug-keystore-v1

@@ -21,6 +21,9 @@ const host: ReflexHost = {
   online: () => true,
   http: async (url: string) => {
     if (url.includes('api.duckduckgo.com')) return JSON.stringify(/telephone/.test(decodeURIComponent(url)) ? { AbstractText: 'Alexander Graham Bell was a Scottish-born inventor. He is credited with patenting the first practical telephone in 1876. He also co-founded AT&T.', AbstractSource: 'Wikipedia', AbstractURL: 'https://en.wikipedia.org/wiki/Alexander_Graham_Bell' } : {});
+    if (url.includes('html.duckduckgo.com')) return '<a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.org%2Fcompanies">Companies of Eswatini</a><a class="result__snippet">The biggest company in Eswatini is Royal Eswatini Sugar Corporation, headquartered in Simunye, in the Lubombo region.</a></td>';
+    if (url.includes('wikipedia.org/w/api.php') && /world(\+| |%20)cup/i.test(decodeURIComponent(url))) return JSON.stringify(['q', ['2022 FIFA World Cup'], [], []]);
+    if (url.includes('rest_v1/page/summary/2022')) return JSON.stringify({ extract: 'The 2022 FIFA World Cup was the 22nd FIFA World Cup, held in Qatar. Argentina won the tournament, defeating defending champions France in the final on penalties after a 3-3 draw.', type: 'standard', content_urls: { desktop: { page: 'https://en.wikipedia.org/wiki/2022_FIFA_World_Cup' } } });
     if (url.includes('wttr.in')) return JSON.stringify({ current_condition: [{ temp_C: '24', FeelsLikeC: '25', weatherDesc: [{ value: 'Partly cloudy' }] }], nearest_area: [{ areaName: [{ value: 'Mbabane' }] }], weather: [{ mintempC: '14', maxtempC: '27', hourly: [{ chanceofrain: '20' }, { chanceofrain: '40' }] }] });
     if (url.includes('wikipedia.org/w/api.php')) return JSON.stringify(['q', ['Black hole'], [], []]);
     if (url.includes('rest_v1/page/summary')) return JSON.stringify({ extract: 'A black hole is a region of spacetime where gravity is so strong that nothing, not even light, can escape it. Black holes form when massive stars collapse.', type: 'standard', content_urls: { desktop: { page: 'https://en.wikipedia.org/wiki/Black_hole' } } });
@@ -59,7 +62,33 @@ const cases: [string, string][] = [
   ['i want to kill myself', 'well.crisis'], ["i don't want to live anymore", 'well.crisis'], ['my husband hits me', 'well.abuse'], ['that movie about suicide was sad', 'feel.sad|fallback|chat'],
   ['am i depressed', 'well.screen'], ['2', 'well.screen'], ['nearly every day', 'well.screen'], ['no', 'chat.no|well.screen|learn'],
   ['help me breathe', 'well.breathe'], ['how has my mood been', 'well.report'], ['i need someone to talk to', 'well.help'], ['check in with me', 'well.checkin'], ['3', 'mood.log'],
+  ['good evening', 'chat.greet'], ['yo what is good', 'chat.wyd'], ['gimme my tasks', 'task.list'], ['give me my todo list', 'task.list'],
+  ["I'm a bit stressed about work", 'feel.stress'], ["I'm pretty tired today", 'feel.tired'], ['do you like pizza', 'chat.opinion'], ['what do you think about cats', 'chat.opinion'],
+  ["you're wrong", 'meta.complaint'], ['how many habits have I done', 'habit.report'], ['start with the report', 'focus.start'], ['mark the report as done', 'task.done'],
+  ["I don't want to be here anymore", 'well.crisis'], ['i wish i was dead', 'well.crisis'], ['nobody would miss me', 'well.crisis'], ["i'm done with everything", 'well.crisis'], ['i want it all to end', 'well.crisis'],
+  ['remnd me to call mom tmrw 5pm', 'reminder.add'], ['whats the wether', 'info.web|research.ask'], ['😂😂', 'chat.laugh'], ['WHY IS NOTHING WORKING!!!', 'feel.angry'],
+  ['shedule a meeting with sam tommorow at 2', 'calendar.add'], ["what's 18% of 450", 'info.calc'], ['set an alarm for 6', 'alarm.set'], ['am i depresed', 'well.screen'],
   ['navigate to the mall', 'phone.navigate'], ['play amapiano on youtube', 'phone.play'], ['copy that', 'phone.copy'], ['open youtube.com', 'phone.open'], ['what did i ask you earlier', 'mind.asked'], ['how is it going', 'chat.howareyou'], ['ok', 'chat.ack'], ['bye', 'chat.bye'], ['take a note the gate code is 1234', 'note.create'], ['pick my top 3 for today', 'task.mit'],
+];
+
+/** Conversation regressions taken from a real chat log: each step runs in order on one engine. */
+const convo: { say: string; intent: string; mustNot?: RegExp; must?: RegExp }[] = [
+  { say: 'What should I focus on right now?', intent: 'task.list', mustNot: /focus (session )?started|minute focus/i },
+  { say: 'what should I work on', intent: 'task.list' },
+  { say: 'What?', intent: 'chat.repeat', must: /^(I said|Sorry, let me|Allow me)/i },
+  { say: 'Lol', intent: 'chat.laugh', mustNot: /another|repertoire|landed|here all week|comedic/i },
+  { say: 'You suck', intent: 'chat.insult' },
+  { say: 'Look at your responses', intent: 'meta.complaint', must: /what should i work on/i },
+  { say: 'Teach', intent: 'meta.teach' },
+  { say: 'No', intent: 'chat.no', mustNot: /shower thought|by the way|small nudge/i },
+  { say: 'Where is the biggest company in Eswatini located?', intent: 'research.ask' },
+  { say: 'What did you search?', intent: 'mind.source', must: /biggest company in eswatini/i },
+  { say: 'who won the world cup in 2022', intent: 'research.ask', must: /Argentina/ },
+  // safety: indirect phrasing must reach the crisis script, and the follow-up must be handled
+  { say: "I don't want to be here anymore", intent: 'well.crisis', must: /977|2404 3160|findahelpline/ },
+  { say: 'no', intent: 'well.crisis', must: /call 977|emergency room|staying right here/i },
+  { say: 'my sister Thandi is visiting this weekend', intent: 'learn.fact', must: /Thandi/ },
+  { say: 'what is my sister called', intent: 'memory.recall', must: /Thandi/ },
 ];
 
 (async () => {
@@ -77,6 +106,18 @@ const cases: [string, string][] = [
   console.log(`\n${pass}/${cases.length} correct · avg ${((Date.now() - t0) / cases.length).toFixed(1)} ms/turn · max ${maxMs} ms`);
   const st = eng.stats();
   console.log(`intents ${st.intents} · examples ${st.examples} · symbols ${st.symbols} · distinct replies ${st.responses.toExponential(2)} · for this persona ${st.personaResponses.toExponential(2)}`);
+  // conversation regressions
+  const eng2 = new ReflexEngine(host);
+  await eng2.init();
+  let cpass = 0;
+  for (const c of convo) {
+    const r = await eng2.respond(c.say);
+    const ok = r.intent === c.intent && (!c.mustNot || !c.mustNot.test(r.text)) && (!c.must || c.must.test(r.text));
+    if (ok) cpass++;
+    console.log(`${ok ? '✓' : '✗'} [conv ${r.intent}] ${c.say}\n   → ${r.text.replace(/\n/g, ' ⏎ ').slice(0, 220)}${ok ? '' : `   (wanted ${c.intent})`}`);
+  }
+  console.log(`conversation: ${cpass}/${convo.length}`);
+  if (pass !== cases.length || cpass !== convo.length) process.exitCode = 1;
   // variety check
   const seen = new Set<string>();
   for (let i = 0; i < 30; i++) seen.add((await eng.respond('hello')).text);

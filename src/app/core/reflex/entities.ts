@@ -45,7 +45,7 @@ const TIME_RES: RegExp[] = [
 function resolveWhen(phrase: string, now: Date): { at?: Date; date?: string } {
   let p = phrase.replace(/\b(on|this|coming|the|by|around)\b/g, ' ').replace(/o'?clock/, '').replace(/\s+/g, ' ').trim();
   for (const [k, v] of Object.entries(DAY_FULL)) p = p.replace(new RegExp(`\\b${k}\\b`), v);
-  p = p.replace(/\bnoon|midday\b/, '12:00').replace(/\bmidnight\b/, '23:59').replace(/\btmr\b/, 'tomorrow');
+  p = p.replace(/^for\b/, 'at').replace(/\bnoon|midday\b/, '12:00').replace(/\bmidnight\b/, '23:59').replace(/\btmr\b/, 'tomorrow');
   if (/day after tomorrow/.test(p)) return { date: addDays(ymd(now), 2), at: withTime(addDays(ymd(now), 2), p) };
   if (/next week/.test(p)) return { date: addDays(ymd(now), 7) };
   if (/next month/.test(p)) { const d = new Date(now); d.setMonth(d.getMonth() + 1); return { date: ymd(d) }; }
@@ -86,16 +86,21 @@ function withTime(date: string, p: string): Date | undefined {
 
 /** Smart am/pm: "at 5" during the day means 17:00 if 05:00 has passed. */
 function smartHour(at: Date, phrase: string, now: Date): Date {
-  if (/am|pm|:\d{2}|morning|tonight|evening|afternoon|noon|midnight|tomorrow|day|week|\d{4}/.test(phrase)) return at;
+  if (/\b(am|pm)\b|\d\s*(am|pm)|:\d{2}|morning|tonight|evening|afternoon|noon|midnight|\d{4}/.test(phrase)) return at;
   const h = at.getHours();
-  if (h >= 1 && h <= 11) {
-    // bare "at 6": the next upcoming 6 o'clock, preferring this evening over tomorrow morning
-    const todayPm = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h + 12, at.getMinutes());
-    const todayAm = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, at.getMinutes());
-    if (todayAm > now) return todayAm;
-    if (todayPm > now) return todayPm;
+  if (h < 1 || h > 11) return at;
+  const dayGiven = /tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday|next|week|\d{1,2}(st|nd|rd|th)|january|february|march|april|may|june|july|august|september|october|november|december/.test(phrase);
+  if (dayGiven) {
+    // "tomorrow at 2" means 2 PM; "tomorrow at 9" means 9 AM
+    if (h <= 6) { const d = new Date(at); d.setHours(h + 12); return d; }
+    return at;
   }
-  return at;
+  // bare "at 6": the next upcoming 6 o'clock, preferring this evening over tomorrow morning
+  const todayPm = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h + 12, at.getMinutes());
+  const todayAm = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, at.getMinutes());
+  if (todayAm > now) return todayAm;
+  if (todayPm > now) return todayPm;
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, h <= 6 ? h + 12 : h, at.getMinutes());
 }
 
 export function extract(input: string, now = new Date()): Entities {

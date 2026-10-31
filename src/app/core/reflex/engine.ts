@@ -11,7 +11,7 @@ import { EXTRA } from './banks/extra';
 import { MIND } from './banks/mind';
 import { WELL } from './banks/well';
 import { PET, PET_MOODS } from './banks/pet';
-import { ITEMS, SCALE, ScreenKind, ScreenResult, band, healthInsights, helpText, parseScore, riskOf, sleepLine, sleepOf, todayHealth, trendReport } from './wellbeing';
+import { helpFor, ITEMS, SCALE, ScreenKind, ScreenResult, band, healthInsights, helpText, parseScore, riskOf, sleepLine, sleepOf, todayHealth, trendReport } from './wellbeing';
 import { EpisodicMemory, Episode, LiveState, ago, span, windowOf } from './episodic';
 import { Finding, Researcher, cleanQuery, isKnowledgeQuestion } from './research';
 import { KNOWLEDGE, RIDDLES } from './banks/knowledge';
@@ -58,6 +58,9 @@ export class ReflexEngine {
   private ready: Promise<void> | null = null;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   private lastUser = '';
+  /** The last real request (not small talk, not feedback): what "teach" and complaints refer to. */
+  private lastActionable?: { text: string; raw: string; intent: string };
+  private lastResearch?: { q: string; source: string; url?: string; t: number; cached?: boolean };
   private recentOutputs: string[] = [];
   private riddleIdx: number[] = [];
   readonly episodic = new EpisodicMemory();
@@ -145,7 +148,7 @@ export class ReflexEngine {
     const risk = text ? riskOf(text) : null;
     if (risk) {
       this.ds.pending = undefined;
-      out = { sym: risk === 'abuse' ? 'r.well.abuse' : 'r.well.crisis', vars: { help: helpText(this.host.country?.()) }, quiet: true, topic: 'feelings' };
+      out = { sym: ({ abuse: 'r.well.abuse', crisis: 'r.well.crisis', emergency: 'r.well.emergency', soft: 'r.well.soft' } as const)[risk], vars: { help: helpText(this.host.country?.()), emergency: helpFor(this.host.country?.()).emergency }, quiet: true, topic: 'feelings', pending: { kind: 'safety', data: { soft: risk === 'soft' } } };
       intent = risk === 'abuse' ? 'well.abuse' : 'well.crisis'; conf = 1;
       this.inner.lastCrisis = now.getTime();
     }
@@ -154,13 +157,14 @@ export class ReflexEngine {
     const pend = this.ds.pending;
     this.ds.pending = undefined;
     if (!out && pend && this.ds.turn - pend.turn <= 3) {
-      ranked = await this.model.rank(text);
+      ranked = await this.rankText(text);
       const top0 = ranked[0];
       const answerish = /^(chat\.(yes|no|ack))$/.test(top0?.id ?? '');
       const strongNew = !!top0 && top0.pattern && top0.score >= 0.6 && !answerish;
       const factsNow = pend.kind === 'profile' && learnFacts(text, raw, now).length > 0;
       const riddleHit = pend.kind === 'riddle' && RIDDLES[Number(pend.data?.['i'] ?? 0)].accept.test(text);
-      const keep = pend.kind === 'slot' ? !strongNew : pend.kind === 'riddle' ? riddleHit || !strongNew : pend.kind === 'profile' ? !strongNew && !factsNow : !strongNew;
+      const topKind = top0 ? this.model.spec(top0.id)?.kind : undefined;
+      const keep = pend.kind === 'teach' ? !(strongNew && (topKind === 'chat' || topKind === 'meta')) : pend.kind === 'slot' ? !strongNew : pend.kind === 'riddle' ? riddleHit || !strongNew : pend.kind === 'profile' ? !strongNew && !factsNow && !(top0 && top0.score >= 0.45 && !answerish) : !strongNew;
       if (keep) {
         const r = await this.answerPending(pend, { n, text, raw, ent, emo, ranked, intent: pend.intent ?? '' });
         if (r) { out = r.out; intent = r.intent; conf = 1; }
@@ -172,9 +176,12 @@ export class ReflexEngine {
       const parts = this.split(text, raw);
       if (parts.length > 1) {
         const texts: string[] = [];
-        for (const p of parts) {
-          const pr = await this.model.rank(p.n);
-          if (!pr[0] || pr[0].score < BANDS.mid || !this.handlers[pr[0].id]) { texts.length = 0; break; }
+        const ranks = await Promise.all(parts.map(p => this.model.rank(p.n)));
+        const ok = ranks.every(pr => pr[0] && pr[0].score >= BANDS.mid && this.handlers[pr[0].id]);
+        for (let i = 0; ok && i < parts.length; i++) {
+          const pr = ranks[i], p = parts[i];
+          // "open YouTube and play X" is one action, not two
+          if (pr[0].id === 'phone.open' && ranks[i + 1]?.[0].id === 'phone.play') continue;
           const o = await this.handlers[pr[0].id]({ n: normalize(p.raw), text: p.n, raw: p.raw, ent: extract(p.n, now), emo, ranked: pr, intent: pr[0].id });
           texts.push(this.render(o));
           intent = pr[0].id;
@@ -185,7 +192,7 @@ export class ReflexEngine {
 
     // 3) classify
     if (!out) {
-      if (!ranked.length) ranked = await this.model.rank(text);
+      if (!ranked.length) ranked = await this.rankText(text);
       let top = ranked[0] ?? { id: 'none', score: 0, lex: 0, sem: 0, pattern: false };
       // follow-ups: "and tomorrow?", "what about overdue ones", "move it to friday"
       const follow = /^(and|what about|how about|also|same for|ok and|then)\b/.test(text) && this.ds.lastIntent && !top.pattern;
@@ -196,6 +203,10 @@ export class ReflexEngine {
         const hit = habits.find(hb => contentWords(hb.toLowerCase()).map(stem).some(w => w.length > 2 && text.split(' ').map(stem).includes(w)));
         if (hit) top = { ...top, id: 'habit.log', score: 0.8 };
       }
+      // a short first-person message with a clear feeling and no stronger match: hear the feeling
+      const EMO_INTENT: Partial<Record<string, string>> = { sad: 'feel.sad', lonely: 'feel.lonely', anxious: 'feel.stress', angry: 'feel.angry', tired: 'feel.tired', bored: 'feel.bored', happy: 'feel.happy', excited: 'feel.happy', grateful: 'feel.happy', sick: 'feel.sick', proud: 'feel.win' };
+      const emoTarget = EMO_INTENT[emo.emotion];
+      if (emoTarget && top.score < 0.5 && text.split(' ').length <= 9 && /\b(i|my|me|feeling|feel)\b/.test(text) && (this.model.spec(top.id)?.kind !== 'action' || top.score < 0.3) && !/\?$/.test(raw.trim())) top = { id: emoTarget, score: 0.55, lex: 0, sem: 0, pattern: false };
       const facts = learnFacts(text, raw, now);
       const factFirst = facts.length && (top.score < 0.62 || /^(chat|feel)\./.test(top.id) || top.id === 'persona.name' && !/call me|name is/.test(text));
       if (factFirst && top.id !== 'memory.remember' && top.id !== 'task.add') {
@@ -207,17 +218,17 @@ export class ReflexEngine {
         out = await this.run({ n, text, raw, ent, emo, ranked, intent });
       } else {
         if (facts.length) { out = await this.onFacts(facts, raw); intent = 'learn.fact'; conf = 0.7; }
-        else { out = await this.fallback({ n, text, raw, ent, emo, ranked, intent: 'fallback' }); intent = 'fallback'; conf = top.score; }
+        else { out = await this.fallback({ n, text, raw, ent, emo, ranked, intent: 'fallback' }); intent = out.intent ?? 'fallback'; conf = top.score; }
       }
     }
 
     // 4) compose + spice
     let reply = this.render(out!);
     const spec = this.model.spec(intent);
-    if (!out!.quiet && !out!.pending && reply) {
+    if (!out!.quiet && !out!.pending && reply && !/^(chat\.(no|laugh|sorry|insult|alive|love|thanks|bye)|fun\.|feel\.|well\.|advice\.|learn\.)/.test(intent)) {
       const sp = chooseSpice({
         inner: this.inner, state: this.host.state(), traits: this.host.profile().traits, now, intentKind: spec?.kind ?? 'chat', quiet: !!out!.quiet,
-        emotionNegative: emo.valence < -0.2, missingProfile: this.inner.turns >= 6 && this.inner.turns - (this.inner.lastAskTurn ?? -99) >= 12 ? this.missingProfile() : [],
+        intent, emotionNegative: emo.valence < -0.2, missingProfile: this.inner.turns >= 6 && this.inner.turns - (this.inner.lastAskTurn ?? -99) >= 12 ? this.missingProfile() : [],
       });
       if (sp) {
         this.inner.lastSpiceTurn = this.inner.turns;
@@ -270,6 +281,7 @@ export class ReflexEngine {
     this.ds.recentIntents = [...this.ds.recentIntents.slice(-9), intent];
     this.ds.emotion = emo;
     this.lastUser = text;
+    if (text && spec && intent !== 'fallback' && !/^(meta\.|chat\.(yes|no|ack|laugh|insult|thanks|sorry|test|repeat))/.test(intent) || (intent === 'fallback' && text)) this.lastActionable = { text, raw, intent };
     this.persist();
     return { text: reply, intent, confidence: conf, tools, deferred: intent === 'fallback' && conf < BANDS.mid, ms: Date.now() - t0 };
   }
@@ -322,7 +334,7 @@ export class ReflexEngine {
   async preview(q: string): Promise<string> {
     await this.init();
     const n = normalize(q);
-    const r = await this.model.rank(n.text);
+    const r = await this.rankText(n.text);
     const top = r[0];
     const spec = top && this.model.spec(top.id);
     if (spec && spec.kind === 'chat' && top.score >= BANDS.mid && this.grammar.has(spec.reply ?? `r.${spec.id}`)) {
@@ -330,6 +342,12 @@ export class ReflexEngine {
       return this.style(this.grammar.expand(`#${spec.reply ?? `r.${spec.id}`}#`, this.ctx(vars)), spec.topic);
     }
     return this.style(this.say('r.chat.greet'), 'greeting');
+  }
+
+  /** Stable opinion about any topic: same answer every time for this install. */
+  private likes(x: string) {
+    const t = x.replace(/^(the|a|an|my|your) /, '').trim();
+    return { x: t, pos: hash(`${this.inner.seed}:${t}`) % 3 !== 0 ? 1 : 0 };
   }
 
   /** Pet speech for the widget and pet page. */
@@ -429,12 +447,23 @@ export class ReflexEngine {
     return { sym: spec?.reply ?? `r.${h.intent}`, topic: spec?.topic };
   }
 
+  /** Ranks the utterance and its de-politified form ("can you add X" → "add X"); keeps the best score per intent. */
+  private async rankText(text: string, opts: { context?: string; embed?: boolean } = {}): Promise<Ranked[]> {
+    const a = await this.model.rank(text, opts);
+    const stripped = text.replace(/^(?:(?:ok|okay|hey|hi|yo|so|um+|uh+|please|jarvis|can you|could you|would you|will you|i want you to|i need you to|go ahead and|kindly|quickly|just)[ ,]+)+/, '').trim();
+    if (!stripped || stripped === text) return a;
+    const b = await this.model.rank(stripped, opts);
+    const best = new Map<string, Ranked>();
+    for (const r of [...a, ...b]) { const o = best.get(r.id); if (!o || r.score > o.score) best.set(r.id, { ...r, pattern: r.pattern || !!o?.pattern }); }
+    return [...best.values()].sort((x, y) => y.score - x.score);
+  }
+
   private async answerPending(p: Pending, h: H): Promise<{ out: Out; intent: string } | null> {
     const yes = /^(yes|sure|ok|okay|yes please|please|do it|go ahead|definitely|absolutely|of course|correct|right|yup|affirmative|please do|go for it|why not)\b/.test(h.text);
     const no = /^(no|nope|nah|cancel|never ?mind|stop|do not|not now|leave it|forget it|skip)\b/.test(h.text);
     switch (p.kind) {
       case 'slot': {
-        if (no) return { out: { sym: 'r.chat.no' }, intent: 'chat.no' };
+        if (no) return { out: { sym: 'r.chat.no', quiet: true }, intent: 'chat.no' };
         const e2 = extract(h.text, this.host.now());
         if (p.slot === 'when' && !e2.at && !e2.date) return null;
         if (p.slot === 'dur' && !e2.minutes && !e2.seconds && e2.number === undefined) return null;
@@ -450,7 +479,7 @@ export class ReflexEngine {
       case 'web': {
         if (yes && p.kind === 'web') return { out: await this.handlers['info.web']({ ...h, text: p.utter ?? h.text, raw: p.raw ?? h.raw, intent: 'info.web' }), intent: 'info.web' };
         if (yes && p.intent && this.handlers[p.intent]) return { out: await this.handlers[p.intent]({ ...h, text: p.utter ?? h.text, raw: p.raw ?? h.raw, ent: extract(p.utter ?? h.text, this.host.now()), intent: p.intent }), intent: p.intent };
-        if (no) return { out: { sym: 'r.chat.no' }, intent: 'chat.no' };
+        if (no) return { out: { sym: 'r.chat.no', quiet: true }, intent: 'chat.no' };
         return null;
       }
       case 'choice': {
@@ -462,7 +491,7 @@ export class ReflexEngine {
           const best = bestFuzzy(h.text, labels.map((l, i) => ({ l, i })), x => x.l, 0.45);
           if (best) idx = best.i;
         }
-        if (idx === -1 && no) return { out: { sym: 'r.chat.no' }, intent: 'chat.no' };
+        if (idx === -1 && no) return { out: { sym: 'r.chat.no', quiet: true }, intent: 'chat.no' };
         if (idx === -1 && yes && opts.length) idx = 0;
         const chosen = opts[idx < 0 ? opts.length + idx : idx];
         if (!chosen) return null;
@@ -471,10 +500,10 @@ export class ReflexEngine {
         return { out: { ...out, text: [out.text, this.say('learn.ok')].filter(Boolean).join(' ') }, intent: chosen };
       }
       case 'teach': {
-        if (no) return { out: { sym: 'r.chat.no' }, intent: 'chat.no' };
-        const r = await this.model.rank(h.text);
+        if (no) return { out: { sym: 'r.chat.no', quiet: true }, intent: 'chat.no' };
+        const r = await this.rankText(h.text);
         const target = r.find(x => this.model.spec(x.id)?.kind !== 'meta');
-        if (!target || target.score < 0.25 || !p.utter) return { out: { text: this.say('learn.fail') }, intent: 'meta.teach' };
+        if (!target || target.score < 0.45 || !p.utter || !['action', 'info'].includes(this.model.spec(target.id)?.kind ?? '')) return null;
         this.learn(target.id, p.utter);
         const res = await this.run({ ...h, text: p.utter, raw: p.raw ?? p.utter, ent: extract(p.utter, this.host.now()), intent: target.id });
         return { out: { ...res, text: [res.text, this.say('r.meta.learned', { utter: p.utter, meaning: LABEL[target.id] ?? target.id.replace('.', ' ') })].filter(Boolean).join(' ') }, intent: target.id };
@@ -497,6 +526,16 @@ export class ReflexEngine {
           await this.host.memoryAdd(`${capFirst(String(p.data['q']))}: ${a}`, 'fact', 3);
           return { out: { sym: 'learn.gotit', vars: { a }, quiet: true }, intent: 'learn.profile' };
         }
+        return null;
+      }
+      case 'safety': {
+        const help = helpText(this.host.country?.());
+        if (p.data?.['soft']) {
+          if (/^(yes|yeah|yep|sometimes|a bit|a little|kind of|i have|i do|i am|maybe|i think so|thinking|all the time|often|honestly yes)\b/.test(h.text)) return { out: { sym: 'r.well.crisis', vars: { help, emergency: helpFor(this.host.country?.()).emergency }, quiet: true, pending: { kind: 'safety' } }, intent: 'well.crisis' };
+          if (/^(no|nope|not really|no not|never|not at all|nah)\b/.test(h.text)) return { out: { sym: 'well.soft.no', vars: { help }, quiet: true }, intent: 'well.crisis' };
+        }
+        if (/^(no|not really|nope|i do not know|not sure|maybe not|i am not|not safe|i might|i am going to|i have a plan|tonight)\b/.test(h.text) || /\b(not safe|in danger|have a plan|going to do it)\b/.test(h.text)) return { out: { sym: 'well.safety.no', vars: { help, emergency: helpFor(this.host.country?.()).emergency }, quiet: true }, intent: 'well.crisis' };
+        if (/^(yes|yeah|yep|i am|i am safe|safe|i think so|for now|ok|okay|i am ok|i am okay|i am fine)\b/.test(h.text)) return { out: { sym: 'well.safety.yes', vars: { help }, quiet: true, pending: { kind: 'safety' } }, intent: 'well.crisis' };
         return null;
       }
       case 'screen': {
@@ -596,7 +635,7 @@ export class ReflexEngine {
       const opts = cands.map(c => c.id);
       return { sym: 'r.fallback.choice', vars: { choices: opts.map((o, i) => `${i + 1}) ${LABEL[o]}`).join(', ') }, pending: { kind: 'choice', options: opts, utter: h.text, raw: h.raw }, quiet: true };
     }
-    if (isKnowledgeQuestion(h.text) || (h.n.question && h.text.split(' ').length >= 4 && !/\b(you|your|we)\b/.test(h.text))) return this.handlers['research.ask'](h);
+    if (isKnowledgeQuestion(h.text) || (h.n.question && h.text.split(' ').length >= 4 && !/\b(you|your|we|our|i|my|me|mine)\b/.test(h.text))) return this.handlers['research.ask'](h).then(o => ({ ...o, intent: 'research.ask' }));
     const reflect = this.reflect(h);
     if (reflect) return reflect;
     if (h.n.question && this.host.online()) return { sym: 'r.fallback.web', pending: { kind: 'web', utter: h.text, raw: h.raw }, quiet: true };
@@ -618,7 +657,7 @@ export class ReflexEngine {
     if ((m = t.match(/^i am (?:so |really |kind of |a bit )?(.{3,50})$/))) return { sym: 'r.reflect.am', vars: { x: swap(m[1]) } };
     if ((m = t.match(/\bbecause (.{3,60})$/))) return { sym: 'r.reflect.because', vars: { x: swap(m[1]) } };
     if ((m = t.match(/\bmy (mom|mum|mother|dad|father|wife|husband|partner|girlfriend|boyfriend|boss|friend|sister|brother|son|daughter|family|kids|job|work|team|life)\b/))) return { sym: 'r.reflect.my', vars: { x: m[1] }, topic: 'people' };
-    if ((m = t.match(/^(?:what|how) do you (?:think|feel) about (.{2,50})$/))) return { sym: 'r.reflect.opinion', vars: { x: swap(m[1]) } };
+    if ((m = t.match(/^(?:what|how) do you (?:think|feel) about (.{2,50})$/))) return { sym: 'r.chat.likes', vars: this.likes(swap(m[1])) };
     if ((m = t.match(/^(?:do|can|will|would|are|could) you (.{3,50})$/))) return { sym: 'r.reflect.you', vars: { x: swap(m[1]) } };
     if (emo) return { sym: 'r.reflect.emotion', vars: { emo }, topic: 'feelings' };
     return null;
@@ -680,6 +719,7 @@ export class ReflexEngine {
     let f: Finding | undefined;
     try { f = await this.researcher.ask(raw, { city: await this.city(), now, fahrenheit: this.host.country?.() === 'US' }); } finally { this.host.status?.(''); }
     if (!f?.answer) return { sym: 'r.research.none', topic: 'web' };
+    this.lastResearch = { q: raw.replace(/[?\s]+$/, ''), source: f.source, url: f.url, t: f.t, cached: f.cached };
     const vars = { answer: f.answer.trim().replace(/([^.!?])$/, '$1.'), source: f.source, ago: ago(f.t, now) };
     return { sym: f.cached && now - f.t > 3600_000 ? 'r.research.cached' : f.confidence < 0.5 ? 'r.research.unsure' : 'r.research.found', vars, topic: 'web', quiet: true };
   }
@@ -698,7 +738,9 @@ export class ReflexEngine {
       const last = this.ds.lastTaskRef;
       return last ? tasks.find(t => t.title.toLowerCase() === last.toLowerCase()) ?? bestFuzzy(last, tasks, t => t.title, 0.6) : undefined;
     }
-    return tasks.find(t => t.title.toLowerCase() === r) ?? bestFuzzy(r, tasks, t => t.title, 0.42);
+    return tasks.find(t => t.title.toLowerCase() === r)
+      ?? (r.length >= 3 ? tasks.find(t => new RegExp(`\\b${r.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(t.title.toLowerCase())) : undefined)
+      ?? bestFuzzy(r, tasks, t => t.title, 0.42);
   }
 
   private pickTop(tasks: TaskLite[], n = 3): TaskLite[] {
@@ -719,9 +761,9 @@ export class ReflexEngine {
     // ---------------- tasks
     H['task.add'] = async h => {
       const body = strip(h.ent.rest, /\b(urgent(ly)?|asap|important|high priority|top priority|as (a )?priority|as (an )?mit)\b/g);
-      const listy = body.match(/^(?:add|put|capture)\s+(.+?)\s+(?:to|on) (?:my )?(?:list|tasks|todo list|to do list|shopping list)$/);
-      if (listy && /,| and /.test(listy[1]) && !h.ent.date) {
-        const items = listy[1].split(/\s*,\s*|\s+and\s+/).map(s => capFirst(recase(s.trim(), h.raw))).filter(Boolean).slice(0, 12);
+      const listy = h.raw.trim().replace(/[.!]+$/, '').match(/^(?:please\s+)?(?:add|put|capture)\s+(.+?)\s+(?:to|on|onto)\s+(?:my\s+)?(?:list|tasks|todo list|to do list|shopping list|groceries)$/i);
+      if (listy && /,|\band\b/i.test(listy[1]) && !h.ent.date) {
+        const items = listy[1].split(/\s*,\s*(?:and\s+)?|\s+and\s+/i).map(s => capFirst(s.trim())).filter(Boolean).slice(0, 12);
         for (const it of items) await this.tool('add_task', { title: it });
         return { sym: 'r.task.add.many', vars: { count: items.length, list: items.join(', ') }, topic: 'tasks', taskRef: items[items.length - 1] };
       }
@@ -740,7 +782,7 @@ export class ReflexEngine {
       const s = state();
       const t = h.text;
       const today = ymd(now());
-      if (/\b(next|now|first|start with)\b/.test(t) && /\bshould i\b|\bwhat\b/.test(t)) {
+      if (/\bshould i\b|\bwhere do i (start|begin)\b/.test(t) || (/\b(next|now|first|start with)\b/.test(t) && /\bwhat\b/.test(t))) {
         const top = this.pickTop(s.tasks, 1)[0];
         if (!top) return { sym: 'r.task.list.empty', vars: { open: 0 } };
         return { sym: 'r.task.next', vars: { title: top.title, why: top.isMit ? 'it is a top priority' : top.due && top.due < today ? 'it is overdue' : top.due === today ? 'it is due today' : top.urgent ? 'it is urgent' : 'it matters most right now' }, taskRef: top.title, topic: 'tasks' };
@@ -765,7 +807,7 @@ export class ReflexEngine {
       return { sym: 'r.task.list', vars: { heading, list: items.slice(0, 15).map(fmt).join('\n') + (items.length > 15 ? `\n…and ${items.length - 15} more` : '') }, quiet: true, topic: 'tasks' };
     };
 
-    const taskRef = (t: string) => strip(t, /^(please |can you |could you )?(mark|tick|check|cross|complete|finish|delete|remove|get rid of|drop|erase|cancel|move|push|snooze|reschedule|postpone|defer|delay|bump|change the (due )?date of|make|set|prioriti[sz]e)( off)?\b|\b(as )?(done|complete|completed|finished|off my list|from my list|off|the task|task|todo|a priority|top priority|as (an? )?mit|as important|important|priority|back( a day)?|by a day|to \S+day|to tomorrow|to next week|until \S+)\b|^(i )?(finished|completed|did|done with|have done)\b|^that is done$/g).replace(/^(the|my) /, '');
+    const taskRef = (t: string) => strip(t, /^(please |can you |could you )?(mark|tick|check|cross|complete|finish|delete|remove|get rid of|drop|erase|cancel|move|push|snooze|reschedule|postpone|defer|delay|bump|change the (due )?date of|make|set|prioriti[sz]e)( off)?\b|\b(as )?(done|complete|completed|finished|off my list|from my list|off|the task|task|todo|a priority|top priority|as (an? )?mit|as important|important|priority|back( a day)?|by a day|to \S+day|to tomorrow|to next week|until \S+)\b|^(i )?(finished|completed|did|done with|have done)\b|^that is done$/g).replace(/^(the|my) /, '').replace(/\s+(to|until|till|for|on|by)$/, '');
 
     H['task.done'] = async h => {
       const s = state();
@@ -814,12 +856,12 @@ export class ReflexEngine {
     // ---------------- focus
     H['focus.start'] = async h => {
       const kind = /\bbreak\b/.test(h.text) ? 'break' : 'focus';
-      const onTask = h.text.match(/\b(?:on|for) (?!\d)(?:the |my )?([a-z][a-z0-9 '-]{2,40}?)(?: for \d.*)?$/)?.[1];
-      const task = onTask && !/minutes?|hours?|an hour/.test(onTask) ? this.findTask(onTask, state().tasks) : undefined;
+      const onTask = h.text.match(/\b(?:on|for|with) (?!\d)(?:the |my )?([a-z][a-z0-9 '-]{1,40}?)(?: for \d.*)?$/)?.[1];
+      const task = onTask && !/minutes?|hours?|an hour|^(right )?now$|^today$|^tonight$/.test(onTask) ? this.findTask(onTask, state().tasks) : undefined;
       const r = await this.tool('start_focus', { minutes: h.ent.minutes, task: task?.id, label: task ? undefined : onTask, kind });
       if (!r.ok) return fail(r.result);
       const minutes = h.ent.minutes ?? Number(r.result.match(/(\d+)\s*-?\s*min/)?.[1] ?? 25);
-      return { sym: 'r.focus.start', vars: { minutes, kind: kind === 'break' ? 'break' : 'focus', forText: task ? ` on "${task.title}"` : onTask && !/minutes?|hours?/.test(onTask) ? ` on ${onTask}` : '' }, topic: 'focus' };
+      return { sym: 'r.focus.start', vars: { minutes, kind: kind === 'break' ? 'break' : 'focus', forText: task ? ` on "${task.title}"` : onTask && !/minutes?|hours?|^(right )?now$|^today$|^tonight$/.test(onTask) ? ` on ${onTask}` : '' }, topic: 'focus' };
     };
     H['focus.stop'] = async () => { const r = await this.tool('stop_focus', {}); return r.ok ? { sym: 'r.focus.stop', vars: { result: r.result } } : fail(r.result); };
     H['focus.stats'] = async () => { const r = await this.tool('focus_stats', {}); return { sym: 'r.focus.stats', vars: { result: r.result }, quiet: true }; };
@@ -849,7 +891,12 @@ export class ReflexEngine {
       const r = await this.tool('log_habit', { habit: best });
       return r.ok ? { sym: 'r.habit.log', vars: { name: best, result: '', habitsLeft: state().habitsLeft.filter(x => x !== best).slice(0, 3).join(', ') }, topic: 'habits' } : fail(r.result);
     };
-    H['habit.report'] = async () => { const r = await this.tool('habit_report', {}); return { sym: 'r.habit.report', vars: { result: r.result }, quiet: true }; };
+    H['habit.report'] = async () => {
+      const s = state();
+      const r = await this.tool('habit_report', {});
+      const head = s.habitsTotal ? `${s.habitsDone} of ${s.habitsTotal} done today${s.habitsLeft.length ? `; still to go: ${listify(s.habitsLeft)}` : '. All done!'}.` : 'You have no habits yet. Say “new habit drink water”.';
+      return { sym: 'r.habit.report', vars: { result: `${head}\n${r.result}` }, quiet: true };
+    };
 
     // ---------------- planning
     H['plan.briefing'] = async () => {
@@ -902,6 +949,11 @@ export class ReflexEngine {
     };
     H['alarm.set'] = async h => {
       if (h.ent.at && /\bwake\b/.test(h.text) && !/pm|evening|tonight|afternoon/.test(h.text) && h.ent.at.getHours() >= 12 && h.ent.at.getHours() < 24) {
+        const a = new Date(h.ent.at.getTime() - 12 * 3600_000);
+        if (a <= now()) a.setDate(a.getDate() + 1);
+        h.ent.at = a;
+      }
+      if (h.ent.at && !/\b(am|pm|noon|midnight|afternoon|evening|tonight|night)\b/.test(h.text) && /\b(at|for) \d{1,2}(:\d{2})?\b/.test(h.text) && h.ent.at.getHours() >= 12) {
         const a = new Date(h.ent.at.getTime() - 12 * 3600_000);
         if (a <= now()) a.setDate(a.getDate() + 1);
         h.ent.at = a;
@@ -977,7 +1029,8 @@ export class ReflexEngine {
       const best = hits.find(x => x.score > 0.32);
       if (!best) return { sym: 'r.memory.recall.none', pending: { kind: 'profile', data: { q: q.replace(/user's/g, 'User’s') } }, topic: 'memory' };
       const extra = hits.filter(x => x !== best && x.score > best.score * 0.85).slice(0, 1);
-      return { sym: 'r.memory.recall', vars: { answer: [best, ...extra].map(x => capFirst(secondPerson(x.text))).join('. ') }, topic: 'memory' };
+      const uniq = [...new Map([best, ...extra].map(x => [secondPerson(x.text).toLowerCase(), x])).values()];
+      return { sym: 'r.memory.recall', vars: { answer: uniq.map(x => capFirst(secondPerson(x.text))).join('. ') }, topic: 'memory' };
     };
     H['memory.forget'] = async h => {
       const q = strip(h.text, /^(please )?(forget|delete|erase|remove)( that| the| my| what i said about| about)?( memory| memories)?( about| of)?\b/) || this.lastUser;
@@ -997,7 +1050,8 @@ export class ReflexEngine {
 
     // ---------------- phone & comms
     H['phone.open'] = async h => {
-      const app = capFirst(restoreCase(strip(h.text, /^(please )?(can you )?(open|launch|start|run)( up)?( the| my)?\b|\b(app|application|for me|please)\b/g), h.raw));
+      const rawApp = strip(h.text, /^(please )?(can you )?(open|launch|start|run)( up)?( the| my)?\b|\b(app|application|for me|please)\b/g);
+      const app = APP_CASE[rawApp.toLowerCase()] ?? capFirst(restoreCase(rawApp, h.raw));
       if (/^settings?$/i.test(app)) return H['phone.settings']({ ...h, text: 'main settings' });
       if (/\.[a-z]{2,}$/i.test(app)) { const r = await this.tool('open_url', { url: /^https?:/.test(app) ? app : `https://${app}` }); return r.ok ? { sym: 'r.phone.done', vars: { what: `Opening ${app}.` } } : fail(r.result); }
       const r = await this.tool('open_app', { name: app });
@@ -1154,7 +1208,7 @@ export class ReflexEngine {
 
     // ---------------- conversation memory & time
     const winText = (w?: { label: string }) => (w ? ` ${w.label}` : '');
-    const quote = (e: Episode) => `“${e.text.length > 160 ? e.text.slice(0, 157) + '…' : e.text}”`;
+    const quote = (e: Episode) => { const t = e.text.replace(/"/g, "'").replace(/\s+/g, ' '); return `“${t.length > 160 ? t.slice(0, 157) + '…' : t}”`; };
     H['mind.said'] = async h => {
       const nowMs = now().getTime();
       const win = windowOf(h.text, nowMs);
@@ -1176,7 +1230,10 @@ export class ReflexEngine {
     H['mind.asked'] = async h => {
       const nowMs = now().getTime();
       const win = windowOf(h.text, nowMs);
-      const qs = this.episodic.episodes.slice(0, -1).filter(e => e.who === 'user' && (!win || (e.t >= win.from && e.t <= win.to)) && (/\?\s*$/.test(e.text) || normalize(e.text).question)).slice(-3).reverse();
+      const about = h.text.match(/\babout (.+?)(?: earlier| before| today| yesterday)?$/)?.[1] ?? '';
+      let qs = this.episodic.episodes.slice(0, -1).filter(e => e.who === 'user' && !/^mind\./.test(e.intent ?? '') && (!win || (e.t >= win.from && e.t <= win.to)) && (/\?\s*$/.test(e.text) || normalize(e.text).question));
+      if (about) { const hits = new Set(this.episodic.search(about, { who: 'user', win, skipLast: 1, k: 6 })); qs = qs.filter(e => hits.has(e)); }
+      qs = qs.slice(-3).reverse();
       if (!qs.length) return { sym: 'r.mind.said.none', vars: { kw: 'questions', when: winText(win) }, quiet: true };
       return { sym: 'r.mind.said', vars: { found: qs.map(e => `${capFirst(ago(e.t, nowMs))} you asked ${quote(e)}`).join('\n') }, quiet: true };
     };
@@ -1189,6 +1246,12 @@ export class ReflexEngine {
       const last = lastUser[lastUser.length - 1];
       const found = `${topics.length ? `We covered ${listify(topics.map(t => `${t.topic} (${ago(t.t, nowMs)})`))}. ` : ''}The last thing you said, ${ago(last.t, nowMs)}, was ${quote(last)}`;
       return { sym: 'r.mind.topic', vars: { found }, quiet: true };
+    };
+    H['mind.source'] = async h => {
+      const r = this.lastResearch;
+      if (!r) return { sym: 'r.mind.source.none', quiet: true };
+      if (/\bopen\b/.test(h.text) && r.url) { const o = await this.tool('open_url', { url: r.url }); return o.ok ? { sym: 'r.phone.done', vars: { what: `Opening ${r.source}.` } } : fail(o.result); }
+      return { sym: 'r.mind.source', vars: { q: r.q, source: r.source, url: r.url ?? '', ago: ago(r.t, now().getTime()), cached: r.cached ? 1 : 0 }, quiet: true, topic: 'web' };
     };
     H['mind.when'] = async h => {
       const nowMs = now().getTime();
@@ -1272,9 +1335,21 @@ export class ReflexEngine {
     };
 
     // ---------------- meta & stateful fun
-    H['meta.teach'] = async () => ({ sym: 'r.meta.teach', pending: { kind: 'teach', utter: this.lastUser, raw: this.lastUser }, quiet: true });
+    H['meta.teach'] = async () => {
+      const t = this.lastActionable;
+      return { sym: 'r.meta.teach', pending: { kind: 'teach', utter: t?.text ?? this.lastUser, raw: t?.raw ?? this.lastUser }, quiet: true };
+    };
+    H['meta.complaint'] = async () => {
+      const t = this.lastActionable;
+      const meaning = t ? (t.intent === 'fallback' ? 'something I had no good answer for' : LABEL[t.intent] ?? (/^(chat|feel|fun|advice)\./.test(t.intent) ? 'small talk' : t.intent.replace('.', ' '))) : '';
+      return { sym: 'r.meta.complaint', vars: { utter: t ? t.raw.replace(/[?!.\s]+$/, '') : '', meaning }, pending: t ? { kind: 'teach', utter: t.text, raw: t.raw } : undefined, quiet: true, topic: 'jarvis' };
+    };
+    H['chat.insult'] = async () => {
+      const t = this.lastActionable;
+      return { sym: 'r.chat.insult', pending: t ? { kind: 'teach', utter: t.text, raw: t.raw } : undefined, quiet: true };
+    };
     H['meta.stop'] = async () => ({ sym: 'r.meta.stop', quiet: true });
-    H['chat.repeat'] = async () => ({ text: this.ds.lastBot ?? this.say('r.chat.test'), quiet: true });
+    H['chat.repeat'] = async () => (this.ds.lastBot ? { sym: 'r.chat.repeat', quiet: true } : { sym: 'r.chat.test', quiet: true });
     H['fun.another'] = async () => (this.ds.lastContentSym ? { sym: this.ds.lastContentSym, content: this.ds.lastContentSym } : { sym: 'r.fun.joke', content: 'r.fun.joke' });
     H['fun.riddle'] = async () => {
       const avail = RIDDLES.map((_, i) => i).filter(i => !this.riddleIdx.includes(i));
@@ -1282,7 +1357,14 @@ export class ReflexEngine {
       this.riddleIdx = [...this.riddleIdx.slice(-15), i];
       return { sym: 'riddle.ask', vars: { q: RIDDLES[i].q }, pending: { kind: 'riddle', data: { i, tries: 0 } }, quiet: true, content: 'r.fun.riddle' };
     };
-    H['chat.favourite'] = async h => ({ sym: 'r.chat.favourite', vars: opinion(this.inner.seed, h.text) });
+    H['chat.opinion'] = async h => {
+      const m = h.text.match(/\b(?:about|of|on|think of) (.{2,50})$/) ?? h.text.match(/^do you (?:like|love|enjoy|hate|dislike)(?: eating| playing| watching| listening to)? (.{2,40})$/) ?? h.text.match(/^(?:is|are) (.{2,40}) (?:good|bad|great|overrated)$/);
+      return m ? { sym: 'r.chat.likes', vars: this.likes(m[1].replace(/\b(my|your)\b/g, w => (w === 'my' ? 'your' : 'my'))) } : { sym: 'r.chat.likes', vars: this.likes('that') };
+    };
+    H['chat.favourite'] = async h => {
+      const m = h.text.match(/^do you (?:like|love|enjoy|hate|dislike)(?: eating| playing| watching| listening to)? (.{2,40})$/);
+      return m ? { sym: 'r.chat.likes', vars: this.likes(m[1]) } : { sym: 'r.chat.favourite', vars: opinion(this.inner.seed, h.text) };
+    };
     H['fun.dice'] = async h => {
       const range = h.text.match(/between (\d+) and (\d+)/);
       const sides = Number(h.text.match(/\bd(\d+)\b/)?.[1] ?? 6);
@@ -1297,6 +1379,7 @@ export class ReflexEngine {
       if (opts.length < 2) return { sym: 'r.fun.8ball' };
       return { sym: 'r.fun.choose', vars: { choice: capFirst(opts[Math.floor(Math.random() * opts.length)]) } };
     };
+    H['chat.laugh'] = async () => ({ sym: 'r.chat.laugh', vars: { afterContent: this.ds.lastIntent && CONTENT.has(this.ds.lastIntent) ? 1 : 0 } });
     H['chat.greet'] = async () => ({ sym: 'r.chat.greet', topic: 'greeting' });
     H['chat.yes'] = async () => ({ sym: this.ds.lastIntent && CONTENT.has(this.ds.lastIntent) && this.ds.lastContentSym ? this.ds.lastContentSym : 'r.chat.yes' });
   }
@@ -1350,8 +1433,10 @@ function daysAnswer(t: string, ent: Entities, now: Date, birthday?: string): str
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   let target: Date | undefined;
   let label = '';
+  const easter = (y: number) => { const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451), mo = Math.floor((h + l - 7 * m + 114) / 31), da = ((h + l - 7 * m + 114) % 31) + 1; return new Date(y, mo - 1, da); };
   const hol = Object.keys(HOLIDAYS).sort((a, b) => b.length - a.length).find(k => t.includes(k));
-  if (/\bmy birthday\b/.test(t) && birthday) { const [m, d] = birthday.split('-').map(Number); target = new Date(now.getFullYear(), m - 1, d); label = 'your birthday'; }
+  if (/\beaster\b/.test(t)) { target = easter(now.getFullYear()); if (target < today) target = easter(now.getFullYear() + 1); label = 'Easter'; }
+  else if (/\bmy birthday\b/.test(t) && birthday) { const [m, d] = birthday.split('-').map(Number); target = new Date(now.getFullYear(), m - 1, d); label = 'your birthday'; }
   else if (hol) { const [m, d] = HOLIDAYS[hol].split('-').map(Number); target = new Date(now.getFullYear(), m - 1, d); label = hol.replace(/\b\w/g, c => c.toUpperCase()); }
   else if (ent.date) { target = new Date(ent.date + 'T00:00'); label = fmtDay(target, now); }
   const fromNow = t.match(/(\d+) (day|week|month)s? (from now|from today|later)/);
@@ -1385,3 +1470,9 @@ function bestSentence(passage: string, q: string): string {
 }
 
 const scrName = (k: string) => k.toUpperCase().replace(/(\d)$/, '-$1');
+
+const APP_CASE: Record<string, string> = {
+  whatsapp: 'WhatsApp', youtube: 'YouTube', tiktok: 'TikTok', linkedin: 'LinkedIn', instagram: 'Instagram', facebook: 'Facebook', spotify: 'Spotify', gmail: 'Gmail', chrome: 'Chrome',
+  'google maps': 'Google Maps', maps: 'Maps', telegram: 'Telegram', twitter: 'X', x: 'X', snapchat: 'Snapchat', netflix: 'Netflix', 'play store': 'Play Store', camera: 'Camera',
+  calculator: 'Calculator', calendar: 'Calendar', clock: 'Clock', notion: 'Notion', zoom: 'Zoom', teams: 'Teams', outlook: 'Outlook', drive: 'Drive', photos: 'Photos', messages: 'Messages',
+};

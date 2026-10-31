@@ -3,15 +3,15 @@ import type { Bank } from '../types';
 /** Mental & physical wellbeing: check-ins, screeners, coping tools, help lines. */
 export const WELL: Bank = {
   intents: [
-    { id: 'well.checkin', kind: 'action', topic: 'feelings',
+    { id: 'well.checkin', not: [/\b(mental|depression|anxiety|screen|screening)\b/], kind: 'action', topic: 'feelings',
       examples: ['check in with me', 'do a check in', 'daily check in', 'ask me how i am doing', 'mood check', 'let us do my check in'],
       patterns: [/\bcheck ?in\b/, /\bmood check\b/] },
-    { id: 'well.screen', kind: 'action', topic: 'feelings',
-      examples: ['am i depressed', 'depression test', 'anxiety test', 'do i have anxiety', 'mental health check', 'phq9', 'gad7', 'test my mental health', 'screen me for depression', 'how is my mental health'],
-      patterns: [/\b(depression|anxiety|mental health) (test|check|screen|quiz)\b/, /\b(phq ?[29]|gad ?[27])\b/, /\bam i depressed\b/, /\bdo i have (depression|anxiety)\b/, /\bscreen me\b/] },
+    { id: 'well.screen', not: [/\b(been|lately|doing)\b/], kind: 'action', topic: 'feelings',
+      examples: ['quiz me on anxiety', 'test me for anxiety', 'test me for depression', 'check my anxiety', 'let us do a mental health screening', 'screen me', 'do a depression screening', 'run a mental health check', 'am i depressed', 'depression test', 'anxiety test', 'do i have anxiety', 'mental health check', 'phq9', 'gad7', 'test my mental health', 'screen me for depression', 'how is my mental health'],
+      patterns: [/\b(quiz|test) me (on|for)\b.*\b(anxiety|depression)\b/, /\b(mental health|depression|anxiety) (screening|assessment)\b/, /\b(depression|anxiety|mental health) (test|check|screen|quiz)\b/, /\b(phq ?[29]|gad ?[27])\b/, /\bam i depressed\b/, /\bdo i have (depression|anxiety)\b/, /\bscreen me\b/] },
     { id: 'well.report', kind: 'info', topic: 'feelings',
-      examples: ['how has my mood been', 'mental health report', 'am i doing okay lately', 'mood trends', 'how have i been feeling this month', 'wellbeing report', 'show my mood history'],
-      patterns: [/\bmood (trend|history|report|been)\b/, /\b(wellbeing|well being|mental health) report\b/, /\bhow (have i been|has my mood been)\b/] },
+      examples: ['how is my mental health been', 'how has my mental health been lately', 'how have i been mentally', 'how has my mood been', 'mental health report', 'am i doing okay lately', 'mood trends', 'how have i been feeling this month', 'wellbeing report', 'show my mood history'],
+      patterns: [/\bmy mental health\b.*\b(been|lately|doing)\b/, /\bmood (trend|history|report|been)\b/, /\b(wellbeing|well being|mental health) report\b/, /\bhow (have i been|has my mood been)\b/] },
     { id: 'well.breathe', kind: 'chat', topic: 'feelings',
       examples: ['help me breathe', 'breathing exercise', 'i need to calm down', 'calm me down', 'i am panicking help', 'guide me through breathing'],
       patterns: [/\bbreath(e|ing)\b/, /\bcalm (me )?down\b/, /\bpanic attack\b/] },
@@ -23,8 +23,8 @@ export const WELL: Bank = {
       patterns: [/\b(negative|intrusive) thoughts\b/, /\bthought record\b/, /\bchallenge my thoughts\b/] },
     // ---------------- health (passive senses)
     { id: 'health.sleep', kind: 'info', topic: 'sleep',
-      examples: ['how did i sleep', 'how much did i sleep last night', 'my sleep', 'sleep report', 'what time did i go to bed', 'how long did i sleep'],
-      patterns: [/\bhow (did|much|long) (did )?i sleep\b/, /\bsleep (report|stats|score|last night)\b/, /\bwhat time did i (go to bed|wake up|fall asleep)\b/, /^my sleep$/] },
+      examples: ['how many hours did i sleep', 'did i sleep enough', 'how was my sleep', 'how did i sleep', 'how much did i sleep last night', 'my sleep', 'sleep report', 'what time did i go to bed', 'how long did i sleep'],
+      patterns: [/\bhow many hours (did|have) i (sleep|slept)\b/, /\bhow (did|much|long) (did )?i sleep\b/, /\bsleep (report|stats|score|last night)\b/, /\bwhat time did i (go to bed|wake up|fall asleep)\b/, /^my sleep$/] },
     { id: 'health.steps', kind: 'info', topic: 'fitness',
       examples: ['how many steps today', 'my steps', 'how far have i walked', 'step count', 'how active was i today', 'steps yesterday'],
       patterns: [/\bsteps?\b/, /\bhow (far|much) (have i|did i) walk/, /\bhow active\b/], not: [/\b(next|first|small|baby|break it into) steps?\b/] },
@@ -51,8 +51,8 @@ export const WELL: Bank = {
       examples: ['what is on my clipboard', 'read my clipboard', 'what did i copy', 'paste'],
       patterns: [/\b(read|what is on) my clipboard\b/, /^paste$/, /\bwhat did i copy\b/] },
     { id: 'well.help', kind: 'info', topic: 'feelings',
-      examples: ['i need professional help', 'find a therapist', 'helpline numbers', 'who can i talk to', 'crisis line', 'mental health hotline', 'i need someone to talk to'],
-      patterns: [/\b(helpline|hotline|crisis line|therapist|counsell?or|psychologist|professional help)\b/, /\bsomeone to talk to\b/] },
+      examples: ['i need to talk to a professional', 'i need professional help', 'i need to see a therapist', 'i should talk to someone', 'i need to see a counsellor', 'i need professional help', 'find a therapist', 'helpline numbers', 'who can i talk to', 'crisis line', 'mental health hotline', 'i need someone to talk to'],
+      patterns: [/\b(talk|speak) to (a |someone|somebody|a professional)\b/, /\bneed (to see|to talk to) (a )?(therapist|counsel+or|psychologist|professional)\b/, /\b(helpline|hotline|crisis line|therapist|counsell?or|psychologist|professional help)\b/, /\bsomeone to talk to\b/] },
   ],
   rules: {
     'r.health': ['{body}', '#health.open# {body}', '{body} #health.tip#'],
@@ -63,6 +63,23 @@ export const WELL: Bank = {
     'r.well.crisis': [
       'I’m really glad you told me, #h#. You matter, and you don’t have to carry this alone. Please reach out to someone right now:\n{help}\n\nIf you can, tell someone near you how you’re feeling, or let me open your phone app to call. Are you safe right now?',
       'Thank you for telling me. That took courage, and I’m staying right here with you. Please talk to a person who can help tonight:\n{help}\n\nWould you like me to call one of these, or message someone you trust? Are you safe at this moment?',
+    ],
+    'well.safety.no': [
+      'Thank you for being honest with me. Your safety matters most right now. Please call {emergency} or go to the nearest emergency room, or ask someone near you to stay with you. These people can also help right now:\n{help}\n\nI’m staying right here. Is there someone I can message or call for you?',
+    ],
+    'well.safety.yes': [
+      'I’m really glad. I’m here and I’m listening: what has been weighing on you? And if the feeling gets stronger, these are always there:\n{help}',
+      'Okay. Thank you for telling me. Would you like to talk about what’s been going on? I’m not going anywhere. If it gets heavier, please use one of these:\n{help}',
+    ],
+    'r.well.emergency': [
+      'Please act right now, #h#. Call {emergency} immediately, or ask someone near you to call. Tell them exactly what you took and how much. Don’t stay alone: go to a neighbour, a family member, or the nearest emergency room. I’m staying right here with you.\n{help}',
+    ],
+    'r.well.soft': [
+      'That sounds like more than anyone should have to carry, #h#. I’m right here. Can I ask you something directly: are you having thoughts of ending your life or hurting yourself?',
+      'I’m really sorry it has got this heavy. I’m listening. Are you thinking about ending your life or hurting yourself, or is it more that you’re completely worn out?',
+    ],
+    'well.soft.no': [
+      'Thank you for telling me, and I’m glad. Let’s take it one small step at a time: what is the heaviest part right now? If it ever turns into thoughts of ending your life, tell me straight away. Support is here too:\n{help}',
     ],
     'r.well.abuse': [
       'I’m so sorry that is happening to you. It is not your fault, and you deserve to be safe. If you are in danger, please call for help now:\n{help}\n\nWould you like me to help you contact someone you trust?',

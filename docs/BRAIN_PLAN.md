@@ -13,10 +13,8 @@ Goal: the most capable, private, always-on personal assistant possible on a phon
 │  JarvisCoreService (foreground, 24/7)                                │
 │    ├─ Scheduler (WorkManager + exact alarms)                         │
 │    ├─ Sensors: steps, activity, screen on/off, charging, location*   │
-│    ├─ NotificationListener* → events (who messaged, reminders)       │
 │    ├─ UsageStats* → screen time, app habits, late-night use          │
 │    ├─ Health Connect* → sleep, heart rate, steps, workouts            │
-│    ├─ AccessibilityService* → open/operate apps, read screen on ask  │
 │    └─ Event log (SQLite) ──────────────┐                             │
 │                                        ▼                             │
 │  WebView: Angular app                Reflex brain                    │
@@ -48,16 +46,16 @@ Principles: everything on-device by default; every background capability is opt-
 ### Phase 2: Always-on (native)
 - [x] `JarvisCoreService`: foreground service with a low-priority persistent notification ("Jarvis is keeping watch"), restarts on boot
 - [ ] Headless brain: run the Reflex engine in the service's WebView-free context for scheduled jobs (morning briefing, evening check-in, habit nudges, offline-question lookups, nightly memory consolidation)
-- [x] Event log: screen on/off, unlock count, steps, sleep estimate, late-night use, per-app time (UsageStats), notification counts (never content)
+- [x] Event log: screen on/off, unlock count, steps, sleep estimate, late-night use, per-app time (UsageStats)
 - [ ] Nightly consolidation: summarise the day into episodic memory, decay stale states, refresh insights
 - [ ] Battery budget: under 2%/day; adaptive sampling; nothing runs while the battery is under 15% unless charging
 
 ### Phase 3: Device control
 - [ ] Deep app launching: intents for WhatsApp chat, Maps navigation, Spotify search, YouTube search, camera, dialer, settings sub-pages
-- [ ] AccessibilityService (opt-in): "open WhatsApp and message Thandi I'm late", "pause music", "scroll", "read this screen", "turn on Do Not Disturb"
+- [ ] (Play Store build only) AccessibilityService for in-app control. Play Protect blocks sideloaded APKs that declare Accessibility or NotificationListener services, so they are not in the sideload build. Until then: deep links, intents and system panels cover opening apps, navigation, music search, sharing and settings.
 - [ ] Media session control (play/pause/next) via MediaController
 - [ ] DND, ringer mode, brightness, Wi-Fi/Bluetooth panels (Android 10+ uses settings panels)
-- [ ] Notifications: "what did I miss?" summary, auto-reminders from messages ("remind me about Sam's message tonight")
+- [ ] "What did I miss?" notification summaries need a NotificationListener, which needs a Play Store build (see above)
 - [ ] Routines: "when I get home, turn on Wi-Fi and remind me to call mom" (geofence plus time triggers)
 
 ### Phase 4: Health
