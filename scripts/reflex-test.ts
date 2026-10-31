@@ -19,6 +19,13 @@ const host: ReflexHost = {
   librarySearch: async () => [],
   updateProfile: async () => undefined,
   online: () => true,
+  http: async (url: string) => {
+    if (url.includes('api.duckduckgo.com')) return JSON.stringify(/telephone/.test(decodeURIComponent(url)) ? { AbstractText: 'Alexander Graham Bell was a Scottish-born inventor. He is credited with patenting the first practical telephone in 1876. He also co-founded AT&T.', AbstractSource: 'Wikipedia', AbstractURL: 'https://en.wikipedia.org/wiki/Alexander_Graham_Bell' } : {});
+    if (url.includes('wttr.in')) return JSON.stringify({ current_condition: [{ temp_C: '24', FeelsLikeC: '25', weatherDesc: [{ value: 'Partly cloudy' }] }], nearest_area: [{ areaName: [{ value: 'Mbabane' }] }], weather: [{ mintempC: '14', maxtempC: '27', hourly: [{ chanceofrain: '20' }, { chanceofrain: '40' }] }] });
+    if (url.includes('wikipedia.org/w/api.php')) return JSON.stringify(['q', ['Black hole'], [], []]);
+    if (url.includes('rest_v1/page/summary')) return JSON.stringify({ extract: 'A black hole is a region of spacetime where gravity is so strong that nothing, not even light, can escape it. Black holes form when massive stars collapse.', type: 'standard', content_urls: { desktop: { page: 'https://en.wikipedia.org/wiki/Black_hole' } } });
+    return '<html></html>';
+  },
   kvGet: async <T>(k: string) => kv.get(k) as T,
   kvSet: async (k, v) => { kv.set(k, v); },
   now: () => new Date(),
@@ -43,7 +50,10 @@ const cases: [string, string][] = [
   ['journal today was calm and productive', 'journal.add'], ['log my mood 4', 'mood.log'], ['new habit drink water', 'habit.add'], ['add a goal to run a marathon', 'goal.add'],
   ['good night', 'chat.night'], ['I think my boss hates me', 'fallback'], ['hmm interesting quantum stuff', 'fallback'], ['who made you', 'chat.creator'],
   ['tell me a fun fact', 'fun.fact'], ['inspire me', 'fun.quote'], ['roast me', 'fun.roast'], ['how can I sleep better', 'advice.sleep'], ["I can't focus", 'feel.procrastinate'],
-  ['what time', 'info.time'], ['ok', 'chat.ack'], ['bye', 'chat.bye'], ['take a note the gate code is 1234', 'note.create'], ['pick my top 3 for today', 'task.mit'],
+  ['what time', 'info.time'], ['i am going to the gym', 'chat.activity'],
+  ['what did i say about my sister', 'mind.said'], ['what were we talking about', 'mind.topic'], ['how long have we been talking', 'mind.when'],
+  ['who invented the telephone', 'research.ask'], ['who invented the telephone?', 'research.ask'], ["what's the weather like", 'info.web|research.ask'], ['explain black holes', 'research.ask'],
+  ['what did you say about the weather', 'mind.yousaid'], ['what did i ask you earlier', 'mind.asked'], ['how is it going', 'chat.howareyou'], ['ok', 'chat.ack'], ['bye', 'chat.bye'], ['take a note the gate code is 1234', 'note.create'], ['pick my top 3 for today', 'task.mit'],
 ];
 
 (async () => {
@@ -54,7 +64,7 @@ const cases: [string, string][] = [
     toolLog.length = 0;
     const r = await eng.respond(u);
     maxMs = Math.max(maxMs, r.ms);
-    const ok = r.intent === want || (want === 'fallback' && /^(fallback|learn)/.test(r.intent));
+    const ok = want.split('|').some(w => r.intent === w || r.intent.startsWith(w + '.')) || (want === 'fallback' && /^(fallback|learn)/.test(r.intent));
     if (ok) pass++;
     console.log(`${ok ? '✓' : '✗'} [${r.intent} ${r.confidence.toFixed(2)} ${r.ms}ms] ${u}\n   → ${r.text.replace(/\n/g, ' ⏎ ')}${toolLog.length ? `\n   ⚙ ${toolLog.join(' | ')}` : ''}${ok ? '' : `   (wanted ${want})`}`);
   }

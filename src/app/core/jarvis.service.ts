@@ -331,6 +331,7 @@ ${this.tools.catalogue(tools)}`);
     this.messages.update(a => [...a, reply]);
     const patchReply = (p: Partial<UiMessage>) => this.messages.update(a => a.map(m => (m.id === reply.id ? { ...m, ...p } : m)));
     try {
+      this.reflex.onStatus = t => this.status.set(t);
       const r = await this.reflex.respond(clean, this.confirm);
       if (r.intent === 'meta.stop') this.voice.stopSpeaking();
       const records: ToolCallRecord[] = r.tools.map(t => ({ name: t.name, args: t.args, ok: t.ok, result: t.result }));

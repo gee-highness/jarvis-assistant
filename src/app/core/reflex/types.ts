@@ -81,6 +81,10 @@ export interface ReflexHost {
   embed?(texts: string[]): Promise<number[][] | null>;
   embedKey?(): string;
   online(): boolean;
+  /** Raw GET (no CORS limits on native). Enables online research. */
+  http?(url: string): Promise<string>;
+  /** Live status line while Jarvis works ("Looking that up…"). */
+  status?(text: string): void;
   kvGet<T>(key: string): Promise<T | undefined>;
   kvSet(key: string, v: unknown): Promise<void>;
   now(): Date;

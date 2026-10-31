@@ -32,6 +32,8 @@ export class ReflexService {
   private confirmFn: ToolContext['confirm'] = async () => true;
 
   readonly stats = signal<ReflexStats | null>(null);
+  /** Set by the chat service to show "Looking that up…". */
+  onStatus: (t: string) => void = () => undefined;
   readonly lastMs = signal(0);
   readonly ready = signal(false);
 
@@ -51,6 +53,8 @@ export class ReflexService {
     embed: async texts => (this.embedUsable() ? this.ollama.embed(texts) : null),
     embedKey: () => (this.embedUsable() ? this.ollama.embedKey() : ''),
     online: () => typeof navigator === 'undefined' || navigator.onLine,
+    http: url => this.tools.fetchText(url),
+    status: t => this.onStatus(t),
     kvGet: async <T>(k: string) => (await this.db.kv.get(k))?.v as T | undefined,
     kvSet: async (k, v) => { await this.db.kv.put({ k, v }); },
     now: () => new Date(),

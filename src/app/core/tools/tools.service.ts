@@ -853,6 +853,9 @@ export class ToolsService {
     },
   ];
 
+  /** Plain GET used by the Reflex researcher (native HTTP: no CORS). */
+  fetchText(url: string): Promise<string> { return this.httpGet(url); }
+
   private async httpGet(url: string): Promise<string> {
     if (isNative()) {
       const r = await CapacitorHttp.get({ url, headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 14) Jarvis/1.0' }, responseType: 'text' });

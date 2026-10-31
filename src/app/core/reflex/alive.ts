@@ -26,6 +26,9 @@ export interface InnerState {
   topics: Record<string, number>;
   seed: number;
   birthday?: string; // MM-DD
+  /** Questions asked while offline, answered later. */
+  lookups?: { q: string; t: number }[];
+  lookedUp?: { q: string; t: number; answer: string; source: string; told?: boolean }[];
   lastBirthdayYear?: number;
 }
 

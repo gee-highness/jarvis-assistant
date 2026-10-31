@@ -8,6 +8,9 @@ import { ACTIONS } from './banks/actions';
 import { CHAT } from './banks/chat';
 import { COMMON } from './banks/common';
 import { EXTRA } from './banks/extra';
+import { MIND } from './banks/mind';
+import { EpisodicMemory, Episode, LiveState, ago, span, windowOf } from './episodic';
+import { Finding, Researcher, cleanQuery, isKnowledgeQuestion } from './research';
 import { KNOWLEDGE, RIDDLES } from './banks/knowledge';
 import { Entities, cleanTitle, extract, fmtDay, fmtTime, fmtWhen } from './entities';
 import { LearnedFact, PROFILE_QS, cleanAnswer, learnFacts, recallQuery, secondPerson } from './facts';
@@ -54,9 +57,12 @@ export class ReflexEngine {
   private lastUser = '';
   private recentOutputs: string[] = [];
   private riddleIdx: number[] = [];
+  readonly episodic = new EpisodicMemory();
+  private researcher!: Researcher;
+  private lookupBusy = false;
 
   constructor(private host: ReflexHost, extraBanks: Bank[] = []) {
-    for (const b of [CHAT, ACTIONS, EXTRA, ...extraBanks]) { this.intents.push(...b.intents); this.grammar.add(b.rules); }
+    for (const b of [CHAT, ACTIONS, EXTRA, MIND, ...extraBanks]) { this.intents.push(...b.intents); this.grammar.add(b.rules); }
     this.grammar.add(COMMON);
     this.grammar.add(KNOWLEDGE);
     this.grammar.add(ALIVE_RULES);
@@ -68,6 +74,9 @@ export class ReflexEngine {
       this.inner = { ...freshInner(Date.now()), ...((await this.host.kvGet<InnerState>('inner')) ?? {}) };
       this.learned = (await this.host.kvGet<{ intent: string; text: string }[]>('learned')) ?? [];
       this.model = new IntentModel(this.intents, this.learned);
+      this.episodic.load(await this.host.kvGet<Episode[]>('episodes'), await this.host.kvGet<LiveState[]>('states'));
+      this.researcher = new Researcher(u => this.host.http ? this.host.http(u) : Promise.reject(new Error('offline')), c => this.host.kvSet('answers', c).catch(() => undefined));
+      this.researcher.load(await this.host.kvGet('answers'));
       if (this.host.profile().userName && !this.inner.known.includes('name')) this.inner.known.push('name');
     })();
     return this.ready;
@@ -118,6 +127,9 @@ export class ReflexEngine {
     if (emo.emotion !== 'neutral') this.inner.userMood = this.inner.userMood * 0.75 + emo.valence * 0.25;
     this.inner.mood = Math.max(-1, Math.min(1, this.inner.mood * 0.9 + emo.valence * 0.1 + 0.03));
     const ent = extract(text, now);
+    const repeat = text.split(' ').length >= 3 ? this.episodic.repeatOf(raw, 30 * 60_000, now.getTime()) : undefined;
+    this.episodic.noteState(text, now.getTime());
+    this.episodic.add({ t: now.getTime(), who: 'user', text: raw });
     let out: Out | null = null;
     let intent = 'none';
     let conf = 0;
@@ -197,7 +209,7 @@ export class ReflexEngine {
       if (sp) {
         this.inner.lastSpiceTurn = this.inner.turns;
         this.inner.lastSpiceKind = String(sp.vars?.['_kind'] ?? '');
-        if (sp.ask) {
+        if (sp.ask && /\?\s*$/.test(reply)) { /* already asking something */ } else if (sp.ask) {
           this.inner.lastAskTurn = this.inner.turns;
           const q = PROFILE_QS.find(p => p.key === sp.ask)!;
           this.inner.asked.push(q.key);
@@ -215,7 +227,25 @@ export class ReflexEngine {
       }
     }
     if (out!.pending) this.ds.pending = { ...out!.pending, turn: this.ds.turn };
+    // human memory: follow up on things the user was doing, and on questions answered since
+    if (!out!.quiet && !out!.pending && reply && (spec?.kind === 'chat' || intent === 'fallback')) {
+      const st = this.episodic.dueState(now.getTime());
+      const told = (this.inner.lookedUp ?? []).find(l => !l.told);
+      if (told) {
+        told.told = true;
+        reply += '\n\n' + this.say('spice.lookedup', { ago: ago(told.t, now.getTime()), q: told.q, answer: told.answer, source: told.source });
+      } else if (st && emo.valence > -0.5) {
+        st.asked = true;
+        const a = ago(st.t, now.getTime());
+        reply += ' ' + this.say(st.kind === 'feeling' ? 'spice.state.feeling' : 'spice.state.activity', { what: st.what, ago: capFirst(a), agoLower: a });
+      }
+    }
+    if (repeat && (spec?.kind === 'info' || intent === 'fallback') && !/^mind\./.test(intent)) reply = `${this.say('mind.repeat', { ago: ago(repeat.t, now.getTime()) })} ${reply}`;
     reply = this.style(reply, spec?.topic ?? out!.topic);
+    const lastUserEp = [...this.episodic.episodes].reverse().find(e => e.who === 'user');
+    if (lastUserEp) { lastUserEp.intent = intent; lastUserEp.topic = spec?.topic ?? out!.topic; }
+    this.episodic.add({ t: Date.now(), who: 'jarvis', text: reply, intent, topic: spec?.topic ?? out!.topic, extraKeys: lastUserEp?.k });
+    this.lookupLater();
 
     // 5) bookkeeping
     if (intent !== 'chat.repeat' && intent !== 'meta.stop') this.ds.lastBot = reply;
@@ -423,6 +453,7 @@ export class ReflexEngine {
       }
       case 'profile': {
         if (no || /^(i do not know|not sure|skip|pass|none|nothing)\b/.test(h.text)) return { out: { sym: 'learn.skip' }, intent: 'chat.no' };
+        if (/^(ok|okay|cool|nice|alright|fine|great|lol|haha|hmm+|yes|sure|thanks)$/.test(h.text)) return null;
         if (h.n.question || h.text.split(' ').length > 14) return null;
         const q = PROFILE_QS.find(x => x.key === p.key);
         const a = cleanAnswer(h.text, h.raw);
@@ -512,6 +543,7 @@ export class ReflexEngine {
       const opts = cands.map(c => c.id);
       return { sym: 'r.fallback.choice', vars: { choices: opts.map((o, i) => `${i + 1}) ${LABEL[o]}`).join(', ') }, pending: { kind: 'choice', options: opts, utter: h.text, raw: h.raw }, quiet: true };
     }
+    if (isKnowledgeQuestion(h.text) || (h.n.question && h.text.split(' ').length >= 4 && !/\b(you|your|we)\b/.test(h.text))) return this.handlers['research.ask'](h);
     const reflect = this.reflect(h);
     if (reflect) return reflect;
     if (h.n.question && this.host.online()) return { sym: 'r.fallback.web', pending: { kind: 'web', utter: h.text, raw: h.raw }, quiet: true };
@@ -550,7 +582,47 @@ export class ReflexEngine {
 
   private persist() {
     if (this.saveTimer) clearTimeout(this.saveTimer);
-    this.saveTimer = setTimeout(() => this.host.kvSet('inner', this.inner).catch(() => undefined), 400);
+    this.saveTimer = setTimeout(() => {
+      this.host.kvSet('inner', this.inner).catch(() => undefined);
+      this.host.kvSet('episodes', this.episodic.episodes).catch(() => undefined);
+      this.host.kvSet('states', this.episodic.states).catch(() => undefined);
+    }, 400);
+  }
+
+  /** Answers questions that were asked offline, in the background, once the phone is online. */
+  private lookupLater() {
+    const q = this.inner.lookups?.[0];
+    if (!q || this.lookupBusy || !this.host.online() || !this.host.http) return;
+    this.lookupBusy = true;
+    this.city().then(city => this.researcher.ask(q.q, { city, now: Date.now() })).then(f => {
+      this.inner.lookups = (this.inner.lookups ?? []).filter(x => x !== q);
+      if (f?.answer) this.inner.lookedUp = [...(this.inner.lookedUp ?? []).slice(-10), { q: q.q, t: q.t, answer: f.answer, source: f.source }];
+      this.persist();
+    }).catch(() => undefined).finally(() => { this.lookupBusy = false; });
+  }
+
+  private async city(): Promise<string | undefined> {
+    const hits = await this.host.memorySearch('User lives in', 3).catch(() => []);
+    return hits.map(h => h.text.match(/lives in ([A-Za-z .'-]+)/)?.[1]?.trim()).find(Boolean);
+  }
+
+  /** Online research with offline cache and an offline queue. */
+  private async research(raw: string, norm: string): Promise<Out> {
+    const now = this.host.now().getTime();
+    const q = cleanQuery(norm) || norm;
+    const online = this.host.online() && !!this.host.http;
+    if (!online) {
+      const c = this.researcher.recall(q, now, true);
+      if (c) return { sym: 'r.research.cached', vars: { ...c, ago: ago(c.t, now) }, topic: 'web' };
+      if (!(this.inner.lookups ?? []).some(l => l.q === q)) this.inner.lookups = [...(this.inner.lookups ?? []).slice(-10), { q: raw.replace(/\?+$/, ''), t: now }];
+      return { sym: 'r.research.offline', topic: 'web' };
+    }
+    this.host.status?.('Looking that up…');
+    let f: Finding | undefined;
+    try { f = await this.researcher.ask(raw, { city: await this.city(), now }); } finally { this.host.status?.(''); }
+    if (!f?.answer) return { sym: 'r.research.none', topic: 'web' };
+    const vars = { answer: f.answer.trim().replace(/([^.!?])$/, '$1.'), source: f.source, ago: ago(f.t, now) };
+    return { sym: f.cached && now - f.t > 3600_000 ? 'r.research.cached' : f.confidence < 0.5 ? 'r.research.unsure' : 'r.research.found', vars, topic: 'web', quiet: true };
   }
 
   private async tool(name: string, args: Record<string, unknown>): Promise<{ ok: boolean; result: string }> {
@@ -942,11 +1014,63 @@ export class ReflexEngine {
       if (!hits[0]) return { sym: 'r.info.library.none' };
       return { sym: 'r.info.library', vars: { doc: hits[0].doc, snippet: bestSentence(hits[0].text, q) }, topic: 'docs', quiet: true };
     };
-    H['info.web'] = async h => {
-      if (!this.host.online()) return { sym: 'r.info.web.offline' };
-      const q = strip(h.text, /^(please )?(search the web|search online|search the internet|find online|look up|lookup|search|google)( for| about)?\b/) || h.text;
-      const r = await this.tool('web_search', { query: q });
-      return { sym: 'r.info.web', vars: { result: r.result.slice(0, 900) }, quiet: true, topic: 'web' };
+    H['info.web'] = async h => this.research(h.raw, h.text);
+    H['research.ask'] = async h => this.research(h.raw, h.text);
+
+    // ---------------- conversation memory & time
+    const winText = (w?: { label: string }) => (w ? ` ${w.label}` : '');
+    const quote = (e: Episode) => `“${e.text.length > 160 ? e.text.slice(0, 157) + '…' : e.text}”`;
+    H['mind.said'] = async h => {
+      const nowMs = now().getTime();
+      const win = windowOf(h.text, nowMs);
+      const about = h.text.match(/\b(?:about|regarding|on the subject of|re) (.+?)(?: earlier| before| yesterday| today| this morning| last night| \d+ \w+ ago| an? \w+ ago)?$/)?.[1]
+        ?? h.text.match(/\bdid i (?:say|tell you|mention)(?: anything)?(?: about)? (.+?)(?: earlier| yesterday| before)?$/)?.[1] ?? '';
+      const hits = this.episodic.search(about, { who: 'user', win, skipLast: 1, k: about ? 3 : 2 });
+      if (!hits.length) return { sym: 'r.mind.said.none', vars: { kw: about || 'that', when: winText(win) }, quiet: true };
+      const found = hits.map(e => `${capFirst(ago(e.t, nowMs))} you said ${quote(e)}`).join('\n');
+      return { sym: 'r.mind.said', vars: { found }, quiet: true };
+    };
+    H['mind.yousaid'] = async h => {
+      const nowMs = now().getTime();
+      const win = windowOf(h.text, nowMs);
+      const about = h.text.match(/\babout (.+?)(?: earlier| before| yesterday| today)?$/)?.[1] ?? '';
+      const hits = this.episodic.search(about, { who: 'jarvis', win, skipLast: 0, k: about ? 2 : 1 });
+      if (!hits.length) return { sym: 'r.mind.said.none', vars: { kw: about || 'that', when: winText(win) }, quiet: true };
+      return { sym: 'r.mind.yousaid', vars: { found: hits.map(e => `${capFirst(ago(e.t, nowMs))} I said ${quote(e)}`).join('\n') }, quiet: true };
+    };
+    H['mind.asked'] = async h => {
+      const nowMs = now().getTime();
+      const win = windowOf(h.text, nowMs);
+      const qs = this.episodic.episodes.slice(0, -1).filter(e => e.who === 'user' && (!win || (e.t >= win.from && e.t <= win.to)) && (/\?\s*$/.test(e.text) || normalize(e.text).question)).slice(-3).reverse();
+      if (!qs.length) return { sym: 'r.mind.said.none', vars: { kw: 'questions', when: winText(win) }, quiet: true };
+      return { sym: 'r.mind.said', vars: { found: qs.map(e => `${capFirst(ago(e.t, nowMs))} you asked ${quote(e)}`).join('\n') }, quiet: true };
+    };
+    H['mind.topic'] = async h => {
+      const nowMs = now().getTime();
+      const win = windowOf(h.text, nowMs) ?? { from: nowMs - 6 * 3600_000, to: nowMs, label: '' };
+      const lastUser = this.episodic.episodes.slice(0, -1).filter(e => e.who === 'user' && e.t >= win.from && e.t <= win.to);
+      const topics = this.episodic.topics(win).filter(t => !['greeting', 'memory'].includes(t.topic)).slice(0, 4);
+      if (!lastUser.length) return { sym: 'r.mind.topic.none', vars: { when: winText(win.label ? win : undefined) }, quiet: true };
+      const last = lastUser[lastUser.length - 1];
+      const found = `${topics.length ? `We covered ${listify(topics.map(t => `${t.topic} (${ago(t.t, nowMs)})`))}. ` : ''}The last thing you said, ${ago(last.t, nowMs)}, was ${quote(last)}`;
+      return { sym: 'r.mind.topic', vars: { found }, quiet: true };
+    };
+    H['mind.when'] = async h => {
+      const nowMs = now().getTime();
+      if (/\bfirst (talk|speak|meet)|how long have you known me\b/.test(h.text)) {
+        return { sym: 'r.mind.when', vars: { found: `We first spoke ${ago(this.inner.firstSeen, nowMs)}; that is ${span(nowMs - this.inner.firstSeen)} and ${this.inner.turns} message${this.inner.turns === 1 ? '' : 's'} ago.` } };
+      }
+      if (/how long (have we been talking|has this)/.test(h.text)) {
+        const start = this.episodic.firstSince(45 * 60_000, nowMs) ?? nowMs;
+        return { sym: 'r.mind.when', vars: { found: nowMs - start < 90_000 ? 'We only just started, a minute or so ago.' : `This conversation started ${ago(start, nowMs)}; ${span(nowMs - start)} so far.` } };
+      }
+      if (/last talk(ed)? to you\b/.test(h.text)) {
+        const prev = this.inner.lastSeenPrev;
+        return { sym: 'r.mind.when', vars: { found: prev ? `Before this, you last spoke to me ${ago(prev, nowMs)}.` : 'This is our first chat today.' } };
+      }
+      const about = h.text.match(/\b(?:about|mention(?:ed)?|ask(?:ed)? about|tell you about) (.+)$/)?.[1] ?? '';
+      const hit = this.episodic.search(about, { who: 'user', skipLast: 1, k: 1 })[0];
+      return hit ? { sym: 'r.mind.when', vars: { found: `You last mentioned ${about || 'that'} ${ago(hit.t, nowMs)}: ${quote(hit)}` } } : { sym: 'r.mind.said.none', vars: { kw: about || 'that', when: '' } };
     };
 
     // ---------------- persona
