@@ -10,6 +10,7 @@ import { JarvisDevice, isNative } from './core/native';
 import { NotifyService } from './core/notify.service';
 import { NudgeService } from './core/nudge.service';
 import { LlmService } from './core/llm.service';
+import { ReflexService } from './core/reflex/reflex.service';
 import { ProgressService } from './core/progress.service';
 import { BackupService } from './core/backup.service';
 import { LibraryService } from './core/library.service';
@@ -168,13 +169,15 @@ export class AppComponent implements OnInit {
   private backup = inject(BackupService);
   private library = inject(LibraryService);
   private wake = inject(WakeService);
+  private reflex = inject(ReflexService);
   private diag = inject(DiagService);
   readonly gamify = computed(() => this.store.settings().gamify);
   readonly clock = signal(hm());
-  readonly sysOk = computed(() => this.ollama.state() === 'online' || (this.store.settings().engine === 'device' && this.llm.activeInstalled()));
+  readonly sysOk = computed(() => this.store.settings().brain !== 'llm' || this.ollama.state() === 'online' || (this.store.settings().engine === 'device' && this.llm.activeInstalled()));
   readonly sysLabel = computed(() => this.llm.loading() ? 'loading core' : this.busyLabel());
   private busyLabel() {
     if (this.jarvis.busy()) return 'thinking';
+    if (this.store.settings().brain !== 'llm') return 'reflex · offline';
     if (this.store.settings().engine === 'device') return this.llm.activeInstalled() ? 'on-device · offline' : 'no brain installed';
     return this.ollama.state() === 'online' ? 'online' : 'brain offline';
   }
@@ -248,7 +251,7 @@ export class AppComponent implements OnInit {
       const a = [...msgs].reverse().find(m => m.role === 'assistant' && m.content && !m.streaming);
       const q = a ? [...msgs].reverse().find(m => m.role === 'user' && m.createdAt <= a.createdAt) : undefined;
       const st = this.ollama.state();
-      const status = this.llm.loading() ? 'Loading brain…' : st === 'online' ? 'Ready · on-device' : st === 'offline' ? 'Brain offline' : 'Ready';
+      const status = this.store.settings().brain !== 'llm' ? 'Ready · offline' : this.llm.loading() ? 'Loading brain…' : st === 'online' ? 'Ready · on-device' : st === 'offline' ? 'Brain offline' : 'Ready';
       JarvisDevice.updateChatWidget({
         question: q ? q.content.slice(0, 140) : '',
         answer: a ? speakable(a.content).slice(0, 600) : `At your service, ${this.store.settings().honorific}. Tap below to ask anything.`,
@@ -271,6 +274,7 @@ export class AppComponent implements OnInit {
     this.nudges.start();
     this.mcp.connectAll().catch(() => undefined);
     // warm up the brain in the background so the first question is fast
+    this.reflex.init().catch(() => undefined);
     this.llm.init().then(() => this.jarvis.ensureEngine()).then(ok => {
       if (!ok) return;
       if (this.store.settings().engine === 'ollama') this.ollama.listModels().catch(() => undefined);

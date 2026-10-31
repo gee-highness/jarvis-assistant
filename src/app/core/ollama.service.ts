@@ -361,6 +361,8 @@ export class OllamaService {
   /** One-shot, non-streaming helper for background jobs (summaries, extraction, parsing). */
   async complete(system: string, user: string, opts: Omit<ChatOptions, 'onToken'> = {}): Promise<string> {
     const s = this.store.settings();
+    // Reflex brain: no language model is ever loaded; callers fall back to their rule-based paths.
+    if (s.brain !== 'llm') throw new Error('Reflex brain active (no language model)');
     const res = await this.chat(
       [{ role: 'system', content: system }, { role: 'user', content: user }],
       { model: opts.model || s.utilityModel || s.chatModel, temperature: 0.2, think: false, background: true, ...opts },

@@ -210,11 +210,15 @@ export const CLOUD_PRESETS: Record<CloudProvider, { label: string; baseUrl: stri
 };
 
 export type EngineKind = 'device' | 'ollama';
+/** reflex = instant LLM-free brain (default); llm = language model via the engine below. */
+export type BrainMode = 'reflex' | 'llm';
 
 export interface Settings {
   id: 'main';
   userName: string;
   honorific: string;
+  /** Reflex (no language model, instant) or a language model. */
+  brain: BrainMode;
   /** Which local brain runs the AI: built-in llama.cpp engine or Ollama (Termux / PC). */
   engine: EngineKind;
   /** On-device model: a DEVICE_MODELS id, or "file:<name>.gguf" for an imported model. */
@@ -274,6 +278,7 @@ export const DEFAULT_SETTINGS: Settings = {
   id: 'main',
   userName: '',
   honorific: 'sir',
+  brain: 'reflex',
   engine: 'device',
   deviceModel: 'hermes3-3b',
   deviceEmbed: true,

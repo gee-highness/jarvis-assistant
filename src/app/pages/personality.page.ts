@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { JarvisService } from '../core/jarvis.service';
+import { ReflexService } from '../core/reflex/reflex.service';
 import { OllamaService } from '../core/ollama.service';
 import { LANGUAGES, PRESETS, Personality, ROLES, TRAITS, TraitKey, mergePersonality } from '../core/personality';
 import { StoreService } from '../core/store.service';
@@ -93,6 +94,7 @@ export class PersonalityPage {
   readonly store = inject(StoreService);
   private ollama = inject(OllamaService);
   private jarvis = inject(JarvisService);
+  private reflex = inject(ReflexService);
   readonly s = this.store.settings;
   readonly p = computed(() => this.s().personality);
   readonly presets = PRESETS; readonly roles = ROLES; readonly traits = TRAITS; readonly langs = LANGUAGES; readonly probes = PROBES;
@@ -115,6 +117,11 @@ export class PersonalityPage {
   async probe(q: string) {
     this.busy.set(true); this.reply.set('');
     try {
+      if (this.jarvis.reflexMode()) {
+        await this.reflex.init();
+        this.reply.set((await this.reflex.engine.preview(q)));
+        return;
+      }
       if (!(await this.jarvis.ensureEngine())) { this.reply.set('The brain is offline. Download a model on the Brain page first.'); return; }
       this.reply.set(await this.ollama.complete(this.jarvis.persona() + '\nReply in character in at most 3 sentences.', q, { temperature: 0.8, background: false, maxTokens: 160 }));
     } catch (e: any) { this.reply.set('Could not generate a preview: ' + (e?.message ?? e)); } finally { this.busy.set(false); }

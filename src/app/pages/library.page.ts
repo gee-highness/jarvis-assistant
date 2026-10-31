@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { LibHit, LibraryService } from '../core/library.service';
 import { OllamaService } from '../core/ollama.service';
 import { JarvisService } from '../core/jarvis.service';
+import { ReflexService } from '../core/reflex/reflex.service';
 import { MdPipe } from '../ui/md.pipe';
 
 @Component({
@@ -52,6 +53,7 @@ export class LibraryPage implements OnInit {
   readonly lib = inject(LibraryService);
   private ollama = inject(OllamaService);
   private jarvis = inject(JarvisService);
+  private reflex = inject(ReflexService);
   readonly error = signal(''); readonly asking = signal(false); readonly answer = signal(''); readonly hits = signal<LibHit[]>([]);
   q = ''; pasteName = ''; pasteText = '';
 
@@ -75,6 +77,7 @@ export class LibraryPage implements OnInit {
       const hits = await this.lib.search(this.q, 5);
       this.hits.set(hits);
       if (!hits.length) { this.answer.set('Nothing relevant found in your documents.'); return; }
+      if (this.jarvis.reflexMode()) { await this.reflex.init(); this.answer.set(this.reflex.engine.answerFrom(this.q, hits)); return; }
       if (!(await this.jarvis.ensureEngine())) { this.answer.set('The brain is offline; showing the best passages below.'); return; }
       const ctx = hits.map((h, i) => `[${i + 1}] (${h.doc}) ${h.text}`).join('\n\n');
       this.answer.set(await this.ollama.complete(this.jarvis.persona() + '\nAnswer ONLY from the passages provided. Cite sources like [1]. If the answer is not there, say so.', `Passages:\n${ctx}\n\nQuestion: ${this.q}`, { temperature: 0.2, background: false, maxTokens: 400 }));
