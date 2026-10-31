@@ -13,7 +13,7 @@ import java.util.Locale;
 
 /**
  * On-device daily log of passive signals: steps, unlocks, screen time, sleep estimate,
- * late-night use and notification counts. Never leaves the phone.
+ * and late-night use. Never leaves the phone.
  */
 public final class SenseStore {
     private static final String PREFS = "jarvis_sense";
@@ -50,19 +50,6 @@ public final class SenseStore {
         String d = day(System.currentTimeMillis());
         JSONObject o = get(c, d);
         if (!o.has(key)) { try { o.put(key, value); } catch (Exception ignored) { } put(c, d, o); }
-    }
-
-    static synchronized void countNotification(Context c, String pkg) {
-        String d = day(System.currentTimeMillis());
-        JSONObject o = get(c, d);
-        try {
-            JSONObject n = o.optJSONObject("notif");
-            if (n == null) n = new JSONObject();
-            n.put(pkg, n.optInt(pkg, 0) + 1);
-            o.put("notif", n);
-            o.put("notifTotal", o.optInt("notifTotal", 0) + 1);
-        } catch (Exception ignored) { }
-        put(c, d, o);
     }
 
     // ---------------- steps (TYPE_STEP_COUNTER is cumulative since boot)

@@ -58,6 +58,9 @@ export class ReflexEngine {
   private ready: Promise<void> | null = null;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   private lastUser = '';
+  /** The last real request (not small talk, not feedback): what "teach" and complaints refer to. */
+  private lastActionable?: { text: string; raw: string; intent: string };
+  private lastResearch?: { q: string; source: string; url?: string; t: number; cached?: boolean };
   private recentOutputs: string[] = [];
   private riddleIdx: number[] = [];
   readonly episodic = new EpisodicMemory();
@@ -214,7 +217,7 @@ export class ReflexEngine {
     // 4) compose + spice
     let reply = this.render(out!);
     const spec = this.model.spec(intent);
-    if (!out!.quiet && !out!.pending && reply) {
+    if (!out!.quiet && !out!.pending && reply && !/^chat\.(no|laugh|sorry|insult)$/.test(intent)) {
       const sp = chooseSpice({
         inner: this.inner, state: this.host.state(), traits: this.host.profile().traits, now, intentKind: spec?.kind ?? 'chat', quiet: !!out!.quiet,
         emotionNegative: emo.valence < -0.2, missingProfile: this.inner.turns >= 6 && this.inner.turns - (this.inner.lastAskTurn ?? -99) >= 12 ? this.missingProfile() : [],
@@ -270,6 +273,7 @@ export class ReflexEngine {
     this.ds.recentIntents = [...this.ds.recentIntents.slice(-9), intent];
     this.ds.emotion = emo;
     this.lastUser = text;
+    if (text && spec && intent !== 'fallback' && !/^(meta\.|chat\.(yes|no|ack|laugh|insult|thanks|sorry|test|repeat))/.test(intent) || (intent === 'fallback' && text)) this.lastActionable = { text, raw, intent };
     this.persist();
     return { text: reply, intent, confidence: conf, tools, deferred: intent === 'fallback' && conf < BANDS.mid, ms: Date.now() - t0 };
   }
@@ -434,7 +438,7 @@ export class ReflexEngine {
     const no = /^(no|nope|nah|cancel|never ?mind|stop|do not|not now|leave it|forget it|skip)\b/.test(h.text);
     switch (p.kind) {
       case 'slot': {
-        if (no) return { out: { sym: 'r.chat.no' }, intent: 'chat.no' };
+        if (no) return { out: { sym: 'r.chat.no', quiet: true }, intent: 'chat.no' };
         const e2 = extract(h.text, this.host.now());
         if (p.slot === 'when' && !e2.at && !e2.date) return null;
         if (p.slot === 'dur' && !e2.minutes && !e2.seconds && e2.number === undefined) return null;
@@ -450,7 +454,7 @@ export class ReflexEngine {
       case 'web': {
         if (yes && p.kind === 'web') return { out: await this.handlers['info.web']({ ...h, text: p.utter ?? h.text, raw: p.raw ?? h.raw, intent: 'info.web' }), intent: 'info.web' };
         if (yes && p.intent && this.handlers[p.intent]) return { out: await this.handlers[p.intent]({ ...h, text: p.utter ?? h.text, raw: p.raw ?? h.raw, ent: extract(p.utter ?? h.text, this.host.now()), intent: p.intent }), intent: p.intent };
-        if (no) return { out: { sym: 'r.chat.no' }, intent: 'chat.no' };
+        if (no) return { out: { sym: 'r.chat.no', quiet: true }, intent: 'chat.no' };
         return null;
       }
       case 'choice': {
@@ -462,7 +466,7 @@ export class ReflexEngine {
           const best = bestFuzzy(h.text, labels.map((l, i) => ({ l, i })), x => x.l, 0.45);
           if (best) idx = best.i;
         }
-        if (idx === -1 && no) return { out: { sym: 'r.chat.no' }, intent: 'chat.no' };
+        if (idx === -1 && no) return { out: { sym: 'r.chat.no', quiet: true }, intent: 'chat.no' };
         if (idx === -1 && yes && opts.length) idx = 0;
         const chosen = opts[idx < 0 ? opts.length + idx : idx];
         if (!chosen) return null;
@@ -471,10 +475,10 @@ export class ReflexEngine {
         return { out: { ...out, text: [out.text, this.say('learn.ok')].filter(Boolean).join(' ') }, intent: chosen };
       }
       case 'teach': {
-        if (no) return { out: { sym: 'r.chat.no' }, intent: 'chat.no' };
+        if (no) return { out: { sym: 'r.chat.no', quiet: true }, intent: 'chat.no' };
         const r = await this.model.rank(h.text);
         const target = r.find(x => this.model.spec(x.id)?.kind !== 'meta');
-        if (!target || target.score < 0.25 || !p.utter) return { out: { text: this.say('learn.fail') }, intent: 'meta.teach' };
+        if (!target || target.score < 0.45 || !p.utter || !['action', 'info'].includes(this.model.spec(target.id)?.kind ?? '')) return null;
         this.learn(target.id, p.utter);
         const res = await this.run({ ...h, text: p.utter, raw: p.raw ?? p.utter, ent: extract(p.utter, this.host.now()), intent: target.id });
         return { out: { ...res, text: [res.text, this.say('r.meta.learned', { utter: p.utter, meaning: LABEL[target.id] ?? target.id.replace('.', ' ') })].filter(Boolean).join(' ') }, intent: target.id };
@@ -680,6 +684,7 @@ export class ReflexEngine {
     let f: Finding | undefined;
     try { f = await this.researcher.ask(raw, { city: await this.city(), now, fahrenheit: this.host.country?.() === 'US' }); } finally { this.host.status?.(''); }
     if (!f?.answer) return { sym: 'r.research.none', topic: 'web' };
+    this.lastResearch = { q: raw.replace(/[?\s]+$/, ''), source: f.source, url: f.url, t: f.t, cached: f.cached };
     const vars = { answer: f.answer.trim().replace(/([^.!?])$/, '$1.'), source: f.source, ago: ago(f.t, now) };
     return { sym: f.cached && now - f.t > 3600_000 ? 'r.research.cached' : f.confidence < 0.5 ? 'r.research.unsure' : 'r.research.found', vars, topic: 'web', quiet: true };
   }
@@ -740,7 +745,7 @@ export class ReflexEngine {
       const s = state();
       const t = h.text;
       const today = ymd(now());
-      if (/\b(next|now|first|start with)\b/.test(t) && /\bshould i\b|\bwhat\b/.test(t)) {
+      if (/\bshould i\b|\bwhere do i (start|begin)\b/.test(t) || (/\b(next|now|first|start with)\b/.test(t) && /\bwhat\b/.test(t))) {
         const top = this.pickTop(s.tasks, 1)[0];
         if (!top) return { sym: 'r.task.list.empty', vars: { open: 0 } };
         return { sym: 'r.task.next', vars: { title: top.title, why: top.isMit ? 'it is a top priority' : top.due && top.due < today ? 'it is overdue' : top.due === today ? 'it is due today' : top.urgent ? 'it is urgent' : 'it matters most right now' }, taskRef: top.title, topic: 'tasks' };
@@ -815,11 +820,11 @@ export class ReflexEngine {
     H['focus.start'] = async h => {
       const kind = /\bbreak\b/.test(h.text) ? 'break' : 'focus';
       const onTask = h.text.match(/\b(?:on|for) (?!\d)(?:the |my )?([a-z][a-z0-9 '-]{2,40}?)(?: for \d.*)?$/)?.[1];
-      const task = onTask && !/minutes?|hours?|an hour/.test(onTask) ? this.findTask(onTask, state().tasks) : undefined;
+      const task = onTask && !/minutes?|hours?|an hour|^(right )?now$|^today$|^tonight$/.test(onTask) ? this.findTask(onTask, state().tasks) : undefined;
       const r = await this.tool('start_focus', { minutes: h.ent.minutes, task: task?.id, label: task ? undefined : onTask, kind });
       if (!r.ok) return fail(r.result);
       const minutes = h.ent.minutes ?? Number(r.result.match(/(\d+)\s*-?\s*min/)?.[1] ?? 25);
-      return { sym: 'r.focus.start', vars: { minutes, kind: kind === 'break' ? 'break' : 'focus', forText: task ? ` on "${task.title}"` : onTask && !/minutes?|hours?/.test(onTask) ? ` on ${onTask}` : '' }, topic: 'focus' };
+      return { sym: 'r.focus.start', vars: { minutes, kind: kind === 'break' ? 'break' : 'focus', forText: task ? ` on "${task.title}"` : onTask && !/minutes?|hours?|^(right )?now$|^today$|^tonight$/.test(onTask) ? ` on ${onTask}` : '' }, topic: 'focus' };
     };
     H['focus.stop'] = async () => { const r = await this.tool('stop_focus', {}); return r.ok ? { sym: 'r.focus.stop', vars: { result: r.result } } : fail(r.result); };
     H['focus.stats'] = async () => { const r = await this.tool('focus_stats', {}); return { sym: 'r.focus.stats', vars: { result: r.result }, quiet: true }; };
@@ -1190,6 +1195,12 @@ export class ReflexEngine {
       const found = `${topics.length ? `We covered ${listify(topics.map(t => `${t.topic} (${ago(t.t, nowMs)})`))}. ` : ''}The last thing you said, ${ago(last.t, nowMs)}, was ${quote(last)}`;
       return { sym: 'r.mind.topic', vars: { found }, quiet: true };
     };
+    H['mind.source'] = async h => {
+      const r = this.lastResearch;
+      if (!r) return { sym: 'r.mind.source.none', quiet: true };
+      if (/\bopen\b/.test(h.text) && r.url) { const o = await this.tool('open_url', { url: r.url }); return o.ok ? { sym: 'r.phone.done', vars: { what: `Opening ${r.source}.` } } : fail(o.result); }
+      return { sym: 'r.mind.source', vars: { q: r.q, source: r.source, url: r.url ?? '', ago: ago(r.t, now().getTime()), cached: r.cached ? 1 : 0 }, quiet: true, topic: 'web' };
+    };
     H['mind.when'] = async h => {
       const nowMs = now().getTime();
       if (/\bfirst (talk|speak|meet)|how long have you known me\b/.test(h.text)) {
@@ -1272,9 +1283,21 @@ export class ReflexEngine {
     };
 
     // ---------------- meta & stateful fun
-    H['meta.teach'] = async () => ({ sym: 'r.meta.teach', pending: { kind: 'teach', utter: this.lastUser, raw: this.lastUser }, quiet: true });
+    H['meta.teach'] = async () => {
+      const t = this.lastActionable;
+      return { sym: 'r.meta.teach', pending: { kind: 'teach', utter: t?.text ?? this.lastUser, raw: t?.raw ?? this.lastUser }, quiet: true };
+    };
+    H['meta.complaint'] = async () => {
+      const t = this.lastActionable;
+      const meaning = t ? (t.intent === 'fallback' ? 'something I had no good answer for' : LABEL[t.intent] ?? t.intent.replace('.', ' ')) : '';
+      return { sym: 'r.meta.complaint', vars: { utter: t ? t.raw.replace(/[?!.\s]+$/, '') : '', meaning }, pending: t ? { kind: 'teach', utter: t.text, raw: t.raw } : undefined, quiet: true, topic: 'jarvis' };
+    };
+    H['chat.insult'] = async () => {
+      const t = this.lastActionable;
+      return { sym: 'r.chat.insult', pending: t ? { kind: 'teach', utter: t.text, raw: t.raw } : undefined, quiet: true };
+    };
     H['meta.stop'] = async () => ({ sym: 'r.meta.stop', quiet: true });
-    H['chat.repeat'] = async () => ({ text: this.ds.lastBot ?? this.say('r.chat.test'), quiet: true });
+    H['chat.repeat'] = async () => (this.ds.lastBot ? { sym: 'r.chat.repeat', quiet: true } : { sym: 'r.chat.test', quiet: true });
     H['fun.another'] = async () => (this.ds.lastContentSym ? { sym: this.ds.lastContentSym, content: this.ds.lastContentSym } : { sym: 'r.fun.joke', content: 'r.fun.joke' });
     H['fun.riddle'] = async () => {
       const avail = RIDDLES.map((_, i) => i).filter(i => !this.riddleIdx.includes(i));
@@ -1297,6 +1320,7 @@ export class ReflexEngine {
       if (opts.length < 2) return { sym: 'r.fun.8ball' };
       return { sym: 'r.fun.choose', vars: { choice: capFirst(opts[Math.floor(Math.random() * opts.length)]) } };
     };
+    H['chat.laugh'] = async () => ({ sym: 'r.chat.laugh', vars: { afterContent: this.ds.lastIntent && CONTENT.has(this.ds.lastIntent) ? 1 : 0 } });
     H['chat.greet'] = async () => ({ sym: 'r.chat.greet', topic: 'greeting' });
     H['chat.yes'] = async () => ({ sym: this.ds.lastIntent && CONTENT.has(this.ds.lastIntent) && this.ds.lastContentSym ? this.ds.lastContentSym : 'r.chat.yes' });
   }

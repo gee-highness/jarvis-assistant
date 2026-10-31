@@ -133,7 +133,7 @@ export function trendReport(points: MoodPoint[], valenceEma: number, screens: Sc
 }
 
 // ------------------------------------------------------------------ passive health signals
-export interface SenseLite { date: string; steps?: number; unlocks?: number; screenOnMs?: number; sleepStart?: number; sleepEnd?: number; lateOns?: number; notifTotal?: number; firstUnlock?: number; }
+export interface SenseLite { date: string; steps?: number; unlocks?: number; screenOnMs?: number; sleepStart?: number; sleepEnd?: number; lateOns?: number; firstUnlock?: number; }
 const hrs = (ms?: number) => (ms ? Math.round(ms / 360_000) / 10 : 0);
 export const sleepOf = (d?: SenseLite) => (d?.sleepStart && d.sleepEnd ? (d.sleepEnd - d.sleepStart) / 3600_000 : undefined);
 const fmtClock = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
@@ -178,6 +178,5 @@ export function todayHealth(d?: SenseLite, y?: SenseLite): string {
   if (sl) parts.push(`Sleep: ${sl}.`);
   if (d?.steps !== undefined) parts.push(`Steps today: ${d.steps.toLocaleString()}.`);
   if (d?.screenOnMs) parts.push(`Screen time so far: ${hrs(d.screenOnMs)} h across ${d.unlocks ?? 0} unlocks.`);
-  if (d?.notifTotal) parts.push(`${d.notifTotal} notifications today.`);
   return parts.join(' ');
 }

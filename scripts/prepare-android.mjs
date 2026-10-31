@@ -104,7 +104,8 @@ for (const [cls, label, info] of widgets) {
     </application>`);
 }
 
-// always-on companion: foreground service, boot restart, notification counter (all opt-in at runtime)
+// always-on companion: foreground service + boot restart (opt-in at runtime).
+// No NotificationListener / Accessibility services: Play Protect blocks sideloaded apps that declare them.
 if (!m.includes('.JarvisCoreService"')) {
   m = m.replace('</application>', `    <service android:name=".JarvisCoreService" android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Personal assistant that logs on-device wellbeing signals (steps, screen time, sleep) chosen by the user" />
@@ -115,10 +116,6 @@ if (!m.includes('.JarvisCoreService"')) {
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
-        <service android:name=".JarvisNotificationListener" android:exported="true" android:label="Jarvis"
-            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
-            <intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter>
-        </service>
     </application>`);
 }
 if (!m.includes('xmlns:tools')) m = m.replace('<manifest ', '<manifest xmlns:tools="http://schemas.android.com/tools" ');

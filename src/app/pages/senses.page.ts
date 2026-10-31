@@ -37,8 +37,6 @@ import { StoreService } from '../core/store.service';
         <div class="perm"><span>📱 Screen time & unlocks</span><span class="chip" [class.green]="st()?.running">{{ st()?.running ? 'on' : 'off' }}</span></div>
         <div class="perm"><span>📊 Time per app</span>
           @if (st()?.usageAccess) { <span class="chip green">on</span> } @else { <button class="small" [disabled]="!native" (click)="sense.openUsageAccess()">Grant</button> }</div>
-        <div class="perm"><span>🔔 Notification counts (never the content)</span>
-          @if (st()?.notificationAccess) { <span class="chip green">on</span> } @else { <button class="small" [disabled]="!native" (click)="sense.openNotificationAccess()">Grant</button> }</div>
       </div>
 
       @if (today(); as d) {

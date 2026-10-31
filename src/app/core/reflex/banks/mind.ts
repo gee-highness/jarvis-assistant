@@ -22,6 +22,9 @@ export const MIND: Bank = {
       examples: ['i am going to the gym', 'heading to work', 'off to school', 'i am about to cook dinner', 'going to bed soon', 'i am at the office', 'i am driving', 'i am off to church', 'about to start studying', 'going for a run'],
       patterns: [/^(i am )?(going|heading|off|about) to\b/, /^i am (at|in) (the |a )?(gym|work|office|school|class|church|meeting|mall|shop)\b/, /^i am (driving|cooking|studying|working|travelling|traveling)\b/, /^going for a\b/],
       not: [/\b(remind|alarm|timer|task|add)\b/] },
+    { id: 'mind.source', kind: 'info', topic: 'web',
+      examples: ['what did you search', 'what did you search for', 'what did you look up', 'where did you get that', 'where did that come from', 'what is your source', 'how do you know that', 'show me the source', 'give me the link', 'which website was that', 'open the source', 'open that link'],
+      patterns: [/\bwhat did you (search|look up|google)\b/, /\bwhere did you (get|find|read) (that|this|it)\b/, /\b(your|the) sources?\b/, /\bhow do you know (that|this)\b/, /\b(give|show|send) me the (link|source)\b/, /\bwhich (site|website|page)\b/, /\bopen (the |that )?(source|link|page|article)\b/] },
     { id: 'research.ask', kind: 'info', topic: 'web',
       examples: ['who invented the telephone', 'what is the capital of japan', 'how tall is mount everest', 'when did world war 2 end', 'what is the weather in johannesburg', 'news today', 'who won the game last night', 'what is quantum computing', 'explain black holes', 'tell me about nelson mandela', 'price of bitcoin', 'how far is the moon', 'what does photosynthesis mean', 'who is the president of south africa', 'how many people live in eswatini', 'what is the weather like', 'will it rain tomorrow', 'define serendipity', 'why is the sky blue', 'how does a car engine work'],
       patterns: [/^(who|what|when|where|which|why|how) (is|are|was|were|did|does|do|many|much|far|tall|long|old|big)\b/, /\b(weather|forecast|news|headlines|price of|exchange rate|population of|capital of)\b/, /^(define|explain|tell me about)\b/, /\bwill it rain\b/],
@@ -34,6 +37,11 @@ export const MIND: Bank = {
     'r.mind.said': ['#said.open# {found}', '{found}'],
     'said.open': ['', '[formality>60] Certainly.', 'Let me think back.', '[formality<40] Yep, I remember.', 'I remember.'],
     'r.mind.said.none': ['I don’t have anything from you about {kw}{when}, #h#.', '[formality<40] Hmm, nothing about {kw}{when}.', 'Nothing about {kw}{when} in our conversations, #h#. Want to tell me now?'],
+    'r.mind.source': [
+      'I searched for “{q}”. The answer came from {source}{urlBit}.', '[formality<40] I looked up “{q}” and got it from {source}{urlBit}.', '“{q}” was my search, and {source} had the answer{urlBit}. Say “open the source” to read it yourself.',
+    ],
+    urlBit: ['[has:url] ({url})', ''],
+    'r.mind.source.none': ['I haven’t looked anything up yet, #h#. Ask me a question and I’ll search for it.', 'Nothing yet. Ask me something and I’ll look it up.'],
     'r.mind.yousaid': ['{found}', 'Here’s what I said: {found}'],
     'r.mind.topic': ['{found}', '#said.open# {found}'],
     'r.mind.topic.none': ['We haven’t really talked about anything yet{when}, #h#.', 'Nothing much{when}. What’s on your mind?'],
@@ -41,7 +49,7 @@ export const MIND: Bank = {
     'mind.repeat': ['You asked me that {ago}, #h#; same answer:', '[humor>50] Déjà vu: you asked that {ago}.', '[formality<40] You asked me that {ago} btw.', 'As I said {ago}:'],
 
     'r.research.found': [
-      '{answer} ({source})', '#found.intro# {answer} ({source})', '[w2] {answer}\n\nSource: {source}', '[formality<40] {answer} ({source})', '[formality>60] {answer} I’ve this from {source}.',
+      '{answer} ({source})', '#found.intro# {answer} ({source})', '[w2] {answer}\n\nSource: {source}', '[formality<40] {answer} ({source})', '[formality>60] {answer} I got this from {source}.',
     ],
     'found.intro': ['Here’s what I found:', 'Looked it up:', 'According to {source}:', '[formality<40] Okay, so:', '[formality>60] I’ve checked:', 'Found it:'],
     'r.research.unsure': ['Best I could find, though I’m not certain: {answer} ({source})', 'I found this, but double-check it: {answer} ({source})'],

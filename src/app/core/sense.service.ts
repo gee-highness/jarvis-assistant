@@ -1,7 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { JarvisSense, SenseDay, SenseStatus, isNative } from './native';
 
-/** Always-on senses (steps, sleep estimate, screen time, unlocks, notifications) from the native service. */
+/** Always-on senses (steps, sleep estimate, screen time, unlocks) from the native service. */
 @Injectable({ providedIn: 'root' })
 export class SenseService {
   readonly status = signal<SenseStatus | null>(null);
@@ -11,7 +11,7 @@ export class SenseService {
   private timer: ReturnType<typeof setInterval> | null = null;
 
   async init(): Promise<void> {
-    if (!isNative()) { this.status.set({ available: false, running: false, usageAccess: false, notificationAccess: false, activity: false }); return; }
+    if (!isNative()) { this.status.set({ available: false, running: false, usageAccess: false, activity: false }); return; }
     await this.refresh();
     this.timer ??= setInterval(() => this.refresh().catch(() => undefined), 5 * 60_000);
   }
@@ -30,7 +30,6 @@ export class SenseService {
   async disable(): Promise<void> { this.status.set(await JarvisSense.stop()); }
   usage(dayOffset = 0) { return JarvisSense.getUsage({ dayOffset }); }
   openUsageAccess() { return JarvisSense.openUsageAccess(); }
-  openNotificationAccess() { return JarvisSense.openNotificationAccess(); }
   async clear() { await JarvisSense.clear(); await this.refresh(); }
 }
 

@@ -279,8 +279,8 @@ export const CHAT: Bank = {
     'insult.fix': ['Tell me what I got wrong and I’ll learn it.', 'If I misunderstood, say "teach" and show me what you meant.', 'What should I’ve done?', 'How can I fix it?'],
     'r.chat.sorry': ['No need to apologise, #hc#.', 'All forgiven. Already forgotten. Well, not forgotten. I never forget. But forgiven.', '[formality<40] All good!', 'Water under the bridge.', '[warmth>70] Never apologise for being human, #hc#.'],
     'r.chat.laugh': ['#laugh.a#', '[humor>50] #laugh.b#', '[sarcasm>60] #laugh.c#'],
-    'laugh.a': ['Glad that landed.', 'I do have my moments.', 'I’ll be here all week.', 'Thank you, thank you.'],
-    'laugh.b': ['My comedic timing is calculated to the millisecond.', 'Want another? I have a whole repertoire.', 'Tell your friends. I accept no payment.'],
+    'laugh.a': ['[has:afterContent] Glad that landed.', '[has:afterContent] I’ll be here all week.', '[has:afterContent] Thank you, thank you.', 'Ha!', 'I like it when you laugh.', '[warmth>60] That made my day.', '[formality<40] Haha, nice.'],
+    'laugh.b': ['[has:afterContent] My comedic timing is calculated to the millisecond.', '[has:afterContent] Want another? I have a whole repertoire.', '[has:afterContent] Tell your friends. I accept no payment.', 'Laughter is the cheapest productivity booster there is.', 'What’s so funny, #h#?', 'Go on, share the joke.'],
     'laugh.c': ['Finally, an audience with taste.', 'I’m wasted as an assistant, honestly.'],
     'r.chat.ack': ['#okay#.', '#okay#, #hc#.', '[formality>60] Very good.', '#okay#. #offerMaybe#', '[formality<40] 👍', '[proactivity>70,has:mits] #okay#. Shall we tackle {mit1} next?', '[lang:southafrican] Sharp.'],
     'r.chat.yes': ['#okay#. What shall we do?', 'Good. Tell me what you need.', '[formality<40] Cool, what’s up?', 'Excellent. What next?'],
@@ -288,7 +288,7 @@ export const CHAT: Bank = {
     'r.chat.back': ['Welcome back, #hc#. #back.tail#', '[formality<40] Ayy, welcome back! #back.tail#', '[warmth>70] Good to have you back, #hc#. #back.tail#', '[lang:southafrican] Welcome home, my bru. #back.tail#'],
     'back.tail': ['How did it go?', 'Shall I catch you up?', '[has:mits] {mit1} is still waiting for you.', '[has:habitsLeft] You still have {habitsLeft} to tick off today.', 'Put your feet up. I’ve got things.'],
     'r.chat.test': ['Loud and clear, #hc#.', 'Present and listening.', 'Receiving you perfectly.', '[humor>55] Testing, testing: all systems smug.', '[formality<40] Yep, here!'],
-    'r.chat.repeat': ['{lastBot}'],
+    'r.chat.repeat': ['I said: {lastBot}', 'Sorry, let me say that again: {lastBot}', '[formality<40] I said: {lastBot}', '[formality>60] Allow me to repeat: {lastBot}'],
 
     // ================================================================ feelings
     'r.feel.sad': [

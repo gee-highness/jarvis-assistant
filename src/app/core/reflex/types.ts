@@ -94,7 +94,7 @@ export interface ReflexHost {
   /** Logged moods (journal/check-ins). */
   moodHistory?(): { date: string; mood: number; energy: number }[];
   /** Passive daily signals from the always-on service, newest first. */
-  senseDays?(): { date: string; steps?: number; unlocks?: number; screenOnMs?: number; sleepStart?: number; sleepEnd?: number; lateOns?: number; notifTotal?: number; firstUnlock?: number }[];
+  senseDays?(): { date: string; steps?: number; unlocks?: number; screenOnMs?: number; sleepStart?: number; sleepEnd?: number; lateOns?: number; firstUnlock?: number }[];
   /** Top apps by screen time (needs usage access). */
   usage?(dayOffset: number): Promise<{ apps: { app: string; minutes: number }[]; totalMinutes: number }>;
 }
