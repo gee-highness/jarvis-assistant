@@ -30,7 +30,7 @@ const TYPO_TARGETS = ('remind reminder reminders tomorrow tonight today yesterda
   + 'complete finish finished delete remove priority priorities overdue weather forecast search launch flashlight battery briefing summary progress calculate convert '
   + 'thanks please morning evening afternoon focus session pomodoro alarm timer message email contact settings notification question answer explain define motivate '
   + 'tasks task goals goal notes note music navigate directions achieve achievement productivity sleep tired stressed anxious worried depressed lonely angry frustrated').split(' ');
-const TYPO_KEEP = new Set(['melting', 'whether', 'finnish', 'hours', 'forced', 'remote', 'remove', 'nights', 'tonight']);
+const TYPO_KEEP = new Set(['melting', 'whether', 'finnish', 'hours', 'forced', 'remote', 'remove', 'nights', 'tonight', 'lovely', 'lively', 'likely', 'sleepy', 'silly', 'steady', 'tasty', 'calculator', 'tried', 'tries', 'lunch', 'brunch', 'supper', 'hungry', 'angrily', 'worthy', 'wintry', 'friendly', 'lonely']);
 
 /** Optimal-string-alignment distance (counts a swap of two letters as one edit). */
 function osa(a: string, b: string): number {
@@ -197,7 +197,7 @@ export function bestFuzzy<T>(query: string, items: T[], key: (t: T) => string, m
 export type Emotion = 'happy' | 'excited' | 'grateful' | 'sad' | 'lonely' | 'anxious' | 'angry' | 'tired' | 'bored' | 'sick' | 'proud' | 'love' | 'neutral';
 
 const LEX: Record<Exclude<Emotion, 'neutral'>, string[]> = {
-  happy: ['happy', 'glad', 'great', 'good', 'awesome', 'amazing', 'fantastic', 'wonderful', 'nice', 'cool', 'joy', 'fun', 'smile', 'haha', 'yay', 'brilliant', 'lovely', 'chilled', 'relaxed', 'blessed', 'buzzing', 'elated', 'delighted', 'ecstatic', 'over the moon', 'cheerful', 'jolly', 'on cloud nine', 'on top of the world', 'thrilled to bits'],
+  happy: ['motivated', 'inspired', 'determined', 'hopeful', 'pumped', 'happy', 'glad', 'great', 'good', 'awesome', 'amazing', 'fantastic', 'wonderful', 'nice', 'cool', 'joy', 'fun', 'smile', 'haha', 'yay', 'brilliant', 'lovely', 'chilled', 'relaxed', 'blessed', 'buzzing', 'elated', 'delighted', 'ecstatic', 'over the moon', 'cheerful', 'jolly', 'on cloud nine', 'on top of the world', 'thrilled to bits'],
   excited: ['excited', 'pumped', 'hyped', 'cannot wait', 'stoked', 'thrilled', 'lets go', 'let us go', 'fired up', 'buzzing'],
   grateful: ['grateful', 'thankful', 'appreciate', 'blessed'],
   sad: ['sad', 'down', 'depressed', 'unhappy', 'cry', 'crying', 'heartbroken', 'hurt', 'miserable', 'awful', 'terrible', 'upset', 'low', 'broken', 'lost', 'gutted', 'devastated', 'disappointed', 'rough day', 'bad day', 'crushed', 'bummed', 'glum', 'down in the dumps', 'heavy hearted', 'hopeless', 'numb', 'grieving', 'miserable'],

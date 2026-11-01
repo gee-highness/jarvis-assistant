@@ -10,7 +10,9 @@ import { COMMON } from './banks/common';
 import { EXTRA } from './banks/extra';
 import { MIND } from './banks/mind';
 import { WELL } from './banks/well';
-import { PET, PET_MOODS } from './banks/pet';
+import { PET, PET_INTENTS, PET_MOODS } from './banks/pet';
+import { NARR } from './banks/narr';
+import { Narr, isImperative, narrative, replyTone } from './narrate';
 import { helpFor, ITEMS, SCALE, ScreenKind, ScreenResult, band, healthInsights, helpText, parseScore, riskOf, sleepLine, sleepOf, todayHealth, trendReport } from './wellbeing';
 import { EpisodicMemory, Episode, LiveState, ago, span, windowOf } from './episodic';
 import { Finding, Researcher, cleanQuery, isKnowledgeQuestion } from './research';
@@ -68,7 +70,8 @@ export class ReflexEngine {
   private lookupBusy = false;
 
   constructor(private host: ReflexHost, extraBanks: Bank[] = []) {
-    for (const b of [CHAT, ACTIONS, EXTRA, MIND, WELL, ...extraBanks]) { this.intents.push(...b.intents); this.grammar.add(b.rules); }
+    for (const b of [CHAT, ACTIONS, EXTRA, MIND, WELL, { intents: PET_INTENTS, rules: {} }, ...extraBanks]) { this.intents.push(...b.intents); this.grammar.add(b.rules); }
+    this.grammar.add(NARR);
     this.grammar.add(COMMON);
     this.grammar.add(KNOWLEDGE);
     this.grammar.add(ALIVE_RULES);
@@ -124,7 +127,16 @@ export class ReflexEngine {
     await this.init();
     const t0 = Date.now();
     const n = normalize(raw);
-    const text = n.text;
+    // talking TO the pup ("Comet, open WhatsApp") makes him the one who does it and answers
+    const pn = this.host.petName?.().trim().toLowerCase();
+    let text = n.text;
+    this.addressedPet = false; this.plain = false;
+    if (pn && pn.length > 1) {
+      const esc = pn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const voc = new RegExp(`^(?:(?:hey|ok|okay|yo|hi|hello|please|good boy|good dog) )*${esc}(?:[ ,!:]+|$)`).exec(text);
+      if (voc) { this.addressedPet = true; text = text.slice(voc[0].length).trim() || 'good boy'; }
+      else text = text.replace(new RegExp(`\\b${esc}\\b`, 'g'), 'the dog');
+    }
     const now = this.host.now();
     const tools: ToolTrace[] = [];
     this.tools = tools;
@@ -148,6 +160,7 @@ export class ReflexEngine {
     const risk = text ? riskOf(text) : null;
     if (risk) {
       this.ds.pending = undefined;
+      this.plain = true;
       out = { sym: ({ abuse: 'r.well.abuse', crisis: 'r.well.crisis', emergency: 'r.well.emergency', soft: 'r.well.soft' } as const)[risk], vars: { help: helpText(this.host.country?.()), emergency: helpFor(this.host.country?.()).emergency }, quiet: true, topic: 'feelings', pending: { kind: 'safety', data: { soft: risk === 'soft' } } };
       intent = risk === 'abuse' ? 'well.abuse' : 'well.crisis'; conf = 1;
       this.inner.lastCrisis = now.getTime();
@@ -199,17 +212,26 @@ export class ReflexEngine {
       if (follow && this.handlers[this.ds.lastIntent!]) top = { ...top, id: this.ds.lastIntent!, score: Math.max(top.score, BANDS.high) };
       // habit hook: "gym done", "go for a run done" → log the matching habit
       const habits = this.host.state().habits;
+      let habitHit = false;
       if (habits.length && /\b(done|did|finished|completed|log|logged|tick|ticked|went)\b/.test(text) && top.score < 0.75) {
         const hit = habits.find(hb => contentWords(hb.toLowerCase()).map(stem).some(w => w.length > 2 && text.split(' ').map(stem).includes(w)));
-        if (hit) top = { ...top, id: 'habit.log', score: 0.8 };
+        if (hit) { top = { ...top, id: 'habit.log', score: 0.8 }; habitHit = true; }
       }
+      if (/^how (do|can|should|would) (i|you|we)\b|^how to\b/.test(text) && ['memory.recall', 'task.add', 'chat.ack', 'chat.morning', 'memory.remember'].includes(top.id)) top = { ...top, id: 'research.ask', score: 0.8 };
+      if (/^translate\b/.test(text) && !top.pattern) top = { ...top, id: 'research.ask', score: 0.8 };
+      // someone is simply telling me something: answer the story, not a keyword inside it
+      let nar: Narr | null = habitHit || /\?$/.test(raw.trim()) ? null : (() => { const n0 = narrative(text); return n0 && (top.score < 0.85 || top.id === 'habit.log' || ['chat', 'feel'].includes(this.model.spec(top.id)?.kind ?? '') || ['device', 'person', 'thing', 'body', 'went', 'mishap'].includes(n0.kind)) ? n0 : null; })();
+      if (nar?.kind === 'win' && top.id === 'feel.win') nar = null;
       // a short first-person message with a clear feeling and no stronger match: hear the feeling
       const EMO_INTENT: Partial<Record<string, string>> = { sad: 'feel.sad', lonely: 'feel.lonely', anxious: 'feel.stress', angry: 'feel.angry', tired: 'feel.tired', bored: 'feel.bored', happy: 'feel.happy', excited: 'feel.happy', grateful: 'feel.happy', sick: 'feel.sick', proud: 'feel.win' };
       const emoTarget = EMO_INTENT[emo.emotion];
-      if (emoTarget && top.score < 0.5 && text.split(' ').length <= 9 && /\b(i|my|me|feeling|feel)\b/.test(text) && (this.model.spec(top.id)?.kind !== 'action' || top.score < 0.3) && !/\?$/.test(raw.trim())) top = { id: emoTarget, score: 0.55, lex: 0, sem: 0, pattern: false };
+      if (!nar && emoTarget && top.score < 0.5 && text.split(' ').length <= 9 && /\b(i|my|me|feeling|feel)\b/.test(text) && (this.model.spec(top.id)?.kind !== 'action' || top.score < 0.3) && !/\?$/.test(raw.trim())) top = { id: emoTarget, score: 0.55, lex: 0, sem: 0, pattern: false };
       const facts = learnFacts(text, raw, now);
       const factFirst = facts.length && (top.score < 0.62 || /^(chat|feel)\./.test(top.id) || top.id === 'persona.name' && !/call me|name is/.test(text));
-      if (factFirst && top.id !== 'memory.remember' && top.id !== 'task.add') {
+      if (nar) {
+        if (facts.length) this.storeFacts(facts).catch(() => undefined);
+        out = this.narrate(nar); intent = 'chat.narrate'; conf = 0.7;
+      } else if (factFirst && top.id !== 'memory.remember' && top.id !== 'task.add') {
         out = await this.onFacts(facts, raw);
         intent = 'learn.fact'; conf = 0.8;
       } else if (top.score >= BANDS.mid || (top.pattern && top.score >= 0.3)) {
@@ -358,12 +380,22 @@ export class ReflexEngine {
     return { line: this.grammar.expand('#pet.line#', c), status: this.grammar.expand('#pet.status#', c), reactions: [...new Set(reactions)] };
   }
 
+  /** Speak a pup grammar symbol (care replies, jokes, wisdom, dreams). */
+  petSay(sym: string, vars: Record<string, unknown> = {}): string {
+    const c = this.ctx({ ...vars, moodLabel: vars['moodLabel'] ?? PET_MOODS[String(vars['mood'])] ?? String(vars['mood'] ?? '') });
+    return this.grammar.expand(`#${sym}#`, c);
+  }
+
   /** Learned phrases (for the Brain page). */
   learnedPhrases() { return [...this.learned]; }
   async forgetLearned() { this.learned = []; await this.host.kvSet('learned', []); this.model = new IntentModel(this.intents, []); }
 
   // ================================================================== rendering
   private tools: ToolTrace[] = [];
+  /** The user spoke to the pup by name, so the pup answers this turn. */
+  private addressedPet = false;
+  /** Safety and wellbeing replies stay plain, human and clear: no barking, no sass. */
+  private plain = false;
 
   /** Grammar context: persona traits, time-of-day flags and live state variables. */
   ctx(extra: Record<string, unknown>): GrammarCtx {
@@ -421,12 +453,27 @@ export class ReflexEngine {
       if (cps.length) t += ' ' + cps[Math.floor(Math.random() * cps.length)] + '.';
     }
     if (p.swearing === 'free' && Math.random() < 0.05 && /^(Done|Sorted|On it)/.test(t)) t = t.replace(/^(Done|Sorted|On it)/, '$1, damn right');
-    // pet mode: the pup does the talking
-    if (p.pet?.speaks && !/^(I’m really glad you told me|Thank you for telling me|I’m so sorry that is happening)/.test(t)) {
-      const c = this.ctx({ p: p.pet.personality });
-      const act = this.grammar.expand('#pet.act#', c);
-      const bark = Math.random() < 0.35 ? ' ' + this.grammar.expand('#pet.bark#', c) : '';
-      t = `${act} ${t}${bark}`.trim();
+    // pet mode: the pup does the talking (in dog language, with the meaning alongside, sassy but kind)
+    if ((p.pet?.speaks || this.addressedPet) && p.pet && !this.plain && !/^(I’m really glad you told me|Thank you for telling me|I’m so sorry that is happening)/.test(t)) {
+      const pet = p.pet, speech = pet.speech ?? 'dog';
+      const hard = !!this.ds.emotion && ['sad', 'anxious', 'lonely', 'angry', 'sick', 'tired'].includes(this.ds.emotion.emotion) && topic !== 'pet';
+      const hr = this.host.now().getHours();
+      const mood = hard || topic === 'feelings' ? 'cuddly' : topic === 'pet' ? 'playful' : hr >= 23 || hr < 6 ? 'sleeping' : 'happy';
+      const c = this.ctx({ p: pet.personality, mood });
+      if (speech === 'english') {
+        const act = this.grammar.expand('#pet.act#', c);
+        const bark = Math.random() < 0.35 ? ' ' + this.grammar.expand('#pet.bark#', c) : '';
+        t = `${act} ${t}${bark}`.trim();
+      } else {
+        const sassy = !hard && topic !== 'feelings' && topic !== 'pet' && Math.random() < (pet.sass ?? 65) / 100;
+        let meaning = t;
+        if (sassy) meaning = this.grammar.expand(this.tools.length || /^(done|opening|added|set|sent|calling|playing|starting|noted|okay|right|certainly|of course|got it|on it|sorted)/i.test(t) ? '#pet.sass.cmd#' : '#pet.sass.chat#', this.ctx({ p: pet.personality, mood, x: t }));
+        const hon = p.honorific?.trim();
+        if (hon) meaning = meaning.replace(new RegExp(`,\\s*${hon.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi'), '').replace(new RegExp(`\\b${hon.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')},\\s*`, 'gi'), '');
+        let dog = this.grammar.expand('#pet.dog#', c);
+        if (meaning.split(' ').length > 16) dog += ' ' + this.grammar.expand('#pet.dog.core#', c);
+        t = `${dog} — “${meaning}”`;
+      }
     }
     if (p.emoji !== 'none' && topic && EMOJI[topic] && !/\p{Extended_Pictographic}/u.test(t) && Math.random() < (p.emoji === 'lots' ? 0.75 : 0.3)) {
       const e = EMOJI[topic];
@@ -504,6 +551,9 @@ export class ReflexEngine {
         const r = await this.rankText(h.text);
         const target = r.find(x => this.model.spec(x.id)?.kind !== 'meta');
         if (!target || target.score < 0.45 || !p.utter || !['action', 'info'].includes(this.model.spec(target.id)?.kind ?? '')) return null;
+        const uw = new Set(contentWords(p.utter).map(stem));
+        const shares = contentWords(h.text).map(stem).some(w => uw.has(w)) || isImperative(h.text) || h.n.question || /^(i mean|i meant|what i meant|it means|as in|like|i said|that means|meaning)\b/.test(h.text) || h.text.split(' ').length <= 2;
+        if (!shares) return null;
         this.learn(target.id, p.utter);
         const res = await this.run({ ...h, text: p.utter, raw: p.raw ?? p.utter, ent: extract(p.utter, this.host.now()), intent: target.id });
         return { out: { ...res, text: [res.text, this.say('r.meta.learned', { utter: p.utter, meaning: LABEL[target.id] ?? target.id.replace('.', ' ') })].filter(Boolean).join(' ') }, intent: target.id };
@@ -527,6 +577,27 @@ export class ReflexEngine {
           return { out: { sym: 'learn.gotit', vars: { a }, quiet: true }, intent: 'learn.profile' };
         }
         return null;
+      }
+      case 'narr': {
+        const cat = String(p.data?.['cat'] ?? '');
+        const words = h.text.split(' ').length;
+        if (h.n.question || words > 45 || narrative(h.text) || (/^i /.test(h.text) && words >= 3 && !/^i (loved|liked|enjoyed|hated|did not|do not) it/.test(h.text)) || (isImperative(h.text) && words > 2)) return null;
+        if (cat === 'plan') {
+          if (yes && /goal/.test(this.ds.lastBot ?? '')) {
+            const x = String(p.data?.['x'] ?? '').replace(/^you /, '');
+            const goal = await this.handlers['goal.add']({ ...h, text: `add a goal to ${x}`, raw: `add a goal to ${x}`, ent: extract(`add a goal to ${x}`, this.host.now()), intent: 'goal.add' });
+            return { out: goal, intent: 'goal.add' };
+          }
+          if (no) return { out: { sym: 'r.chat.no', quiet: true }, intent: 'chat.no' };
+          if (yes && /\b(want me|shall i|is this something|would you|have you)\b/i.test(this.ds.lastBot ?? '')) return { out: { sym: 'r.nar.plan.go', quiet: true }, intent: 'chat.narrate' };
+          return null;
+        }
+        if (no && words <= 2) return { out: { sym: 'r.nar.reply.neg', quiet: true }, intent: 'chat.narrate' };
+        const tone = yes && words <= 3 ? 'pos' : replyTone(h.text, h.emo.emotion);
+        if (cat === 'person' && words >= 3 && tone !== 'pos') return { out: { sym: 'r.nar.reply.person', vars: { who: String(p.data?.['who'] ?? 'them') }, quiet: true }, intent: 'chat.narrate' };
+        if (words > 14) return { out: { sym: 'r.nar.reply.more', quiet: true }, intent: 'chat.narrate' };
+        if (tone === 'mid' && words <= 3 && !yes && cat !== 'person' && !isImperative(h.text)) return { out: { sym: 'r.nar.reply.echo', vars: { a: capFirst(h.raw.trim().replace(/[.!?]+$/, '')) }, quiet: true }, intent: 'chat.narrate' };
+        return { out: { sym: `r.nar.reply.${tone}`, quiet: true }, intent: 'chat.narrate' };
       }
       case 'safety': {
         const help = helpText(this.host.country?.());
@@ -635,12 +706,44 @@ export class ReflexEngine {
       const opts = cands.map(c => c.id);
       return { sym: 'r.fallback.choice', vars: { choices: opts.map((o, i) => `${i + 1}) ${LABEL[o]}`).join(', ') }, pending: { kind: 'choice', options: opts, utter: h.text, raw: h.raw }, quiet: true };
     }
-    if (isKnowledgeQuestion(h.text) || (h.n.question && h.text.split(' ').length >= 4 && !/\b(you|your|we|our|i|my|me|mine)\b/.test(h.text))) return this.handlers['research.ask'](h).then(o => ({ ...o, intent: 'research.ask' }));
+    if (isKnowledgeQuestion(h.text) || /^tell me about (?!you\b|yourself|your\b)/.test(h.text) || (h.n.question && h.text.split(' ').length >= 4 && !/\b(you|your|we|our|i|my|me|mine)\b/.test(h.text))) return this.handlers['research.ask'](h).then(o => ({ ...o, intent: 'research.ask' }));
     const reflect = this.reflect(h);
     if (reflect) return reflect;
     if (h.n.question && this.host.online()) return { sym: 'r.fallback.web', pending: { kind: 'web', utter: h.text, raw: h.raw }, quiet: true };
     if (h.n.question) return { sym: 'r.fallback.question', vars: { kw: keyPhrase(h.text) } };
     return { sym: 'r.fallback.generic', vars: { kw: keyPhrase(h.text) }, pending: { kind: 'teach', utter: h.text, raw: h.raw } };
+  }
+
+  /** Respond to a story the way a friend would, then keep the thread so the next line lands in context. */
+  private narrate(n: Narr): Out {
+    const base = { quiet: true as const, topic: n.kind === 'person' ? 'people' : n.kind === 'plan' ? 'goals' : undefined };
+    const pend = (cat: string): Out['pending'] => ({ kind: 'narr', data: { cat, x: n.x, who: n.who ?? '' } });
+    switch (n.kind) {
+      case 'plan': return { ...base, sym: 'r.nar.plan', vars: { x: capFirst(n.x) }, pending: pend('plan') };
+      case 'person': return { ...base, sym: `r.nar.person.${n.tone ?? 'neutral'}`, vars: { who: n.who }, pending: pend('person') };
+      case 'sleep': return { ...base, sym: `r.nar.sleep.${n.tone}`, pending: pend('sleep') };
+      case 'device': if (/^(car|bike)$/.test(n.x)) return { ...base, sym: 'r.nar.vehicle', pending: pend('vehicle') }; return { ...base, sym: `r.nar.device.${n.tone === 'pos' ? 'pos' : 'neg'}`, vars: { x: n.x } };
+      case 'thing': return { ...base, sym: `r.nar.thing.${n.tone ?? 'neutral'}`, vars: { x: n.x }, pending: pend('thing') };
+      case 'mishap': {
+        const w = n.media ?? '';
+        const sym = /forgot|forget|lost|left|dropped/.test(w) ? 'r.nar.mishap.lost' : /woke|overslept/.test(w) ? 'r.nar.mishap.late' : /ticket|fine/.test(w) ? 'r.nar.mishap.ticket' : 'r.nar.mishap';
+        return { ...base, sym, vars: { x: n.x }, pending: pend('mishap') };
+      }
+      case 'chore': return { ...base, sym: 'r.nar.chore', pending: pend('chore') };
+      case 'sport': return { ...base, sym: 'r.nar.sport', pending: pend('sport') };
+      case 'bday': return { ...base, sym: `r.nar.bday.${n.when === 'tomorrow' ? 'tomorrow' : 'today'}`, pending: pend('bday') };
+      case 'lost': return { ...base, sym: 'r.nar.lost', topic: 'feelings', pending: pend('lost') };
+      case 'ruminate': return { ...base, sym: 'r.nar.ruminate', vars: { x: n.x }, topic: 'feelings', pending: pend('ruminate') };
+      case 'craving': return { ...base, sym: 'r.nar.craving', vars: { x: n.x }, pending: pend('craving') };
+      case 'bad': return { ...base, sym: 'r.nar.bad', topic: 'feelings', pending: pend('bad') };
+      case 'doing': return { ...base, sym: 'r.nar.doing', vars: { x: n.x }, pending: pend('doing') };
+      case 'body': return { ...base, sym: 'r.nar.body', vars: { x: n.x }, pending: pend('body') };
+      case 'went': return { ...base, sym: n.media === 'was' ? `r.nar.was.${n.tone}` : `r.nar.went.${n.tone}`, vars: { x: n.x }, pending: pend('went') };
+      case 'win': return { ...base, sym: 'r.nar.win', pending: pend('win') };
+      case 'media': return { ...base, sym: `r.nar.media.${n.media ?? 'movie'}`, pending: pend('media') };
+      case 'food': return { ...base, sym: n.x.length > 3 && Math.random() < 0.85 ? 'r.nar.food.x' : 'r.nar.food', vars: { x: n.x }, pending: pend('food') };
+      default: return { ...base, sym: `r.nar.${n.kind}`, vars: { x: n.x }, pending: pend(n.kind) };
+    }
   }
 
   /** ELIZA-style reflective listening, persona-flavoured. Keeps conversation flowing on anything. */
@@ -658,6 +761,7 @@ export class ReflexEngine {
     if ((m = t.match(/\bbecause (.{3,60})$/))) return { sym: 'r.reflect.because', vars: { x: swap(m[1]) } };
     if ((m = t.match(/\bmy (mom|mum|mother|dad|father|wife|husband|partner|girlfriend|boyfriend|boss|friend|sister|brother|son|daughter|family|kids|job|work|team|life)\b/))) return { sym: 'r.reflect.my', vars: { x: m[1] }, topic: 'people' };
     if ((m = t.match(/^(?:what|how) do you (?:think|feel) about (.{2,50})$/))) return { sym: 'r.chat.likes', vars: this.likes(swap(m[1])) };
+    if ((m = t.match(/^(?:do|did) you (?:ever )?(?:get |feel |have |need |want |like |sleep|eat|dream|dance|sing|cry|laugh|get)(.{0,30})$/)) && /\bever\b|^do you (get|feel|sleep|eat|dream|cry)/.test(t)) return { sym: 'r.reflect.youever', vars: { x: swap(t.replace(/^(?:do|did) you (?:ever )?/, '')) } };
     if ((m = t.match(/^(?:do|can|will|would|are|could) you (.{3,50})$/))) return { sym: 'r.reflect.you', vars: { x: swap(m[1]) } };
     if (emo) return { sym: 'r.reflect.emotion', vars: { emo }, topic: 'feelings' };
     return null;
@@ -728,6 +832,7 @@ export class ReflexEngine {
     const rec: ToolTrace = { name, args };
     this.tools.push(rec);
     const r = await this.host.runTool(name, args);
+    if (/^[A-Za-z]+(_[a-z]+)+ (done|ok)\.?$/i.test(r.result.trim())) r.result = r.ok ? 'Done.' : 'That didn’t work.';
     rec.ok = r.ok; rec.result = r.result;
     return r;
   }
@@ -1099,7 +1204,17 @@ export class ReflexEngine {
     H['calendar.read'] = async () => { const r = await this.tool('read_calendar', {}); return { sym: 'r.calendar.read', vars: { result: r.result }, quiet: true }; };
 
     // ---------------- info
-    H['info.time'] = async () => ({ sym: 'r.info.time' });
+    H['info.time'] = async h => {
+      const ZONES: Record<string, string> = { london: 'Europe/London', paris: 'Europe/Paris', berlin: 'Europe/Berlin', madrid: 'Europe/Madrid', rome: 'Europe/Rome', moscow: 'Europe/Moscow', dubai: 'Asia/Dubai', mumbai: 'Asia/Kolkata', delhi: 'Asia/Kolkata', beijing: 'Asia/Shanghai', shanghai: 'Asia/Shanghai', tokyo: 'Asia/Tokyo', seoul: 'Asia/Seoul', singapore: 'Asia/Singapore', sydney: 'Australia/Sydney', 'new york': 'America/New_York', 'los angeles': 'America/Los_Angeles', chicago: 'America/Chicago', toronto: 'America/Toronto', 'sao paulo': 'America/Sao_Paulo', johannesburg: 'Africa/Johannesburg', 'cape town': 'Africa/Johannesburg', durban: 'Africa/Johannesburg', nairobi: 'Africa/Nairobi', lagos: 'Africa/Lagos', cairo: 'Africa/Cairo', accra: 'Africa/Accra', mbabane: 'Africa/Mbabane' };
+      const city = Object.keys(ZONES).find(c => new RegExp(`\\bin ${c}\\b`).test(h.text));
+      if (city) {
+        try {
+          const t = new Intl.DateTimeFormat('en-GB', { timeZone: ZONES[city], hour: 'numeric', minute: '2-digit', hour12: true }).format(this.host.now());
+          return { text: `It’s ${t.toUpperCase()} in ${city.replace(/\b\w/g, c => c.toUpperCase())}.` };
+        } catch { /* fall through to local time */ }
+      }
+      return { sym: 'r.info.time' };
+    };
     H['info.date'] = async h => (/\bmonth\b/.test(h.text) ? { text: `It is ${now().toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}.` } : /\byear\b/.test(h.text) ? { text: `It is ${now().getFullYear()}.` } : { sym: 'r.info.date' });
     H['info.calc'] = async h => {
       const [expr, label] = toExpr(h.text);
@@ -1306,6 +1421,13 @@ export class ReflexEngine {
       if (!changes.length) return { text: this.say('persona.unknown') };
       return { sym: 'r.persona.adjust', vars: { change: changes.join(' ') }, topic: 'jarvis' };
     };
+    for (const [id, kind] of [['pet.pet', 'pet'], ['pet.feed', 'feed'], ['pet.play', 'play'], ['pet.walk', 'walk'], ['pet.calm', 'calm'], ['pet.status', 'status'], ['pet.open', 'open'], ['pet.joke', 'joke'], ['pet.wisdom', 'wisdom']] as const) {
+      H[id] = async () => {
+        if (!this.host.petAction) return { text: 'The pup is not available on this device yet.', quiet: true };
+        const r = await this.host.petAction(kind);
+        return { text: r.line || 'Done.', quiet: true, topic: 'pet' };
+      };
+    }
     H['persona.name'] = async h => {
       const p = this.host.profile();
       let m: RegExpMatchArray | null;

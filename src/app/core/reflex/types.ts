@@ -58,7 +58,7 @@ export interface HostProfile {
   name: string;
   role: string;
   traits: Record<string, number>;
-  pet?: { name: string; speaks: boolean; personality: string };
+  pet?: { name: string; speaks: boolean; personality: string; speech?: string; sass?: number };
   emoji: 'none' | 'some' | 'lots';
   language: string;
   swearing: 'none' | 'mild' | 'free';
@@ -69,6 +69,9 @@ export interface HostProfile {
 export interface MemHit { text: string; score: number; kind?: string; }
 
 export interface ReflexHost {
+  /** Companion pup actions from chat (pet, feed, play, walk, calm, open, status, joke, wisdom). Optional. */
+  petAction?(kind: string): Promise<{ ok: boolean; line: string }>;
+  petName?(): string;
   profile(): HostProfile;
   state(): HostState;
   runTool(name: string, args: Record<string, unknown>): Promise<{ ok: boolean; result: string }>;
@@ -99,7 +102,7 @@ export interface ReflexHost {
   usage?(dayOffset: number): Promise<{ apps: { app: string; minutes: number }[]; totalMinutes: number }>;
 }
 
-export type PendingKind = 'slot' | 'confirm' | 'choice' | 'profile' | 'teach' | 'web' | 'riddle' | 'game' | 'name' | 'screen' | 'safety';
+export type PendingKind = 'slot' | 'confirm' | 'choice' | 'profile' | 'teach' | 'web' | 'riddle' | 'game' | 'name' | 'screen' | 'safety' | 'narr';
 
 export interface Pending {
   kind: PendingKind;

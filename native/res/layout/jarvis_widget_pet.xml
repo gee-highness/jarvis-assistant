@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Transparent on purpose: only the pup (and a soft-shadowed line) sit on your wallpaper. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/jarvis_pet_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/jarvis_widget_bg"
+    android:background="@null"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="10dp">
+    android:padding="6dp">
 
     <ImageView
         android:id="@+id/jarvis_pet_img"
-        android:layout_width="96dp"
-        android:layout_height="96dp"
+        android:layout_width="112dp"
+        android:layout_height="112dp"
         android:contentDescription="Pet"
         android:scaleType="fitCenter"
         android:src="@drawable/jarvis_widget_orb" />
@@ -19,7 +20,7 @@
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
+        android:layout_marginStart="4dp"
         android:layout_weight="1"
         android:orientation="vertical">
 
@@ -27,22 +28,30 @@
             android:id="@+id/jarvis_pet_line"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/jarvis_widget_pill"
-            android:maxLines="4"
             android:ellipsize="end"
-            android:padding="8dp"
-            android:text="Tap me!"
-            android:textColor="#E6F4F8"
-            android:textSize="13sp" />
+            android:maxLines="3"
+            android:padding="4dp"
+            android:shadowColor="#E6000000"
+            android:shadowDx="0"
+            android:shadowDy="1"
+            android:shadowRadius="5"
+            android:text="Woof!"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/jarvis_pet_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:maxLines="1"
             android:ellipsize="end"
-            android:textColor="#8AA3B3"
+            android:maxLines="1"
+            android:paddingStart="4dp"
+            android:shadowColor="#E6000000"
+            android:shadowDx="0"
+            android:shadowDy="1"
+            android:shadowRadius="4"
+            android:textColor="#E6F4F8"
             android:textSize="11sp" />
     </LinearLayout>
 </LinearLayout>

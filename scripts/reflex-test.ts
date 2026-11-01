@@ -12,6 +12,8 @@ const tasks = [
 const toolLog: string[] = [];
 const host: ReflexHost = {
   profile: () => ({ honorific: 'sir', userName: '', name: 'Jarvis', role: 'butler', traits: { warmth: 55, humor: 55, sarcasm: 45, formality: 85, directness: 75, verbosity: 35, enthusiasm: 35, playfulness: 25, curiosity: 35, toughLove: 45, emotional: 40, proactivity: 70 }, emoji: 'none', language: 'british', swearing: 'none', catchphrases: '', likes: '' }),
+  petName: () => 'Comet',
+  petAction: async k => ({ ok: true, line: `pet:${k}` }),
   state: (): HostState => ({ open: tasks.length, overdue: 1, dueToday: 0, doneToday: 2, inbox: 1, tasks: tasks as any, mits: ['Finish the report'], overdueTitles: ['Finish the report'], habits: ['Meditate', 'Gym', 'Read 20 pages'], habitsLeft: ['Gym'], habitsDone: 2, habitsTotal: 3, streak: 4, level: 3, levelTitle: 'Rookie', xpToday: 40, focusToday: 50, focusRunning: false, goals: [], docs: 0, memories: mem.length }),
   runTool: async (name, args) => { toolLog.push(`${name} ${JSON.stringify(args)}`); return { ok: true, result: `${name} ok` }; },
   memorySearch: async (q) => mem.map(m => ({ text: m.text, score: q.split(' ').filter(w => w.length > 2 && m.text.toLowerCase().includes(w.toLowerCase().replace("user's", 'user'))).length / Math.max(1, q.split(' ').length) })).filter(x => x.score > 0).sort((a, b) => b.score - a.score),
@@ -46,7 +48,7 @@ const cases: [string, string][] = [
   ["what's 15% of 240", 'info.calc'], ['12 times 7', 'info.calc'], ['convert 5 km to miles', 'info.convert'], ['how many days until christmas', 'info.days'],
   ['what time is it', 'info.time'], ["what's the date", 'info.date'], ['tell me a joke', 'fun.joke'], ['another one', 'fun.another'], ['tell me a riddle', 'fun.riddle'],
   ['a piano', 'fun.riddle'], ['tell me a story', 'fun.story'], ['write me a poem', 'fun.poem'], ['flip a coin', 'fun.coin'], ['roll a d20', 'fun.dice'], ['pizza or burgers?', 'fun.choose'],
-  ["I'm so stressed", 'feel.stress'], ['i feel sad today', 'feel.sad'], ["I'm tired", 'feel.tired'], ['I got the job!!', 'feel.win'], ["I'm bored", 'feel.bored'],
+  ["I'm so stressed", 'feel.stress'], ['i feel sad today', 'feel.sad'], ["I'm tired", 'feel.tired'], ['I got the job!!', 'feel.win'], ['I went to the beach today', 'chat.narrate'], ['my boss is being difficult', 'chat.narrate'], ['I watched a great movie last night', 'chat.narrate'], ['my phone keeps freezing', 'chat.narrate'], ["I think I'll learn guitar", 'chat.narrate'], ['I had pizza for lunch', 'chat.narrate'], ['I forgot my wallet at home', 'chat.narrate'], ['my phone battery drains so fast', 'chat.narrate'], ['my app crashed again', 'chat.narrate'], ['I tried sushi for the first time', 'chat.narrate'], ['I booked a holiday to Durban', 'chat.narrate'], ['I woke up late again', 'chat.narrate'], ['the traffic was horrible this morning', 'chat.narrate'], ['I just finished a 10 hour shift', 'chat.narrate'], ["I'm bored", 'feel.bored'],
   ['my sister is called Thandi', 'learn.fact'], ['I live in Mbabane', 'learn.fact'], ['I have an interview tomorrow', 'learn.fact'], ["what's my sister's name", 'memory.recall'],
   ['remember that my wifi password is sunshine', 'memory.remember'], ['what is my wifi password', 'memory.recall'], ['what do you know about me', 'memory.recall'],
   ['be funnier', 'persona.adjust'], ['call me boss', 'persona.name'], ['my name is Gerry', 'persona.name'], ['open spotify', 'phone.open'], ['turn on the torch', 'phone.torch'],

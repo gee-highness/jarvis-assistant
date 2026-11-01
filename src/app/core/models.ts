@@ -234,23 +234,71 @@ export const DEFAULT_LOOK: LookSettings = {
 };
 
 /** The companion pet (original character; name and look are fully customisable). */
+export type PetScene = 'meadow' | 'bedroom' | 'beach' | 'cabin' | 'starry' | 'garden';
+export type PetToy = 'ball' | 'bone' | 'frisbee' | 'plush' | 'stick';
+export type PetAmbient = 'off' | 'rain' | 'ocean' | 'fire' | 'wind' | 'night' | 'brown';
+/** Today's gentle care checklist. Nothing here ever punishes a missed day. */
+export interface PetCare {
+  day: string;
+  fed: number;
+  walked: boolean;
+  played: number;
+  cuddled: number;
+  calm: number;
+  /** Treats in the jar (earned from finished tasks and games). */
+  treats: number;
+  /** How many of today's finished tasks were already turned into treats. */
+  credited: number;
+  gift: boolean;
+  perfect: boolean;
+}
+export interface PetStats {
+  feeds: number; fetches: number; catches: number; bestCatch: number; cups: number; cuddleSecs: number; calmMin: number; naps: number;
+  breaths: number; talks: number; visits: number; days: number; perfectDays: number; walks: number; tried: string[]; lastDay: string;
+}
 export interface PetSettings {
   enabled: boolean;
   name: string;
   fur: string;         // main fur hex
   patch: string;       // ear/patch hex
   bandana: string;     // bandana hex
-  accessory: 'none' | 'bowtie' | 'glasses' | 'cap' | 'crown' | 'headphones';
+  accessory: 'none' | 'bowtie' | 'glasses' | 'cap' | 'crown' | 'headphones' | 'scarf' | 'flower' | 'shades' | 'party' | 'wizard';
   personality: 'goofy' | 'loyal' | 'chill' | 'hyper' | 'grumpy';
   /** Pet talks in chat instead of Jarvis. */
   speaks: boolean;
   bornAt: number;
   pets: number;
   treats: number;
+  /** Bond XP: grows with every kind moment, never shrinks. */
+  xp: number;
+  scene: PetScene;
+  toy: PetToy;
+  sound: boolean;
+  volume: number;
+  ambient: PetAmbient;
+  /** Calm motion: slower, fewer particles. */
+  calmMotion: boolean;
+  haptics: boolean;
+  care: PetCare;
+  stats: PetStats;
+  badges: string[];
+  lastVisit: number;
+  /** dog = barks (tap to translate), both = barks with the meaning always shown, english = plain words. */
+  speech: 'dog' | 'both' | 'english';
+  /** 0 = sweet, 100 = very sassy. Sass always switches itself off on hard days. */
+  sass: number;
+  /** The pup walks around your whole screen as a see-through overlay (needs Display over other apps). */
+  roam: boolean;
+  roamWhere: 'home' | 'everywhere';
+  roamSize: number;
 }
+export const EMPTY_CARE: PetCare = { day: '', fed: 0, walked: false, played: 0, cuddled: 0, calm: 0, treats: 0, credited: 0, gift: false, perfect: false };
+export const EMPTY_STATS: PetStats = { feeds: 0, fetches: 0, catches: 0, bestCatch: 0, cups: 0, cuddleSecs: 0, calmMin: 0, naps: 0, breaths: 0, talks: 0, visits: 0, days: 0, perfectDays: 0, walks: 0, tried: [], lastDay: '' };
 export const DEFAULT_PET: PetSettings = {
   enabled: true, name: 'Comet', fur: '#f2c48d', patch: '#c9824a', bandana: '#22d3ee', accessory: 'none', personality: 'goofy',
-  speaks: false, bornAt: 0, pets: 0, treats: 0,
+  speaks: false, bornAt: 0, pets: 0, treats: 0, xp: 0, scene: 'meadow', toy: 'ball', sound: false, volume: 0.5, ambient: 'off', calmMotion: false, haptics: true,
+  care: EMPTY_CARE, stats: EMPTY_STATS, badges: [], lastVisit: 0,
+  speech: 'dog', sass: 65, roam: false, roamWhere: 'home', roamSize: 88,
 };
 
 /** reflex = instant LLM-free brain (default); llm = language model via the engine below. */
