@@ -682,9 +682,12 @@ export class ReflexEngine {
       case 'plan': return { ...base, sym: 'r.nar.plan', vars: { x: capFirst(n.x) }, pending: pend('plan') };
       case 'person': return { ...base, sym: `r.nar.person.${n.tone ?? 'neutral'}`, vars: { who: n.who }, pending: pend('person') };
       case 'device': return { ...base, sym: `r.nar.device.${n.tone === 'pos' ? 'pos' : 'neg'}`, vars: { x: n.x } };
+      case 'doing': return { ...base, sym: 'r.nar.doing', vars: { x: n.x }, pending: pend('doing') };
+      case 'body': return { ...base, sym: 'r.nar.body', vars: { x: n.x }, pending: pend('body') };
+      case 'went': return { ...base, sym: `r.nar.went.${n.tone}`, vars: { x: n.x }, pending: pend('went') };
       case 'win': return { ...base, sym: 'r.nar.win', pending: pend('win') };
       case 'media': return { ...base, sym: `r.nar.media.${n.media ?? 'movie'}`, pending: pend('media') };
-      case 'food': return { ...base, sym: n.x.length > 3 && Math.random() < 0.6 ? 'r.nar.food.x' : 'r.nar.food', vars: { x: n.x }, pending: pend('food') };
+      case 'food': return { ...base, sym: n.x.length > 3 && Math.random() < 0.85 ? 'r.nar.food.x' : 'r.nar.food', vars: { x: n.x }, pending: pend('food') };
       default: return { ...base, sym: `r.nar.${n.kind}`, vars: { x: n.x }, pending: pend(n.kind) };
     }
   }

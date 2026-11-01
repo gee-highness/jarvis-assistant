@@ -4,7 +4,7 @@
  * not to a keyword inside it. This classifies those statements so the engine can answer them
  * like a friend would, and ask a natural follow-up.
  */
-export type NarrKind = 'plan' | 'person' | 'device' | 'thing' | 'win' | 'media' | 'food' | 'outing' | 'social' | 'exercise' | 'shop' | 'work' | 'travel' | 'past';
+export type NarrKind = 'plan' | 'person' | 'device' | 'thing' | 'win' | 'media' | 'food' | 'outing' | 'social' | 'exercise' | 'shop' | 'work' | 'travel' | 'past' | 'doing' | 'body' | 'went';
 
 export interface Narr {
   kind: NarrKind;
@@ -21,8 +21,8 @@ export interface Narr {
 
 const PEOPLE = 'mom|mum|mother|dad|father|wife|husband|partner|girlfriend|boyfriend|boss|manager|friend|best friend|sister|brother|son|daughter|family|kids|colleague|coworker|roommate|flatmate|neighbour|neighbor|teacher|landlord|gran|granny|grandma|grandpa|grandmother|grandfather|cousin|aunt|uncle|team';
 const DEVICES = 'phone|laptop|computer|pc|tablet|car|bike|wifi|internet|router|battery|screen|printer|tv|television|fridge|washing machine|app|website|network|data|signal|bluetooth|charger|headphones|earphones|speaker';
-const NEG = /\b(difficult|annoying|rude|mean|unfair|stressful|stressing|ignoring|ignores|shouting|yelling|nagging|irritating|impossible|toxic|exhausting|driving me|getting on my nerves|sick|ill|angry|upset|moody|distant|late|useless|lazy|selfish|demanding|micromanaging|a nightmare|a pain|being weird|acting weird|not talking|fighting|arguing|hard)\b/;
-const POS = /\b(great|amazing|lovely|kind|wonderful|supportive|helpful|fantastic|sweet|awesome|brilliant|good|nice|fun|proud|happy|better|visiting|coming|here|back)\b/;
+const NEG = /\b(loud|noisy|again|complain\w*|difficult|annoying|rude|mean|unfair|stressful|stressing|ignoring|ignores|shouting|yelling|nagging|irritating|impossible|toxic|exhausting|driving me|getting on my nerves|sick|ill|angry|upset|moody|distant|late|useless|lazy|selfish|demanding|micromanaging|a nightmare|a pain|being weird|acting weird|not talking|fighting|arguing|hard)\b/;
+const POS = /\b(engaged|married|pregnant|baby|graduated|promoted|won|getting married|new job|great|amazing|lovely|kind|wonderful|supportive|helpful|fantastic|sweet|awesome|brilliant|good|nice|fun|proud|happy|better|visiting|coming|here|back)\b/;
 const NEGATIVE_LIFE = /\b(lost|fired|died|passed away|diagnosed|dumped|cheated|broke up|failed|crashed|robbed|attacked|hospital|funeral|laid off|evicted|divorce|miscarriage|cancer|assaulted|stolen|accident)\b/;
 const WHEN = /\b(today|yesterday|last night|this morning|this afternoon|this evening|tonight|last week|last weekend|earlier|just now)\b/;
 
@@ -31,7 +31,8 @@ const tidy = (s: string) => s.replace(WHEN, '').replace(/\b(a bit|a lot|really|j
 
 /** Returns null when the text is not a story (commands, questions, feelings and crises are handled elsewhere). */
 export function narrative(text: string): Narr | null {
-  const t = text.trim();
+  let t = text.trim();
+  t = t.replace(/^we (?=(?:\w+ed|went|saw|ate|had|got|met|ran|won|drove|took|made|read|bought)\b)/, 'i ').replace(/^(?=(?:had|went|drove|ran|walked|spent) )/, 'i ');
   if (!t || t.split(' ').length < 3 || t.split(' ').length > 28) return null;
   if (/^(please|can you|could you|would you|will you|remind|add|set|open|call|text|send|play|show|tell|give|make|create|start|stop|turn|what|who|when|where|why|how|do you|are you|is it|did you)\b/.test(t)) return null;
   if (/\b(remind me|add a|set a|set an|set the|my tasks|my notes|my alarm)\b/.test(t)) return null;
@@ -60,6 +61,13 @@ export function narrative(text: string): Narr | null {
     return { kind: 'device', x: subj, tone: tone === 'pos' ? 'pos' : 'neg', when };
   }
 
+  // body: "my back hurts"
+  if ((m = t.match(/^my (back|head|neck|knee|knees|stomach|throat|leg|legs|arm|arms|shoulder|shoulders|tooth|teeth|eyes?|feet|foot|ankle|wrist|chest|ear|ears|belly|hip|jaw) (?:hurts?|aches?|is sore|are sore|is killing me|are killing me|is aching|feels? (?:sore|tight|weird|off))/))) return { kind: 'body', x: m[1], when };
+  // "the exam went badly"
+  if ((m = t.match(/^(?:the |my )?(.{3,30}?) went (badly|terribly|horribly|poorly|well|great|fine|ok|okay|brilliantly|amazingly)$/))) return { kind: 'went', x: m[1], tone: /well|great|fine|ok|brilliant|amazing/.test(m[2]) ? 'pos' : 'neg', when };
+  // ongoing: "I am learning to swim"
+  if ((m = t.match(/^i am (?:currently |now |slowly )?(learning|studying|practising|practicing|training|building|writing|saving|growing|making|teaching myself|working on) (.{2,50})$/))) return { kind: 'doing', x: swap(tidy(`${m[1].replace('teaching myself', 'learning')} ${m[2]}`)), when };
+
   // achievements
   if ((m = t.match(/^i (?:just )?(?:got|received|earned|won|passed|finished|completed|graduated|landed|was given|am getting)\b(.{0,60})$/)) &&
       /\b(promot|university|college|job|offer|raise|degree|exam|test|award|prize|marathon|place|licen[cs]e|interview|accepted|certificate|course|won|passed|graduat|finished|completed|landed|first)/.test(t)) {
@@ -73,6 +81,7 @@ export function narrative(text: string): Narr | null {
     const all = `${v} ${rest}`;
     const objM = rest.match(/(?:to|at|for|with|on|in)? ?(?:the |a |an |my |some )?(.{2,40})$/);
     const x = swap(rest);
+    if (/^(saw|met)$/.test(v) && /\b(friend|friends|family|cousin|neighbour|neighbor|colleague|ex|brother|sister|mum|mom|dad|teacher|boss|aunt|uncle|gran|grandma)\b/.test(all)) return { kind: 'social', x, when };
     if (/^(watched|saw|seen|binged|streamed)$/.test(v) || /\b(movie|film|show|series|episode|documentary|netflix|match|game)\b/.test(all)) return { kind: 'media', media: /\b(match|game)\b/.test(all) ? 'game' : /\b(show|series|episode|netflix)\b/.test(all) ? 'show' : 'movie', x, when };
     if (/^(read)$/.test(v) || /\bbook|novel|article\b/.test(all)) return { kind: 'media', media: 'book', x, when };
     if (/^listened$/.test(v)) return { kind: 'media', media: 'music', x, when };
@@ -92,7 +101,7 @@ export function narrative(text: string): Narr | null {
 /** Reads the polarity of a short reply to a follow-up question ("it was great", "terrible", "meh"). */
 export function replyTone(text: string, emotion: string): 'pos' | 'neg' | 'mid' {
   if (/\b(great|amazing|awesome|loved|love|good|fun|brilliant|fantastic|perfect|best|lovely|nice|wonderful|incredible|so good|cool|enjoyed|delicious|beautiful|worth it|fine)\b/.test(text) && !/\b(not|n t|never) (great|good|fun|nice|that)\b/.test(text)) return 'pos';
-  if (/\b(terrible|awful|bad|horrible|boring|hated|hate|worst|rubbish|disappointing|disappointed|meh|ugh|not good|not great|exhausting|stressful|wasted|dull|nasty|gross)\b/.test(text)) return 'neg';
+  if (/\b(terrible|awful|bad|horrible|boring|hated|hate|worst|burnt|burned|burnt|overcooked|ruined|failed|flopped|went wrong|rubbish|disappointing|disappointed|meh|ugh|not good|not great|exhausting|stressful|wasted|dull|nasty|gross)\b/.test(text)) return 'neg';
   if (['happy', 'excited', 'grateful', 'proud'].includes(emotion)) return 'pos';
   if (['sad', 'angry', 'anxious', 'tired', 'sick', 'lonely', 'bored'].includes(emotion)) return 'neg';
   return 'mid';

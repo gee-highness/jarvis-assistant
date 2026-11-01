@@ -47,6 +47,11 @@ export const NARR: Record<string, string[]> = {
   ],
   'r.nar.device.pos': ['Good news. Sounds like your {x} is behaving for once.', 'Nice, glad your {x} is sorted.'],
 
+  'r.nar.doing': ['Good for you. How’s it going so far?', 'Nice, {x} takes patience. What’s the hardest part?', 'I like that. How long have you been at it?', '[proactivity>55] Want me to set a regular reminder to practise?', '[warmth>60] That’s admirable. Are you enjoying it?'],
+  'r.nar.body': ['Ouch. How long has your {x} been hurting?', 'Sorry to hear that. Is it a sharp pain or a dull ache?', '[warmth>60] That sounds uncomfortable. Have you been able to rest it?', 'Ouch. Did something trigger it, or did it come on by itself? If it gets worse or won’t ease, please see a doctor.'],
+  'r.nar.went.neg': ['Ah, I’m sorry. What went wrong with the {x}?', 'Oh no. How are you taking it?', '[warmth>60] That’s disappointing. Do you want to talk it through?', 'Rough. What happened?'],
+  'r.nar.went.pos': ['Brilliant! How did it feel?', 'Good to hear. Were you expecting that?', 'Well done. What went right?'],
+
   // ---- wins
   'r.nar.win': [
     '#nar.win.cheer# #nar.win.q#',
