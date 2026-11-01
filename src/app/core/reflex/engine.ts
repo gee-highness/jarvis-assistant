@@ -671,7 +671,7 @@ export class ReflexEngine {
       const opts = cands.map(c => c.id);
       return { sym: 'r.fallback.choice', vars: { choices: opts.map((o, i) => `${i + 1}) ${LABEL[o]}`).join(', ') }, pending: { kind: 'choice', options: opts, utter: h.text, raw: h.raw }, quiet: true };
     }
-    if (isKnowledgeQuestion(h.text) || (h.n.question && h.text.split(' ').length >= 4 && !/\b(you|your|we|our|i|my|me|mine)\b/.test(h.text))) return this.handlers['research.ask'](h).then(o => ({ ...o, intent: 'research.ask' }));
+    if (isKnowledgeQuestion(h.text) || /^tell me about (?!you\b|yourself|your\b)/.test(h.text) || (h.n.question && h.text.split(' ').length >= 4 && !/\b(you|your|we|our|i|my|me|mine)\b/.test(h.text))) return this.handlers['research.ask'](h).then(o => ({ ...o, intent: 'research.ask' }));
     const reflect = this.reflect(h);
     if (reflect) return reflect;
     if (h.n.question && this.host.online()) return { sym: 'r.fallback.web', pending: { kind: 'web', utter: h.text, raw: h.raw }, quiet: true };

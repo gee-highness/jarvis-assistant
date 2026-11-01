@@ -197,7 +197,7 @@ export function bestFuzzy<T>(query: string, items: T[], key: (t: T) => string, m
 export type Emotion = 'happy' | 'excited' | 'grateful' | 'sad' | 'lonely' | 'anxious' | 'angry' | 'tired' | 'bored' | 'sick' | 'proud' | 'love' | 'neutral';
 
 const LEX: Record<Exclude<Emotion, 'neutral'>, string[]> = {
-  happy: ['happy', 'glad', 'great', 'good', 'awesome', 'amazing', 'fantastic', 'wonderful', 'nice', 'cool', 'joy', 'fun', 'smile', 'haha', 'yay', 'brilliant', 'lovely', 'chilled', 'relaxed', 'blessed', 'buzzing', 'elated', 'delighted', 'ecstatic', 'over the moon', 'cheerful', 'jolly', 'on cloud nine', 'on top of the world', 'thrilled to bits'],
+  happy: ['motivated', 'inspired', 'determined', 'hopeful', 'pumped', 'happy', 'glad', 'great', 'good', 'awesome', 'amazing', 'fantastic', 'wonderful', 'nice', 'cool', 'joy', 'fun', 'smile', 'haha', 'yay', 'brilliant', 'lovely', 'chilled', 'relaxed', 'blessed', 'buzzing', 'elated', 'delighted', 'ecstatic', 'over the moon', 'cheerful', 'jolly', 'on cloud nine', 'on top of the world', 'thrilled to bits'],
   excited: ['excited', 'pumped', 'hyped', 'cannot wait', 'stoked', 'thrilled', 'lets go', 'let us go', 'fired up', 'buzzing'],
   grateful: ['grateful', 'thankful', 'appreciate', 'blessed'],
   sad: ['sad', 'down', 'depressed', 'unhappy', 'cry', 'crying', 'heartbroken', 'hurt', 'miserable', 'awful', 'terrible', 'upset', 'low', 'broken', 'lost', 'gutted', 'devastated', 'disappointed', 'rough day', 'bad day', 'crushed', 'bummed', 'glum', 'down in the dumps', 'heavy hearted', 'hopeless', 'numb', 'grieving', 'miserable'],

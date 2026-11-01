@@ -36,7 +36,7 @@ export const isImperative = (t: string) => IMPERATIVE.test(t.trim());
 export function narrative(text: string): Narr | null {
   let t = text.trim();
   t = t.replace(/^we (?=(?:\w+ed|went|saw|ate|had|got|met|ran|won|drove|took|made|read|bought)\b)/, 'i ').replace(/^(?=(?:had|went|drove|ran|walked|spent) )/, 'i ');
-  if (!t || t.split(' ').length < 3 || t.split(' ').length > 28) return null;
+  if (!t || t.split(' ').length < 2 || t.split(' ').length > 28) return null;
   if (isImperative(t)) return null;
   if (/\b(remind me|add a|set a|set an|set the|my tasks|my notes|my alarm)\b/.test(t)) return null;
   let m0: RegExpMatchArray | null;
@@ -69,9 +69,9 @@ export function narrative(text: string): Narr | null {
   if ((m = t.match(new RegExp(`^my (?:((?:${PEOPLE}) (?:dog|cat|car|kids?|phone|music|noise|party|wife|husband)|(?:${DEVICES}) (?:battery|screen|charger|speaker|camera|engine|tyres?|keyboard|fan|signal))|(${PEOPLE}|${DEVICES})s?) (\\w+.*)$`)))) {
     const subj = m[1] ?? m[2], rest = m[3] ?? '';
     const compound = !!m[1];
-    if (!new RegExp(`^(is|are|was|were|has|have|had|keeps?|kept|got|gets?|gave|took|said|says|told|asked|wants?|wanted|won|will|would|did|does|just|always|never|being|seems?|started|stopped|called|texted|messaged|came|went|left|moved|bought|made|passed|failed|crashed|broke|died|drains?|freezes?|overheats?|dropped|ate|woke|learned|learnt|finally|still|also|only|now|again|can|could|cannot|and|isn|doesn|won|didn|hasn|haven|aren|wasn|wouldn|couldn|shouldn|ran|walked|visited|invited|surprised|helped|cooked|brought|sent|forgot|lost|stole|broke|chewed|ate|bit|scratched|barked|barks|barking|hurt|annoyed|upset|yelled|shouted|ignored|ignores|ignoring|praised|promoted|fired|hired|quit|joined|left|arrived|shipped|launched|delivered|finished|reviewed|approved|rejected|cancelled|postponed|moved|changed|turned|plays?|playing|keeps|needs?)\\b`).test(rest)) return null;
+    if (!new RegExp(`^(is|are|was|were|has|have|had|keeps?|kept|got|gets?|gave|took|said|says|told|asked|wants?|wanted|won|will|would|did|does|just|always|never|being|seems?|started|stopped|called|texted|messaged|came|went|left|moved|bought|made|passed|failed|crashed|broke|died|drains?|freezes?|overheats?|dropped|ate|woke|learned|learnt|finally|still|also|only|now|again|can|could|cannot|and|isn|doesn|won|didn|hasn|haven|aren|wasn|wouldn|couldn|shouldn|ran|walked|visited|invited|surprised|helped|cooked|brought|sent|forgot|forget|lost|stole|broke|chewed|ate|bit|scratched|barked|barks|barking|hurt|annoyed|upset|yelled|shouted|ignored|ignores|ignoring|praised|promoted|fired|hired|quit|joined|left|arrived|shipped|launched|delivered|finished|reviewed|approved|rejected|cancelled|postponed|moved|changed|turned|plays?|playing|keeps|needs?)\\b`).test(rest)) return null;
     const whole = `${subj} ${rest}`;
-    if (/\b(is called|are called|is named|name is|names are|lives?|works? at|born|birthday|turns)\b|^is (a|an|my|in|from|the) /.test(rest) || /\bis (a|an|my|in|from) /.test(whole)) return null;
+    if (/\b(is called|are called|is named|name is|names are|lives?|works? at|born|birthday is|turns)\b|^is (a|an|my|in|from|the) /.test(rest) || /\bis (a|an|my|in|from) /.test(whole)) return null;
     if (new RegExp(`^(${PEOPLE})$`).test(subj) && /^is [a-z]+$/.test(rest) && !NEG.test(rest) && !POS.test(rest) && !/^is (sick|ill|late|away|home|here|back|busy|tired|angry|upset|sad|happy|pregnant|engaged|married|fine|ok|okay|well|worse|better|coming|leaving|leaving)$/.test(rest)) return null;
     const isPerson = new RegExp(`^(${PEOPLE})\\b`).test(subj);
     const tone: Narr['tone'] = NEG.test(rest) || /\b(not|never|n t|won t|keeps|stopped|crashed|broke|broken|died|dying|down|freez\w+|drain\w*|overheat\w*|slow)\b/.test(rest) ? 'neg' : POS.test(rest) ? 'pos' : 'neutral';
