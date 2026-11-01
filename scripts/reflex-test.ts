@@ -12,6 +12,8 @@ const tasks = [
 const toolLog: string[] = [];
 const host: ReflexHost = {
   profile: () => ({ honorific: 'sir', userName: '', name: 'Jarvis', role: 'butler', traits: { warmth: 55, humor: 55, sarcasm: 45, formality: 85, directness: 75, verbosity: 35, enthusiasm: 35, playfulness: 25, curiosity: 35, toughLove: 45, emotional: 40, proactivity: 70 }, emoji: 'none', language: 'british', swearing: 'none', catchphrases: '', likes: '' }),
+  petName: () => 'Comet',
+  petAction: async k => ({ ok: true, line: `pet:${k}` }),
   state: (): HostState => ({ open: tasks.length, overdue: 1, dueToday: 0, doneToday: 2, inbox: 1, tasks: tasks as any, mits: ['Finish the report'], overdueTitles: ['Finish the report'], habits: ['Meditate', 'Gym', 'Read 20 pages'], habitsLeft: ['Gym'], habitsDone: 2, habitsTotal: 3, streak: 4, level: 3, levelTitle: 'Rookie', xpToday: 40, focusToday: 50, focusRunning: false, goals: [], docs: 0, memories: mem.length }),
   runTool: async (name, args) => { toolLog.push(`${name} ${JSON.stringify(args)}`); return { ok: true, result: `${name} ok` }; },
   memorySearch: async (q) => mem.map(m => ({ text: m.text, score: q.split(' ').filter(w => w.length > 2 && m.text.toLowerCase().includes(w.toLowerCase().replace("user's", 'user'))).length / Math.max(1, q.split(' ').length) })).filter(x => x.score > 0).sort((a, b) => b.score - a.score),

@@ -21,6 +21,8 @@ const open = () => tasks.filter(t => t.status === 'todo');
 
 const host: ReflexHost = {
   profile: () => ({ honorific: 'sir', userName, name: 'Jarvis', role: 'butler', traits: { warmth: 55, humor: 55, sarcasm: 45, formality: 85, directness: 75, verbosity: 35, enthusiasm: 35, playfulness: 25, curiosity: 35, toughLove: 45, emotional: 40, proactivity: 70 }, emoji: 'none', language: 'british', swearing: 'none', catchphrases: '', likes: '' }),
+  petName: () => 'Comet',
+  petAction: async k => ({ ok: true, line: `pet:${k}` }),
   state: (): HostState => ({
     open: open().length, overdue: open().filter(t => t.due && t.due < today).length, dueToday: open().filter(t => t.due === today).length,
     doneToday: tasks.filter(t => t.status === 'done').length, inbox: 0,

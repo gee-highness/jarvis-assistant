@@ -10,7 +10,7 @@ import { COMMON } from './banks/common';
 import { EXTRA } from './banks/extra';
 import { MIND } from './banks/mind';
 import { WELL } from './banks/well';
-import { PET, PET_MOODS } from './banks/pet';
+import { PET, PET_INTENTS, PET_MOODS } from './banks/pet';
 import { NARR } from './banks/narr';
 import { Narr, isImperative, narrative, replyTone } from './narrate';
 import { helpFor, ITEMS, SCALE, ScreenKind, ScreenResult, band, healthInsights, helpText, parseScore, riskOf, sleepLine, sleepOf, todayHealth, trendReport } from './wellbeing';
@@ -70,7 +70,7 @@ export class ReflexEngine {
   private lookupBusy = false;
 
   constructor(private host: ReflexHost, extraBanks: Bank[] = []) {
-    for (const b of [CHAT, ACTIONS, EXTRA, MIND, WELL, ...extraBanks]) { this.intents.push(...b.intents); this.grammar.add(b.rules); }
+    for (const b of [CHAT, ACTIONS, EXTRA, MIND, WELL, { intents: PET_INTENTS, rules: {} }, ...extraBanks]) { this.intents.push(...b.intents); this.grammar.add(b.rules); }
     this.grammar.add(NARR);
     this.grammar.add(COMMON);
     this.grammar.add(KNOWLEDGE);
@@ -127,7 +127,8 @@ export class ReflexEngine {
     await this.init();
     const t0 = Date.now();
     const n = normalize(raw);
-    const text = n.text;
+    const pn = this.host.petName?.().trim().toLowerCase();
+    const text = pn && pn.length > 1 ? n.text.replace(new RegExp(`\\b${pn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g'), 'the dog') : n.text;
     const now = this.host.now();
     const tools: ToolTrace[] = [];
     this.tools = tools;
@@ -368,6 +369,12 @@ export class ReflexEngine {
     const reactions: string[] = [];
     for (let i = 0; i < 6; i++) reactions.push(this.grammar.expand('#pet.react#', c));
     return { line: this.grammar.expand('#pet.line#', c), status: this.grammar.expand('#pet.status#', c), reactions: [...new Set(reactions)] };
+  }
+
+  /** Speak a pup grammar symbol (care replies, jokes, wisdom, dreams). */
+  petSay(sym: string, vars: Record<string, unknown> = {}): string {
+    const c = this.ctx({ ...vars, moodLabel: vars['moodLabel'] ?? PET_MOODS[String(vars['mood'])] ?? String(vars['mood'] ?? '') });
+    return this.grammar.expand(`#${sym}#`, c);
   }
 
   /** Learned phrases (for the Brain page). */
@@ -1386,6 +1393,13 @@ export class ReflexEngine {
       if (!changes.length) return { text: this.say('persona.unknown') };
       return { sym: 'r.persona.adjust', vars: { change: changes.join(' ') }, topic: 'jarvis' };
     };
+    for (const [id, kind] of [['pet.pet', 'pet'], ['pet.feed', 'feed'], ['pet.play', 'play'], ['pet.walk', 'walk'], ['pet.calm', 'calm'], ['pet.status', 'status'], ['pet.open', 'open'], ['pet.joke', 'joke'], ['pet.wisdom', 'wisdom']] as const) {
+      H[id] = async () => {
+        if (!this.host.petAction) return { text: 'The pup is not available on this device yet.', quiet: true };
+        const r = await this.host.petAction(kind);
+        return { text: r.line || 'Done.', quiet: true, topic: 'pet' };
+      };
+    }
     H['persona.name'] = async h => {
       const p = this.host.profile();
       let m: RegExpMatchArray | null;

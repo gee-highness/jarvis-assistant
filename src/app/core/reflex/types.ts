@@ -69,6 +69,9 @@ export interface HostProfile {
 export interface MemHit { text: string; score: number; kind?: string; }
 
 export interface ReflexHost {
+  /** Companion pup actions from chat (pet, feed, play, walk, calm, open, status, joke, wisdom). Optional. */
+  petAction?(kind: string): Promise<{ ok: boolean; line: string }>;
+  petName?(): string;
   profile(): HostProfile;
   state(): HostState;
   runTool(name: string, args: Record<string, unknown>): Promise<{ ok: boolean; result: string }>;

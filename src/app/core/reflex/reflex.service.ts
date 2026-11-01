@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, Injector, inject, signal } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 import { FocusService } from '../focus.service';
 import { LibraryService } from '../library.service';
@@ -22,6 +22,7 @@ class ReflexDb extends Dexie {
 @Injectable({ providedIn: 'root' })
 export class ReflexService {
   private store = inject(StoreService);
+  private injector = inject(Injector);
   private tools = inject(ToolsService);
   private memory = inject(MemoryService);
   private library = inject(LibraryService);
@@ -46,6 +47,8 @@ export class ReflexService {
       return { honorific: s.honorific || 'sir', userName: s.userName, name: p.name || 'Jarvis', role: p.role, traits: { ...p.traits }, pet: s.pet?.enabled ? { name: s.pet.name, speaks: s.pet.speaks, personality: s.pet.personality } : undefined, emoji: p.emoji, language: p.language, swearing: p.swearing, catchphrases: p.catchphrases, likes: p.likes };
     },
     state: () => this.snapshot(),
+    petAction: async kind => { const { PetService } = await import('../pet.service'); return this.injector.get(PetService).chatAction(kind); },
+    petName: () => this.store.settings().pet?.name ?? '',
     runTool: (name, args) => this.tools.run(name, args, { confirm: q => this.confirmFn(q) }),
     memorySearch: async (q, k = 6) => (await this.memory.search(q, k)).map(h => ({ text: h.memory.text, score: h.score, kind: h.memory.kind })),
     memoryTop: async k => [...this.memory.memories()].sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.importance - a.importance || b.lastUsedAt - a.lastUsedAt).slice(0, k).map(m => ({ text: m.text, score: 1, kind: m.kind })),

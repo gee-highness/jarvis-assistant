@@ -1,4 +1,5 @@
 import type { Rules } from '../grammar';
+import type { IntentSpec } from '../types';
 
 /**
  * The companion pup: an original character. Mood comes from your day (tasks = treats, steps = walks,
@@ -23,14 +24,74 @@ export const PET: Rules = {
     '[mood=excited] {done} THINGS DONE?! You are a LEGEND!', '[mood=excited] Streak {streak}! I am SO proud I might explode!', '[mood=excited] BEST. DAY. EVER.',
     '[mood=proud] Day {streak} of the streak. I told everyone at the dog park.', '[mood=proud] Look at you go, {h}. I always knew.',
     '[mood=cuddly] I am right here, {h}. Want a cuddle?', '[mood=cuddly] Bad days happen. I am not going anywhere.', '[mood=cuddly] *curls up next to you* We can just sit for a bit.',
-    '[mood=lonely] I missed you! Where did you go?!', '[mood=lonely] You are BACK! *happiest wiggle*',
+    '[mood=lonely] I am so glad you are here!', '[mood=lonely] You are BACK! *happiest wiggle*',
+    '[mood=zen] *slow, peaceful breaths* This is nice, {h}.', '[mood=zen] Everything feels softer right now. Thank you.', '[mood=zen] *eyes half closed, tail barely moving* Mmm. Calm.', '[mood=zen] The world is quiet. I like it with you in it.',
+    '[mood=playful] Got any more throws in you, {h}?', '[mood=playful] *play bow* Again? Again!', '[mood=playful] That ball and I are best friends now.', '[mood=playful] *tongue out, wiggling* I could do this all day.',
     '[mood=walk] {steps} steps today! My paws are tired. Worth it.', '[mood=walk] Good walk! I smelled at least nine interesting things.',
     '[p=grumpy,mood=happy] Fine. You did well. Don’t let it go to your head.', '[p=chill,mood=happy] Nice pace today. No rush.',
   ],
   'pet.react': ['*happy wiggle*', '*wags tail so hard the whole body wags*', '*leans into the scratch*', 'More! More!', '*rolls over for belly rubs*', '*licks your thumb*', 'Again! Again!', '*does a tiny happy bark*'],
+  'pet.greet': ['[mood=sleeping] *one eye opens* Oh, hi. Shh, I am dreaming of treats.', 'Hello, {h}! I saved you the best spot.', '*trots over* There you are.', 'Welcome back, {h}. I was just thinking about you.', '[p=chill] *slow tail wag* Hey. Nice to see you.', '[p=hyper] YOU CAME! HI HI HI!', '[p=grumpy] Oh. It’s you. ...I was waiting, obviously not.', '[p=loyal] *sits up straight* Reporting for duty, {h}.'],
+  'pet.welcome': ['You are back after {away}, and I am just glad. No rush, ever.', '*tail goes wild* {away}! I kept your spot warm.', 'Hello, stranger! {away} is nothing. Let’s pick up right here.', '[p=grumpy] {away}?! ...Fine. I missed you. A little. A lot.', 'I did not count the time. Okay, I counted. I am happy you are here.'],
+  'pet.levelup': ['Our bond grew. I feel it right here. *taps chest with paw*', 'We are closer than ever, {h}.', '*happy spin* Look at us go!'],
+  'pet.perfect': ['A perfect pup day. Fed, walked, played and cuddled. You are the best.', '*rolls over* Everything I ever wanted in one day.'],
+  'pet.fed': ['*crunch crunch* Best. Treat. Ever.', 'Nom! Thank you, {h}!', '*tail helicopter* More? ...no? That’s okay. I love you anyway.', '[p=grumpy] Acceptable. *wags secretly*', '[p=chill] *chews slowly* Mmm. Perfect.', '[p=hyper] TREAT TREAT TREAT! Thank you!', '[p=goofy] *swallows it whole, looks surprised* Did I just inhale that?'],
+  'pet.fed.none': ['The jar is empty, and that is okay. Finish a task or play catch and we will fill it.', 'No treats left. Every task you finish adds one, or we can catch some in the sky.', '*sniffs the empty jar* Maybe later. I am not going anywhere.'],
+  'pet.played': ['That was SO fun. Again later?', '*pants happily* Best game!', 'You throw really well, {h}.', '[p=hyper] AGAIN AGAIN AGAIN!', '[p=chill] *flops down* That was just enough running.', '[p=loyal] I will always bring it back to you.'],
+  'pet.walked': ['A walk! I sniffed nine interesting things and one very rude squirrel.', '*pawprints on the sidewalk* Fresh air looks good on you, {h}.', 'Thank you for the walk. My paws and my heart are happy.'],
+  'pet.calm.done': ['Slow breaths, soft heart. Well done, {h}.', '*leans against you* That felt good. Thank you for sharing it.', 'Calm looks lovely on you.', '*quiet tail thump* We did something kind for ourselves.'],
+  'pet.gift': ['I found something shiny. Share it with me?', 'A little surprise, just because you are you.', '*proudly drops it at your feet*'],
+  'pet.open': ['Come on over, I saved you the good spot.', '*opens the door with his nose* Come in!'],
+  'pet.report': ['{name} is {moodLabel}. {hearts} of 4 daily hearts today, {jar} treats in the jar, and our bond is "{bondTitle}".', 'Here is the news: {hearts}/4 hearts, {jar} treats saved, and we are "{bondTitle}".'],
+  'pet.joke': [
+    'What do you call a dog magician? A labracadabrador.', 'Why did the dog sit in the shade? He did not want to be a hot dog.', 'What is a dog’s favourite pizza? Pupperoni.', 'What do dogs do after they finish obedience school? They get their masters.',
+    'Why do dogs run in circles? It is hard to run in squares.', 'What do you call a sleeping bull dog? A bulldozer.', 'What is a dog’s favourite city? New Yorkie.', 'What do you call a dog that does magic? A labracadabrador. (Still funny.)',
+    'Where do dogs go when they lose their tails? The retail store.', 'Why did the scarecrow adopt a dog? Because he needed a ‘barking’ buddy.', 'What did the dog say when he sat on sandpaper? Ruff.', 'How does a dog stop a video? He presses the pause button.',
+    'What is a dog’s favourite kind of sandwich? Pup-butter and jelly.', 'Why are dogs bad dancers? They have two left feet. And two right ones. And they are very enthusiastic.', 'What do you get when you cross a dog and a calculator? A friend you can count on.',
+  ],
+  'pet.wisdom': [
+    'Sniff the flowers when you pass them. Even the small ones.', 'Naps are not lazy. Naps are maintenance.', 'Wag first, worry later.', 'The best part of any walk is the first step outside.', 'Be happy to see the people you love. Show it with your whole body.',
+    'When in doubt, take a deep breath and roll in something nice-smelling. (Or just breathe.)', 'You do not have to earn a cuddle.', 'One thing at a time. Fetch the ball, then the next ball.', 'Rest is part of the work.', 'A kind word is a treat that never runs out.',
+    'It is okay to be a bit silly today.', 'Not every day needs to be a big day. Some days are for sunbeams.', 'You are doing better than you think. I have been watching.', 'Today’s plan: be gentle with yourself. I will help.', 'Even bad days end with someone happy to see you. That is me.',
+    'Drink some water. Then do the thing. Or do not. Water first.', 'Look up at the sky for ten seconds. It helps.', 'Small steps still count as walkies.', 'If it is too loud inside, go outside. If it is too loud outside, come cuddle.', 'You are allowed to start again, as many times as you need.',
+  ],
+  'pet.dream': ['*dreaming of a never-ending field of tennis balls*', '*dreaming of chasing a very slow squirrel*', '*dreaming of the biggest bowl of treats*', '*dreaming you gave the best belly rubs in the world*', '*dreaming of a warm sunbeam that never moves*', '*dreaming of flying, ears flapping*', '*dreaming of a long walk with you*'],
+  'pet.talk.sad': ['I am here. I will sit right next to you for as long as you want.', '*rests head on your lap* No fixing needed. Just us.', 'It is okay to feel it. I am not going anywhere.'],
+  'pet.talk.how': ['I am {moodLabel}! Mostly because you are here.', '[mood=sleeping] Zzz... what? I am great. Sleepy, but great.', 'Tail status: wagging. Heart status: full.'],
   'pet.status': ['{name} · {moodLabel} · Lv {level}', '{name} · {moodLabel} · {treats} treats today'],
 };
 
 export const PET_MOODS: Record<string, string> = {
-  sleeping: 'sleeping', hungry: 'hungry', bored: 'bored', happy: 'happy', excited: 'over the moon', proud: 'proud', cuddly: 'cuddly', lonely: 'missed you', walk: 'tired from walkies',
+  sleeping: 'sleeping', hungry: 'hungry', bored: 'bored', happy: 'happy', excited: 'over the moon', proud: 'proud', cuddly: 'cuddly', lonely: 'so glad you are here', zen: 'peaceful', playful: 'playful', walk: 'tired from walkies',
 };
+
+/** Phrases that mean the user is talking to or about the pup. */
+export const PET_INTENTS: IntentSpec[] = [
+  { id: 'pet.pet', kind: 'action', topic: 'pet',
+    examples: ['pet the dog', 'pat the pup', 'give the dog a pat', 'scratch his belly', 'give the pup a cuddle', 'good boy', 'who is a good boy', 'good dog', 'give him a scratch', 'rub his belly', 'cuddle the dog', 'hug the pup'],
+    patterns: [/\b(pet|pat|scratch|cuddle|hug|stroke) (the|my) (dog|pup|puppy|pet|doggo)\b/, /\bgood (boy|dog|pup|puppy)\b/, /\bbelly rub\b/] },
+  { id: 'pet.feed', kind: 'action', topic: 'pet',
+    examples: ['feed the dog', 'give the pup a treat', 'give him a treat', 'treat time for the dog', 'feed my pup', 'give the dog a bone', 'dog treat please'],
+    patterns: [/\b(feed|treat) (the|my) (dog|pup|puppy|pet)\b/, /\bgive (the|my) (dog|pup|puppy|pet) a (treat|snack|bone)\b/] },
+  { id: 'pet.play', kind: 'action', topic: 'pet',
+    examples: ['play with the dog', 'throw the ball for the pup', 'play fetch', 'play with my pup', 'let us play with the dog', 'fetch with the dog'],
+    patterns: [/\bplay (with )?(the|my) (dog|pup|puppy|pet)\b/, /\bplay fetch\b/, /\bthrow the (ball|toy|stick|frisbee)\b/] },
+  { id: 'pet.walk', kind: 'action', topic: 'pet',
+    examples: ['walk the dog', 'take the dog for a walk', 'we went on a walk with the pup', 'walkies', 'take the pup out', 'time for walkies'],
+    patterns: [/\bwalk (the|my) (dog|pup|puppy|pet)\b/, /\bwalkies\b/, /\btake (the|my) (dog|pup|puppy|pet) (for a walk|out)\b/] },
+  { id: 'pet.calm', kind: 'action', topic: 'pet',
+    examples: ['breathe with the dog', 'calm me down with the pup', 'help me relax with the pup', 'breathing with my pup', 'let us nap with the dog', 'cuddle time to relax', 'open the calm corner'],
+    patterns: [/\b(breathe|breathing|relax|calm|nap|meditate) with (the|my) (dog|pup|puppy|pet)\b/, /\bcalm (me|us) down with\b/] },
+  { id: 'pet.status', kind: 'info', topic: 'pet',
+    examples: ['how is the dog', 'how is my pup doing', 'is the pup happy', 'how is the puppy', 'dog status', 'pup status', 'how is my pet'],
+    patterns: [/\bhow('s| is) (the|my) (dog|pup|puppy|pet|doggo)\b/, /\b(pup|dog|pet) status\b/] },
+  { id: 'pet.open', kind: 'action', topic: 'pet',
+    examples: ['show me the dog', 'open the pet page', 'see my pup', 'go to my dog', 'visit the pup', 'where is my dog', 'show the pup'],
+    patterns: [/\b(show|see|visit|open|go to) (me )?(the|my) (dog|pup|puppy|pet|pet page)\b/] },
+  { id: 'pet.joke', kind: 'info', topic: 'pet',
+    examples: ['tell me a dog joke', 'dog joke please', 'give me a puppy pun', 'tell me a pup joke', 'make me laugh with a dog joke'],
+    patterns: [/\bdog (joke|pun)\b/, /\b(pup|puppy) (joke|pun)\b/] },
+  { id: 'pet.wisdom', kind: 'info', topic: 'pet',
+    examples: ['what would the dog say', 'give me some pup wisdom', 'pup wisdom', 'wise words from the dog', 'what does the dog think'],
+    patterns: [/\bpup wisdom\b/, /\bwhat would (the|my) (dog|pup) say\b/] },
+];
