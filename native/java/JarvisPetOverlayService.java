@@ -100,7 +100,7 @@ public class JarvisPetOverlayService extends Service {
     private int facing = 1;
     private S state = S.SIT;
     private long stateStart = 0, stateUntil = 0, lastStep = 0, lastPolicy = 0, bubbleUntil = 0, happyUntil = 0;
-    private Bitmap idle, walk, sleep, happy;
+    private Bitmap idle, walk, walk2, sleep, happy;
     private String where = "home", name = "Pup";
     private String[] lines = new String[] { "Woof!", "Arf arf!", "Wuff?" };
     private Set<String> launchers = new HashSet<>();
@@ -205,9 +205,11 @@ public class JarvisPetOverlayService extends Service {
         happy = JarvisPetWidget.decode(w.getString("happy", ""));
         sleep = JarvisPetWidget.decode(w.getString("sleep", ""));
         walk = JarvisPetWidget.decode(w.getString("walk", ""));
+        walk2 = JarvisPetWidget.decode(w.getString("walk2", ""));
         if (happy == null) happy = idle;
         if (sleep == null) sleep = idle;
         if (walk == null) walk = idle;
+        if (walk2 == null) walk2 = idle;
         if (idle != null && pup != null) pup.setImageBitmap(idle);
     }
 
@@ -260,7 +262,7 @@ public class JarvisPetOverlayService extends Service {
                     double ph = t / 95.0;
                     bob = (float) Math.sin(ph) * sizePx * 0.035f;
                     rot = (float) Math.sin(ph) * 4f;
-                    img = ((t / 170) % 2 == 0) ? idle : walk;
+                    img = ((t / 190) % 2 == 0) ? walk : walk2;
                 }
                 break;
             }

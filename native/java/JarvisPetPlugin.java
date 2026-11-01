@@ -14,7 +14,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 public class JarvisPetPlugin extends Plugin {
     @PluginMethod
     public void update(PluginCall call) {
-        JarvisPetWidget.save(getContext(), call.getString("idle"), call.getString("happy"), call.getString("line"), call.getString("status"), call.getString("reactions"), call.getString("sleep"), call.getString("walk"));
+        JarvisPetWidget.save(getContext(), call.getString("idle"), call.getString("happy"), call.getString("line"), call.getString("status"), call.getString("reactions"), call.getString("sleep"), call.getString("walk"), call.getString("walk2"));
         call.resolve();
     }
 

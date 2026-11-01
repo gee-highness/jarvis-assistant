@@ -254,7 +254,7 @@ export const JarvisSense = registerPlugin<JarvisSensePlugin>('JarvisSense', { we
 
 // ---------------------------------------------------------------- pet widget
 export interface JarvisPetPlugin {
-  update(o: { idle?: string; happy?: string; sleep?: string; walk?: string; line: string; status: string; reactions?: string }): Promise<void>;
+  update(o: { idle?: string; happy?: string; sleep?: string; walk?: string; walk2?: string; line: string; status: string; reactions?: string }): Promise<void>;
   takeTaps(): Promise<{ taps: number }>;
   overlayStatus(): Promise<{ granted: boolean; running: boolean; enabled: boolean; usageAccess: boolean }>;
   requestOverlayPermission(): Promise<void>;

@@ -225,13 +225,33 @@ export class PetService {
     if (!isNative() || !this.pet().enabled) return;
     const p = this.pet();
     const plain = p.speech === 'english';
-    const key = `${p.fur}${p.patch}${p.bandana}${p.accessory}${mood}`;
+    const key = `${p.fur}${p.patch}${p.bandana}${p.accessory}${mood}${p.render3d}`;
     const look = { fur: p.fur, patch: p.patch, bandana: p.bandana, accessory: p.accessory };
-    const imgs = key !== this.lastKey ? { idle: await petPng(look, mood), happy: await petPng(look, 'excited'), sleep: await petPng(look, 'sleeping'), walk: await petPng(look, 'walk') } : {};
+    let imgs: { idle?: string; happy?: string; sleep?: string; walk?: string; walk2?: string } = {};
+    if (key !== this.lastKey) {
+      const d3 = p.render3d ? await this.dogSprites(look, mood).catch(() => null) : null;
+      imgs = d3 ?? { idle: await petPng(look, mood), happy: await petPng(look, 'excited'), sleep: await petPng(look, 'sleeping'), walk: await petPng(look, 'walk') };
+    }
     this.lastKey = key;
     const line = plain ? r.line : this.dogFor(r.line, mood);
     const reactions = plain ? r.reactions : r.reactions.map(() => this.dogFor('', 'happy'));
     await JarvisPet.update({ ...imgs, line, status: r.status, reactions: reactions.join('|') }).catch(() => undefined);
+  }
+
+  private spriteDog?: import('./dog3d/dog3d').Dog3D;
+  /** Transparent stills of the 3D pup for the home-screen widget and the roaming overlay. */
+  private async dogSprites(look: { fur: string; patch: string; bandana: string; accessory: string }, mood: PetMood) {
+    const { Dog3D } = await import('./dog3d/dog3d');
+    if (!Dog3D.supported()) return null;
+    if (!this.spriteDog) {
+      const c = document.createElement('canvas'); c.width = c.height = 256;
+      this.spriteDog = await Dog3D.create(c, 'assets/pet/dog.glb', { shells: 14, pixelRatio: 1, alpha: true });
+    }
+    const d = this.spriteDog;
+    d.applyCoat(look);
+    const idle = mood === 'sleeping' ? 'lie' : mood === 'excited' || mood === 'playful' || mood === 'proud' ? 'happy' : mood === 'cuddly' || mood === 'zen' || mood === 'hungry' ? 'sit' : 'idle';
+    const o = { size: 256, yaw: 1.0 };
+    return { idle: d.snapshot(idle, 0.4, o), happy: d.snapshot('happy', 0.1, o), sleep: d.snapshot('lie', 0.3, o), walk: d.snapshot('walk', 0.1, o), walk2: d.snapshot('walk', 0.55, o) };
   }
 
   // ------------------------------------------------------------------ interactions

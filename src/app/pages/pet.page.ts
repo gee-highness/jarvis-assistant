@@ -39,7 +39,7 @@ const MOOD_LABEL: Record<PetMood, string> = { sleeping: 'sleeping', hungry: 'pec
         <div class="track"><i [style.width.%]="pet.bond().pct"></i></div>
       </div>
 
-      <jarvis-pet-scene #scene [look]="look()" [mood]="pet.mood()" [scene]="p().scene" [toy]="p().toy" [calm]="calmMotion()" [speech]="speech()" [meaning]="meaning()" [alwaysMeaning]="p().speech === 'both'"
+      <jarvis-pet-scene #scene [prefer3d]="p().render3d" [fur]="p().furQuality" [look]="look()" [mood]="pet.mood()" [scene]="p().scene" [toy]="p().toy" [calm]="calmMotion()" [speech]="speech()" [meaning]="meaning()" [alwaysMeaning]="p().speech === 'both'"
         [rain]="p().ambient === 'rain' && p().sound" (pat)="onPat()" (holdStart)="onHoldStart()" (holdEnd)="onHoldEnd($event)" (stageTap)="onStageTap($event)" (dream)="dream()" />
       @if (fetchMode()) { <div class="fetchhint">🎾 Tap anywhere in the scene to throw the {{ toyName() }}. <button class="small" (click)="fetchMode.set(false)">Done</button></div> }
       @else { <div class="tip small muted">Tap {{ p().name }} to pet him. Hold to cuddle.</div> }
@@ -174,6 +174,12 @@ const MOOD_LABEL: Record<PetMood, string> = { sleeping: 'sleeping', hungry: 'pec
             <label class="row small"><input type="checkbox" [ngModel]="p().sound" (ngModelChange)="soundOn($event)"> Sounds (yips, purring, soft ambient). Off by default.</label>
             <label class="row small"><input type="checkbox" [ngModel]="p().haptics" (ngModelChange)="save({ haptics: $event })"> Gentle vibration when petting and breathing</label>
             <label class="row small"><input type="checkbox" [ngModel]="p().calmMotion" (ngModelChange)="save({ calmMotion: $event })"> Calm motion: slower, quieter animations</label>
+            <label class="row small"><input type="checkbox" [ngModel]="p().render3d" (ngModelChange)="save({ render3d: $event })"> Realistic 3D pup (turn off if your phone gets warm)</label>
+            <label class="field">Fur detail
+              <select [ngModel]="p().furQuality" (ngModelChange)="save({ furQuality: $event })">
+                <option value="low">Light (fastest)</option><option value="normal">Normal</option><option value="high">Fluffy (best looking)</option>
+              </select>
+            </label>
             <label class="row small"><input type="checkbox" [ngModel]="p().speaks" (ngModelChange)="save({ speaks: $event })"> Let {{ p().name }} talk in chat instead of Jarvis</label>
             <label class="row small"><input type="checkbox" [ngModel]="usePetAvatar()" (ngModelChange)="avatar($event)"> Use {{ p().name }} as the assistant avatar</label>
             <label class="row small"><input type="checkbox" [ngModel]="p().enabled" (ngModelChange)="save({ enabled: $event })"> Pet enabled (home-screen widget)</label>

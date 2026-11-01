@@ -3,6 +3,7 @@ import { DomSanitizer } from '@angular/platform-browser';
 import type { PetScene, PetToy } from '../core/models';
 import { PetLook, PetMood, petSvg, toySvg } from '../core/pet-art';
 import { skyAt } from '../core/pet-sky';
+import { Dog3dComponent } from './dog3d.component';
 
 // ---------------------------------------------------------------- scenes (all original, drawn in SVG)
 function sceneSvg(scene: PetScene, night: number): string {
@@ -62,9 +63,10 @@ type Idle = 'tilt' | 'hop' | 'shake' | 'stretch' | 'sniff' | 'spin' | 'wiggle';
 @Component({
   selector: 'jarvis-pet-scene',
   standalone: true,
+  imports: [Dog3dComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div #stage class="stage" [class.calm]="calm()" [class.night]="sky().night > 0.55" (pointermove)="gaze($event)" (pointerleave)="gazeReset()"
+    <div #stage class="stage" [class.d3]="use3d()" [class.calm]="calm()" [class.night]="sky().night > 0.55" (pointermove)="gaze($event)" (pointerleave)="gazeReset()"
          [style.--top]="sky().top" [style.--bottom]="sky().bottom" [style.--night]="sky().night" (click)="stageClick($event)">
       @if (scene() !== 'bedroom' && scene() !== 'cabin') {
         <div class="sky"></div>
@@ -101,7 +103,10 @@ type Idle = 'tilt' | 'hop' | 'shake' | 'stretch' | 'sniff' | 'spin' | 'wiggle';
             }
           </div>
         }
-        <div class="pup" [innerHTML]="html()"></div>
+        <div class="pup">
+          @if (use3d()) { <jarvis-dog3d [coat]="look()" [mood]="mood()" [running]="running()" [holding]="holding()" [calm]="calm()" [quality]="shells()" (failed)="failed.set(true)" /> }
+          @else { <div [innerHTML]="html()"></div> }
+        </div>
         <div class="shadow"></div>
       </div>
 
@@ -146,6 +151,8 @@ type Idle = 'tilt' | 'hop' | 'shake' | 'stretch' | 'sniff' | 'spin' | 'wiggle';
     .pupwrap { position: absolute; bottom: 5%; width: 56%; max-width: 250px; transform: translateX(-50%); z-index: 4; transition: left 1.1s cubic-bezier(.4,.1,.3,1); cursor: pointer; touch-action: none; -webkit-tap-highlight-color: transparent; }
     .pup { transform: scaleX(var(--face, 1)); transition: transform .25s; transform-origin: 50% 90%; }
     .pup ::ng-deep svg { width: 100%; height: auto; display: block; }
+    .d3 .pupwrap { width: 70%; max-width: 340px; bottom: 3%; }
+    .d3 .shadow { left: 18%; right: 14%; bottom: 7%; height: 10px; }
     .shadow { position: absolute; left: 20%; right: 20%; bottom: 2%; height: 8px; border-radius: 50%; background: rgba(0,0,0,.2); filter: blur(3px); z-index: -1; }
     .pupwrap.tilt .pup { animation: tilt 1.6s ease-in-out; } .pupwrap.hop .pup { animation: hop .7s ease-out; } .pupwrap.shake .pup { animation: shake .8s ease-in-out; }
     .pupwrap.stretch .pup { animation: stretch 1.8s ease-in-out; } .pupwrap.sniff .pup { animation: sniff 1.6s ease-in-out; } .pupwrap.spin .pup { animation: spin 1s ease-in-out; } .pupwrap.wiggle .pup { animation: wiggle .8s ease-in-out; }
@@ -191,6 +198,9 @@ export class PetSceneComponent implements OnInit, OnDestroy {
   readonly scene = input<PetScene>('meadow');
   readonly toy = input<PetToy>('ball');
   readonly calm = input(false);
+  /** Use the real-time 3D dog (falls back to the drawn pup automatically). */
+  readonly prefer3d = input(true);
+  readonly fur = input<'low' | 'normal' | 'high'>('normal');
   readonly speech = input('');
   /** What the pup actually means (shown on tap, or always). */
   readonly meaning = input('');
@@ -211,6 +221,10 @@ export class PetSceneComponent implements OnInit, OnDestroy {
   readonly treatShown = signal(false);
   readonly treatHtml = this.san.bypassSecurityTrustHtml(toySvg('bone', 34));
 
+  readonly failed = signal(false);
+  readonly use3d = computed(() => this.prefer3d() && !this.failed());
+  readonly shells = computed(() => ({ low: 9, normal: 17, high: 24 })[this.fur()]);
+  private dog3 = viewChild(Dog3dComponent);
   readonly x = signal(50);
   readonly face = signal(1);
   readonly idleClass = signal('');
@@ -286,6 +300,7 @@ export class PetSceneComponent implements OnInit, OnDestroy {
   }
   /** Play a one-off animation on the pup. */
   emote(kind: Idle | 'bark') {
+    if (kind === 'sniff') this.dog3()?.react('sniff'); else if (kind === 'hop' || kind === 'bark') this.dog3()?.react('bark');
     const k = kind === 'bark' ? 'hop' : kind;
     this.idleClass.set('');
     queueMicrotask(() => this.idleClass.set(k));
@@ -295,7 +310,8 @@ export class PetSceneComponent implements OnInit, OnDestroy {
     const to = 28 + Math.random() * 44;
     this.face.set(to < this.x() ? -1 : 1);
     this.x.set(to);
-    this.running.set(false);
+    this.running.set(true);
+    this.later(() => this.running.set(false), this.calm() ? 2500 : 1200);
   }
   private scheduleBlink() {
     this.blinkTimer = setTimeout(() => {
@@ -321,9 +337,10 @@ export class PetSceneComponent implements OnInit, OnDestroy {
     const cx = pr.left + pr.width / 2, cy = pr.top + pr.height * 0.42;
     const dx = Math.max(-1, Math.min(1, (ev.clientX - cx) / 160)), dy = Math.max(-1, Math.min(1, (ev.clientY - cy) / 160));
     this.applyGaze(dx * 5, dy * 3.5);
+    this.dog3()?.look(dx, -dy);
     this.face.set(ev.clientX < cx - 40 ? -1 : ev.clientX > cx + 40 ? 1 : this.face());
   }
-  gazeReset() { this.applyGaze(0, 0); }
+  gazeReset() { this.applyGaze(0, 0); this.dog3()?.look(0, 0); }
 
   // ------------------------------------------------------------------ touching the pup
   down(ev: PointerEvent) {

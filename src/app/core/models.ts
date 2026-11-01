@@ -291,6 +291,9 @@ export interface PetSettings {
   roam: boolean;
   roamWhere: 'home' | 'everywhere';
   roamSize: number;
+  /** Draw the pup as a real-time 3D dog (falls back to the drawn pup if WebGL is missing). */
+  render3d: boolean;
+  furQuality: 'low' | 'normal' | 'high';
 }
 export const EMPTY_CARE: PetCare = { day: '', fed: 0, walked: false, played: 0, cuddled: 0, calm: 0, treats: 0, credited: 0, gift: false, perfect: false };
 export const EMPTY_STATS: PetStats = { feeds: 0, fetches: 0, catches: 0, bestCatch: 0, cups: 0, cuddleSecs: 0, calmMin: 0, naps: 0, breaths: 0, talks: 0, visits: 0, days: 0, perfectDays: 0, walks: 0, tried: [], lastDay: '' };
@@ -298,7 +301,7 @@ export const DEFAULT_PET: PetSettings = {
   enabled: true, name: 'Comet', fur: '#f2c48d', patch: '#c9824a', bandana: '#22d3ee', accessory: 'none', personality: 'goofy',
   speaks: false, bornAt: 0, pets: 0, treats: 0, xp: 0, scene: 'meadow', toy: 'ball', sound: false, volume: 0.5, ambient: 'off', calmMotion: false, haptics: true,
   care: EMPTY_CARE, stats: EMPTY_STATS, badges: [], lastVisit: 0,
-  speech: 'dog', sass: 65, roam: false, roamWhere: 'home', roamSize: 88,
+  speech: 'dog', sass: 65, roam: false, roamWhere: 'home', roamSize: 88, render3d: true, furQuality: 'normal',
 };
 
 /** reflex = instant LLM-free brain (default); llm = language model via the engine below. */

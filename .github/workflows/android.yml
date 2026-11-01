@@ -81,6 +81,7 @@ jobs:
           npx --yes esbuild scripts/pet-test.ts --bundle --platform=node --outfile="$RUNNER_TEMP/pt.cjs" --log-level=warning
           node "$RUNNER_TEMP/r1k.cjs" | head -n 8
           node "$RUNNER_TEMP/pt.cjs" | tail -n 6
+          node scripts/dog/dog-test.mjs | tail -n 4
 
       - name: Build web app
         run: |
