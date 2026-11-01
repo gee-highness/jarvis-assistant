@@ -36,12 +36,13 @@ public class JarvisPetWidget extends AppWidgetProvider {
         }
     }
 
-    static void save(Context ctx, String idle, String happy, String line, String status, String reactions, String sleep, String walk) {
+    static void save(Context ctx, String idle, String happy, String line, String status, String reactions, String sleep, String walk, String walk2) {
         SharedPreferences.Editor e = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit();
         if (idle != null && !idle.isEmpty()) e.putString("idle", idle);
         if (happy != null && !happy.isEmpty()) e.putString("happy", happy);
         if (sleep != null && !sleep.isEmpty()) e.putString("sleep", sleep);
         if (walk != null && !walk.isEmpty()) e.putString("walk", walk);
+        if (walk2 != null && !walk2.isEmpty()) e.putString("walk2", walk2);
         e.putString("line", line == null ? "" : line);
         e.putString("status", status == null ? "" : status);
         if (reactions != null) e.putString("reactions", reactions);
