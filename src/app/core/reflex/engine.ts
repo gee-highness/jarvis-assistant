@@ -11,6 +11,8 @@ import { EXTRA } from './banks/extra';
 import { MIND } from './banks/mind';
 import { WELL } from './banks/well';
 import { PET, PET_MOODS } from './banks/pet';
+import { NARR } from './banks/narr';
+import { Narr, narrative, replyTone } from './narrate';
 import { helpFor, ITEMS, SCALE, ScreenKind, ScreenResult, band, healthInsights, helpText, parseScore, riskOf, sleepLine, sleepOf, todayHealth, trendReport } from './wellbeing';
 import { EpisodicMemory, Episode, LiveState, ago, span, windowOf } from './episodic';
 import { Finding, Researcher, cleanQuery, isKnowledgeQuestion } from './research';
@@ -69,6 +71,7 @@ export class ReflexEngine {
 
   constructor(private host: ReflexHost, extraBanks: Bank[] = []) {
     for (const b of [CHAT, ACTIONS, EXTRA, MIND, WELL, ...extraBanks]) { this.intents.push(...b.intents); this.grammar.add(b.rules); }
+    this.grammar.add(NARR);
     this.grammar.add(COMMON);
     this.grammar.add(KNOWLEDGE);
     this.grammar.add(ALIVE_RULES);
@@ -199,17 +202,24 @@ export class ReflexEngine {
       if (follow && this.handlers[this.ds.lastIntent!]) top = { ...top, id: this.ds.lastIntent!, score: Math.max(top.score, BANDS.high) };
       // habit hook: "gym done", "go for a run done" → log the matching habit
       const habits = this.host.state().habits;
+      let habitHit = false;
       if (habits.length && /\b(done|did|finished|completed|log|logged|tick|ticked|went)\b/.test(text) && top.score < 0.75) {
         const hit = habits.find(hb => contentWords(hb.toLowerCase()).map(stem).some(w => w.length > 2 && text.split(' ').map(stem).includes(w)));
-        if (hit) top = { ...top, id: 'habit.log', score: 0.8 };
+        if (hit) { top = { ...top, id: 'habit.log', score: 0.8 }; habitHit = true; }
       }
+      // someone is simply telling me something: answer the story, not a keyword inside it
+      let nar = !habitHit && !/\?$/.test(raw.trim()) && (top.id === 'habit.log' || !(top.pattern && top.score >= 0.6 && ['action', 'info'].includes(this.model.spec(top.id)?.kind ?? ''))) && (top.score < 0.85 || top.id === 'habit.log' || this.model.spec(top.id)?.kind === 'chat') ? narrative(text) : null;
+      if (nar?.kind === 'win' && top.id === 'feel.win') nar = null;
       // a short first-person message with a clear feeling and no stronger match: hear the feeling
       const EMO_INTENT: Partial<Record<string, string>> = { sad: 'feel.sad', lonely: 'feel.lonely', anxious: 'feel.stress', angry: 'feel.angry', tired: 'feel.tired', bored: 'feel.bored', happy: 'feel.happy', excited: 'feel.happy', grateful: 'feel.happy', sick: 'feel.sick', proud: 'feel.win' };
       const emoTarget = EMO_INTENT[emo.emotion];
-      if (emoTarget && top.score < 0.5 && text.split(' ').length <= 9 && /\b(i|my|me|feeling|feel)\b/.test(text) && (this.model.spec(top.id)?.kind !== 'action' || top.score < 0.3) && !/\?$/.test(raw.trim())) top = { id: emoTarget, score: 0.55, lex: 0, sem: 0, pattern: false };
+      if (!nar && emoTarget && top.score < 0.5 && text.split(' ').length <= 9 && /\b(i|my|me|feeling|feel)\b/.test(text) && (this.model.spec(top.id)?.kind !== 'action' || top.score < 0.3) && !/\?$/.test(raw.trim())) top = { id: emoTarget, score: 0.55, lex: 0, sem: 0, pattern: false };
       const facts = learnFacts(text, raw, now);
       const factFirst = facts.length && (top.score < 0.62 || /^(chat|feel)\./.test(top.id) || top.id === 'persona.name' && !/call me|name is/.test(text));
-      if (factFirst && top.id !== 'memory.remember' && top.id !== 'task.add') {
+      if (nar) {
+        if (facts.length) this.storeFacts(facts).catch(() => undefined);
+        out = this.narrate(nar); intent = 'chat.narrate'; conf = 0.7;
+      } else if (factFirst && top.id !== 'memory.remember' && top.id !== 'task.add') {
         out = await this.onFacts(facts, raw);
         intent = 'learn.fact'; conf = 0.8;
       } else if (top.score >= BANDS.mid || (top.pattern && top.score >= 0.3)) {
@@ -528,6 +538,27 @@ export class ReflexEngine {
         }
         return null;
       }
+      case 'narr': {
+        const cat = String(p.data?.['cat'] ?? '');
+        const words = h.text.split(' ').length;
+        if (h.n.question || words > 45 || narrative(h.text) || (/^i /.test(h.text) && words > 3)) return null;
+        if (cat === 'plan') {
+          if (yes && /goal/.test(this.ds.lastBot ?? '')) {
+            const x = String(p.data?.['x'] ?? '').replace(/^you /, '');
+            const goal = await this.handlers['goal.add']({ ...h, text: `add a goal to ${x}`, raw: `add a goal to ${x}`, ent: extract(`add a goal to ${x}`, this.host.now()), intent: 'goal.add' });
+            return { out: goal, intent: 'goal.add' };
+          }
+          if (no) return { out: { sym: 'r.chat.no', quiet: true }, intent: 'chat.no' };
+          if (yes && /\b(want me|shall i|is this something|would you|have you)\b/i.test(this.ds.lastBot ?? '')) return { out: { sym: 'r.nar.plan.go', quiet: true }, intent: 'chat.narrate' };
+          return null;
+        }
+        if (no && words <= 2) return { out: { sym: 'r.nar.reply.neg', quiet: true }, intent: 'chat.narrate' };
+        const tone = yes && words <= 3 ? 'pos' : replyTone(h.text, h.emo.emotion);
+        if (cat === 'person' && words >= 3 && tone !== 'pos') return { out: { sym: 'r.nar.reply.person', vars: { who: String(p.data?.['who'] ?? 'them') }, quiet: true }, intent: 'chat.narrate' };
+        if (words > 14) return { out: { sym: 'r.nar.reply.more', quiet: true }, intent: 'chat.narrate' };
+        if (tone === 'mid' && words <= 4 && !yes && cat !== 'person') return { out: { sym: 'r.nar.reply.echo', vars: { a: capFirst(h.raw.trim().replace(/[.!?]+$/, '')) }, quiet: true }, intent: 'chat.narrate' };
+        return { out: { sym: `r.nar.reply.${tone}`, quiet: true }, intent: 'chat.narrate' };
+      }
       case 'safety': {
         const help = helpText(this.host.country?.());
         if (p.data?.['soft']) {
@@ -643,6 +674,21 @@ export class ReflexEngine {
     return { sym: 'r.fallback.generic', vars: { kw: keyPhrase(h.text) }, pending: { kind: 'teach', utter: h.text, raw: h.raw } };
   }
 
+  /** Respond to a story the way a friend would, then keep the thread so the next line lands in context. */
+  private narrate(n: Narr): Out {
+    const base = { quiet: true as const, topic: n.kind === 'person' ? 'people' : n.kind === 'plan' ? 'goals' : undefined };
+    const pend = (cat: string): Out['pending'] => ({ kind: 'narr', data: { cat, x: n.x, who: n.who ?? '' } });
+    switch (n.kind) {
+      case 'plan': return { ...base, sym: 'r.nar.plan', vars: { x: capFirst(n.x) }, pending: pend('plan') };
+      case 'person': return { ...base, sym: `r.nar.person.${n.tone ?? 'neutral'}`, vars: { who: n.who }, pending: pend('person') };
+      case 'device': return { ...base, sym: `r.nar.device.${n.tone === 'pos' ? 'pos' : 'neg'}`, vars: { x: n.x } };
+      case 'win': return { ...base, sym: 'r.nar.win', pending: pend('win') };
+      case 'media': return { ...base, sym: `r.nar.media.${n.media ?? 'movie'}`, pending: pend('media') };
+      case 'food': return { ...base, sym: n.x.length > 3 && Math.random() < 0.6 ? 'r.nar.food.x' : 'r.nar.food', vars: { x: n.x }, pending: pend('food') };
+      default: return { ...base, sym: `r.nar.${n.kind}`, vars: { x: n.x }, pending: pend(n.kind) };
+    }
+  }
+
   /** ELIZA-style reflective listening, persona-flavoured. Keeps conversation flowing on anything. */
   private reflect(h: H): Out | null {
     const t = h.text;
@@ -728,6 +774,7 @@ export class ReflexEngine {
     const rec: ToolTrace = { name, args };
     this.tools.push(rec);
     const r = await this.host.runTool(name, args);
+    if (/^[A-Za-z]+(_[a-z]+)+ (done|ok)\.?$/i.test(r.result.trim())) r.result = r.ok ? 'Done.' : 'That didn’t work.';
     rec.ok = r.ok; rec.result = r.result;
     return r;
   }

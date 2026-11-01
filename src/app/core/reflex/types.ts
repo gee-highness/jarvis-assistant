@@ -99,7 +99,7 @@ export interface ReflexHost {
   usage?(dayOffset: number): Promise<{ apps: { app: string; minutes: number }[]; totalMinutes: number }>;
 }
 
-export type PendingKind = 'slot' | 'confirm' | 'choice' | 'profile' | 'teach' | 'web' | 'riddle' | 'game' | 'name' | 'screen' | 'safety';
+export type PendingKind = 'slot' | 'confirm' | 'choice' | 'profile' | 'teach' | 'web' | 'riddle' | 'game' | 'name' | 'screen' | 'safety' | 'narr';
 
 export interface Pending {
   kind: PendingKind;

@@ -30,7 +30,7 @@ const TYPO_TARGETS = ('remind reminder reminders tomorrow tonight today yesterda
   + 'complete finish finished delete remove priority priorities overdue weather forecast search launch flashlight battery briefing summary progress calculate convert '
   + 'thanks please morning evening afternoon focus session pomodoro alarm timer message email contact settings notification question answer explain define motivate '
   + 'tasks task goals goal notes note music navigate directions achieve achievement productivity sleep tired stressed anxious worried depressed lonely angry frustrated').split(' ');
-const TYPO_KEEP = new Set(['melting', 'whether', 'finnish', 'hours', 'forced', 'remote', 'remove', 'nights', 'tonight']);
+const TYPO_KEEP = new Set(['melting', 'whether', 'finnish', 'hours', 'forced', 'remote', 'remove', 'nights', 'tonight', 'lovely', 'lively', 'likely', 'sleepy', 'silly', 'steady', 'tasty', 'lunch', 'brunch', 'supper', 'hungry', 'angrily', 'worthy', 'wintry', 'friendly', 'lonely']);
 
 /** Optimal-string-alignment distance (counts a swap of two letters as one edit). */
 function osa(a: string, b: string): number {

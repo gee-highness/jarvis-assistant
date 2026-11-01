@@ -46,7 +46,7 @@ const cases: [string, string][] = [
   ["what's 15% of 240", 'info.calc'], ['12 times 7', 'info.calc'], ['convert 5 km to miles', 'info.convert'], ['how many days until christmas', 'info.days'],
   ['what time is it', 'info.time'], ["what's the date", 'info.date'], ['tell me a joke', 'fun.joke'], ['another one', 'fun.another'], ['tell me a riddle', 'fun.riddle'],
   ['a piano', 'fun.riddle'], ['tell me a story', 'fun.story'], ['write me a poem', 'fun.poem'], ['flip a coin', 'fun.coin'], ['roll a d20', 'fun.dice'], ['pizza or burgers?', 'fun.choose'],
-  ["I'm so stressed", 'feel.stress'], ['i feel sad today', 'feel.sad'], ["I'm tired", 'feel.tired'], ['I got the job!!', 'feel.win'], ["I'm bored", 'feel.bored'],
+  ["I'm so stressed", 'feel.stress'], ['i feel sad today', 'feel.sad'], ["I'm tired", 'feel.tired'], ['I got the job!!', 'feel.win'], ['I went to the beach today', 'chat.narrate'], ['my boss is being difficult', 'chat.narrate'], ['I watched a great movie last night', 'chat.narrate'], ['my phone keeps freezing', 'chat.narrate'], ["I think I'll learn guitar", 'chat.narrate'], ['I had pizza for lunch', 'chat.narrate'], ["I'm bored", 'feel.bored'],
   ['my sister is called Thandi', 'learn.fact'], ['I live in Mbabane', 'learn.fact'], ['I have an interview tomorrow', 'learn.fact'], ["what's my sister's name", 'memory.recall'],
   ['remember that my wifi password is sunshine', 'memory.remember'], ['what is my wifi password', 'memory.recall'], ['what do you know about me', 'memory.recall'],
   ['be funnier', 'persona.adjust'], ['call me boss', 'persona.name'], ['my name is Gerry', 'persona.name'], ['open spotify', 'phone.open'], ['turn on the torch', 'phone.torch'],
