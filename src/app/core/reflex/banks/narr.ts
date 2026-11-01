@@ -28,7 +28,7 @@ export const NARR: Record<string, string[]> = {
     'That’s nice to hear. What’s your {who} up to?',
     'Good, those people matter. What happened?',
     '[warmth>60] I love that. Tell me more about your {who}.',
-    'Lovely. Anything planned together?',
+    'Nice. What happened?',
   ],
   'r.nar.person.neutral': [
     'Oh? What’s going on with your {who}?',
@@ -47,10 +47,32 @@ export const NARR: Record<string, string[]> = {
   ],
   'r.nar.device.pos': ['Good news. Sounds like your {x} is behaving for once.', 'Nice, glad your {x} is sorted.'],
 
-  'r.nar.doing': ['Good for you. How’s it going so far?', 'Nice, {x} takes patience. What’s the hardest part?', 'I like that. How long have you been at it?', '[proactivity>55] Want me to set a regular reminder to practise?', '[warmth>60] That’s admirable. Are you enjoying it?'],
+  'r.nar.doing': ['Good for you. How’s it going so far?', 'Nice, {x} takes patience. What’s the hardest part?', 'I like that. How long have you been at it?', '[proactivity>55] Want me to track it as a goal so you stay on course?', '[warmth>60] That’s admirable. Are you enjoying it?'],
   'r.nar.body': ['Ouch. How long has your {x} been hurting?', 'Sorry to hear that. Is it a sharp pain or a dull ache?', '[warmth>60] That sounds uncomfortable. Have you been able to rest it?', 'Ouch. Did something trigger it, or did it come on by itself? If it gets worse or won’t ease, please see a doctor.'],
   'r.nar.went.neg': ['Ah, I’m sorry. What went wrong with the {x}?', 'Oh no. How are you taking it?', '[warmth>60] That’s disappointing. Do you want to talk it through?', 'Rough. What happened?'],
   'r.nar.went.pos': ['Brilliant! How did it feel?', 'Good to hear. Were you expecting that?', 'Well done. What went right?'],
+
+  'r.nar.thing.neg': ['That’s a shame. What’s going on with your {x}?', 'Oh no. How long has that been happening with your {x}?', 'Ugh. Is there anything you can do about your {x}, or is it out of your hands?', '[warmth>60] I’m sorry, that’s frustrating. Want to talk it through?'],
+  'r.nar.thing.pos': ['Lovely. How are things with your {x}?', 'Good to hear about your {x}. What happened?'],
+  'r.nar.thing.neutral': ['Tell me more about your {x}.', 'Oh? What’s going on with your {x}?', 'Go on, I’m listening. Your {x}?'],
+  'r.nar.mishap': ['Ugh, that’s annoying. Can you sort it out, or is it too late?', 'Oh no. Does that mess up your day much?', 'Happens to everyone. Is there a quick fix?', '[humor>55] Classic. Let us pretend it was part of the plan.', '[warmth>60] That’s a pain. Are you okay?'],
+  'r.nar.mishap.lost': ['Ugh. Where did you last have it? Retrace your steps backwards from the last place you remember using it.', 'That’s stressful. When did you last see it?', 'Oh no. Have you checked the usual suspects, pockets, bag, car?'],
+  'r.nar.mishap.late': ['It happens. Is today going to be tight because of it?', 'Ah. Want me to shuffle today’s plan to make up the time?', '[proactivity>55] Shall I move the first thing on your list later?'],
+  'r.nar.mishap.ticket': ['Ugh, those are the worst. Is it a big one?', 'Annoying. Do you need to pay it by a certain date? I can set a reminder.', 'Oh no. Can you contest it, or is it fair?'],
+  'r.nar.chore': ['Nice work. How does it look?', 'Productive! Did it go smoothly?', 'Look at you getting things done. Anything left on the list?', 'That’s satisfying. How long did it take?'],
+  'r.nar.sport': ['Nice! How did the game go?', 'Ha, good for you. Did you win?', 'Brilliant. Tell me about it.', 'Love it. Was it a good match?'],
+  'r.nar.bday.today': ['Happy birthday! 🎂 Many happy returns. Any plans for the day?', 'Happy birthday! I hope today is thoroughly good to you. Celebrating with anyone?'],
+  'r.nar.bday.tomorrow': ['Happy early birthday! Any plans for tomorrow?', 'Tomorrow! Exciting. Have you planned something?'],
+  'r.nar.lost': ['That’s a heavy feeling, and a very human one. What feels most stuck right now: work, people, or direction in general?', 'I’m glad you said it out loud. Not knowing is uncomfortable, but it isn’t failure. What part of life is weighing on you most?', 'It’s okay not to have it figured out. If you could change one thing this month, what would it be?'],
+  'r.nar.ruminate': ['That sounds exhausting. What about {x} keeps pulling at you?', 'Mm, the mind loops on things that matter. What is the part that keeps coming back?', 'What would help most, getting it off your mind, or finding a next step? I can write it down for you.'],
+  'r.nar.craving': ['Now I want it for you. {x}: takeaway or homemade?', 'Mm. Is that a treat-yourself craving, or a you-haven’t-eaten craving?', '[humor>55] I can’t taste anything, so I live vicariously. Go get some {x}.'],
+  'r.nar.bad': ['I’m so sorry. How are you holding up?', 'That’s really hard. Do you want to tell me what happened, or just have some company for a minute?', '[warmth>60] I’m here. Take your time. Is there someone with you right now?'],
+  'r.nar.was.neg': ['Ugh, that sounds rough. What happened?', 'Oh no. Did it ruin your day, or just your mood?', 'That doesn’t sound fun. How are you coping?'],
+  'r.nar.was.pos': ['Nice! What made it so good?', 'Love that. Tell me more.', 'Brilliant. What was the best part?'],
+
+  'r.nar.sleep.pos': ['Lovely, that makes everything easier. Feeling it today?', 'Good sleep is underrated. What was different last night?', 'Brilliant. Let’s use that energy on something that matters today.'],
+  'r.nar.sleep.neg': ['Ugh, rough. How’s that going to affect your day?', 'Poor sleep makes everything harder. Was it your mind, noise, or just one of those nights?', 'Sorry to hear that. Want me to keep today light?'],
+  'r.nar.vehicle': ['Oh no. Are you safe, and somewhere you can get help?', 'That’s stressful. Do you have someone you can call, or roadside assistance?', 'Ugh. Are you okay? Is it somewhere safe to wait?'],
 
   // ---- wins
   'r.nar.win': [
