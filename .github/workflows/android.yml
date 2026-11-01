@@ -77,6 +77,10 @@ jobs:
           node "$RUNNER_TEMP/rf.cjs" | tail -n 4
           node "$RUNNER_TEMP/rd.cjs" | tail -n 16
           node "$RUNNER_TEMP/rb.cjs" | tail -n 6
+          npx --yes esbuild scripts/reflex-thousand.ts --bundle --platform=node --outfile="$RUNNER_TEMP/r1k.cjs" --log-level=warning
+          npx --yes esbuild scripts/pet-test.ts --bundle --platform=node --outfile="$RUNNER_TEMP/pt.cjs" --log-level=warning
+          node "$RUNNER_TEMP/r1k.cjs" | head -n 8
+          node "$RUNNER_TEMP/pt.cjs" | tail -n 6
 
       - name: Build web app
         run: |
