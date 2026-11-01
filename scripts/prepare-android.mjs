@@ -55,6 +55,7 @@ const permissions = [
   'android.permission.FOREGROUND_SERVICE_SPECIAL_USE',
   'android.permission.ACTIVITY_RECOGNITION',
   'android.permission.PACKAGE_USAGE_STATS',
+  'android.permission.SYSTEM_ALERT_WINDOW',
 ];
 for (const p of permissions) {
   if (!m.includes(`android:name="${p}"`)) m = m.replace('<application', `<uses-permission android:name="${p}" />\n    <application`);
@@ -64,6 +65,7 @@ if (!m.includes('<queries>')) {
   m = m.replace('<application', `<queries>
         <package android:name="com.termux" />
         <intent><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent>
+        <intent><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.HOME" /></intent>
         <intent><action android:name="android.speech.RecognitionService" /></intent>
         <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
         <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="https" /></intent>
@@ -109,6 +111,9 @@ for (const [cls, label, info] of widgets) {
 if (!m.includes('.JarvisCoreService"')) {
   m = m.replace('</application>', `    <service android:name=".JarvisCoreService" android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Personal assistant that logs on-device wellbeing signals (steps, screen time, sleep) chosen by the user" />
+        </service>
+        <service android:name=".JarvisPetOverlayService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Shows the user's companion pet walking around the screen as an optional, user-enabled overlay" />
         </service>
         <receiver android:name=".JarvisBootReceiver" android:exported="true">
             <intent-filter>

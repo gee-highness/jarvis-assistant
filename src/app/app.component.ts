@@ -311,7 +311,7 @@ export class AppComponent implements OnInit {
         else if (canGoBack && !this.url().startsWith('/briefing')) history.back();
         else App.minimizeApp();
       });
-      App.addListener('resume', () => { this.jarvis.ensureEngine().catch(() => undefined); this.sense.refresh().catch(() => undefined); this.pet.collectTaps().catch(() => undefined); });
+      App.addListener('resume', () => { this.jarvis.ensureEngine().catch(() => undefined); this.sense.refresh().catch(() => undefined); this.pet.collectTaps().catch(() => undefined); this.pet.syncRoam().catch(() => undefined); });
     }
   }
 

@@ -127,8 +127,16 @@ export class ReflexEngine {
     await this.init();
     const t0 = Date.now();
     const n = normalize(raw);
+    // talking TO the pup ("Comet, open WhatsApp") makes him the one who does it and answers
     const pn = this.host.petName?.().trim().toLowerCase();
-    const text = pn && pn.length > 1 ? n.text.replace(new RegExp(`\\b${pn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g'), 'the dog') : n.text;
+    let text = n.text;
+    this.addressedPet = false; this.plain = false;
+    if (pn && pn.length > 1) {
+      const esc = pn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const voc = new RegExp(`^(?:(?:hey|ok|okay|yo|hi|hello|please|good boy|good dog) )*${esc}(?:[ ,!:]+|$)`).exec(text);
+      if (voc) { this.addressedPet = true; text = text.slice(voc[0].length).trim() || 'good boy'; }
+      else text = text.replace(new RegExp(`\\b${esc}\\b`, 'g'), 'the dog');
+    }
     const now = this.host.now();
     const tools: ToolTrace[] = [];
     this.tools = tools;
@@ -152,6 +160,7 @@ export class ReflexEngine {
     const risk = text ? riskOf(text) : null;
     if (risk) {
       this.ds.pending = undefined;
+      this.plain = true;
       out = { sym: ({ abuse: 'r.well.abuse', crisis: 'r.well.crisis', emergency: 'r.well.emergency', soft: 'r.well.soft' } as const)[risk], vars: { help: helpText(this.host.country?.()), emergency: helpFor(this.host.country?.()).emergency }, quiet: true, topic: 'feelings', pending: { kind: 'safety', data: { soft: risk === 'soft' } } };
       intent = risk === 'abuse' ? 'well.abuse' : 'well.crisis'; conf = 1;
       this.inner.lastCrisis = now.getTime();
@@ -211,7 +220,7 @@ export class ReflexEngine {
       if (/^how (do|can|should|would) (i|you|we)\b|^how to\b/.test(text) && ['memory.recall', 'task.add', 'chat.ack', 'chat.morning', 'memory.remember'].includes(top.id)) top = { ...top, id: 'research.ask', score: 0.8 };
       if (/^translate\b/.test(text) && !top.pattern) top = { ...top, id: 'research.ask', score: 0.8 };
       // someone is simply telling me something: answer the story, not a keyword inside it
-      let nar = !habitHit && !/\?$/.test(raw.trim()) && (() => { const n0 = narrative(text); return n0 && (top.score < 0.85 || top.id === 'habit.log' || ['chat', 'feel'].includes(this.model.spec(top.id)?.kind ?? '') || ['device', 'person', 'thing', 'body', 'went', 'mishap'].includes(n0.kind)) ? n0 : null; })();
+      let nar: Narr | null = habitHit || /\?$/.test(raw.trim()) ? null : (() => { const n0 = narrative(text); return n0 && (top.score < 0.85 || top.id === 'habit.log' || ['chat', 'feel'].includes(this.model.spec(top.id)?.kind ?? '') || ['device', 'person', 'thing', 'body', 'went', 'mishap'].includes(n0.kind)) ? n0 : null; })();
       if (nar?.kind === 'win' && top.id === 'feel.win') nar = null;
       // a short first-person message with a clear feeling and no stronger match: hear the feeling
       const EMO_INTENT: Partial<Record<string, string>> = { sad: 'feel.sad', lonely: 'feel.lonely', anxious: 'feel.stress', angry: 'feel.angry', tired: 'feel.tired', bored: 'feel.bored', happy: 'feel.happy', excited: 'feel.happy', grateful: 'feel.happy', sick: 'feel.sick', proud: 'feel.win' };
@@ -383,6 +392,10 @@ export class ReflexEngine {
 
   // ================================================================== rendering
   private tools: ToolTrace[] = [];
+  /** The user spoke to the pup by name, so the pup answers this turn. */
+  private addressedPet = false;
+  /** Safety and wellbeing replies stay plain, human and clear: no barking, no sass. */
+  private plain = false;
 
   /** Grammar context: persona traits, time-of-day flags and live state variables. */
   ctx(extra: Record<string, unknown>): GrammarCtx {
@@ -440,12 +453,27 @@ export class ReflexEngine {
       if (cps.length) t += ' ' + cps[Math.floor(Math.random() * cps.length)] + '.';
     }
     if (p.swearing === 'free' && Math.random() < 0.05 && /^(Done|Sorted|On it)/.test(t)) t = t.replace(/^(Done|Sorted|On it)/, '$1, damn right');
-    // pet mode: the pup does the talking
-    if (p.pet?.speaks && !/^(I’m really glad you told me|Thank you for telling me|I’m so sorry that is happening)/.test(t)) {
-      const c = this.ctx({ p: p.pet.personality });
-      const act = this.grammar.expand('#pet.act#', c);
-      const bark = Math.random() < 0.35 ? ' ' + this.grammar.expand('#pet.bark#', c) : '';
-      t = `${act} ${t}${bark}`.trim();
+    // pet mode: the pup does the talking (in dog language, with the meaning alongside, sassy but kind)
+    if ((p.pet?.speaks || this.addressedPet) && p.pet && !this.plain && !/^(I’m really glad you told me|Thank you for telling me|I’m so sorry that is happening)/.test(t)) {
+      const pet = p.pet, speech = pet.speech ?? 'dog';
+      const hard = !!this.ds.emotion && ['sad', 'anxious', 'lonely', 'angry', 'sick', 'tired'].includes(this.ds.emotion.emotion) && topic !== 'pet';
+      const hr = this.host.now().getHours();
+      const mood = hard || topic === 'feelings' ? 'cuddly' : topic === 'pet' ? 'playful' : hr >= 23 || hr < 6 ? 'sleeping' : 'happy';
+      const c = this.ctx({ p: pet.personality, mood });
+      if (speech === 'english') {
+        const act = this.grammar.expand('#pet.act#', c);
+        const bark = Math.random() < 0.35 ? ' ' + this.grammar.expand('#pet.bark#', c) : '';
+        t = `${act} ${t}${bark}`.trim();
+      } else {
+        const sassy = !hard && topic !== 'feelings' && topic !== 'pet' && Math.random() < (pet.sass ?? 65) / 100;
+        let meaning = t;
+        if (sassy) meaning = this.grammar.expand(this.tools.length || /^(done|opening|added|set|sent|calling|playing|starting|noted|okay|right|certainly|of course|got it|on it|sorted)/i.test(t) ? '#pet.sass.cmd#' : '#pet.sass.chat#', this.ctx({ p: pet.personality, mood, x: t }));
+        const hon = p.honorific?.trim();
+        if (hon) meaning = meaning.replace(new RegExp(`,\\s*${hon.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi'), '').replace(new RegExp(`\\b${hon.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')},\\s*`, 'gi'), '');
+        let dog = this.grammar.expand('#pet.dog#', c);
+        if (meaning.split(' ').length > 16) dog += ' ' + this.grammar.expand('#pet.dog.core#', c);
+        t = `${dog} — “${meaning}”`;
+      }
     }
     if (p.emoji !== 'none' && topic && EMOJI[topic] && !/\p{Extended_Pictographic}/u.test(t) && Math.random() < (p.emoji === 'lots' ? 0.75 : 0.3)) {
       const e = EMOJI[topic];

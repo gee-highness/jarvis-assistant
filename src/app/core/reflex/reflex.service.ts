@@ -44,7 +44,7 @@ export class ReflexService {
     profile: () => {
       const s = this.store.settings();
       const p = s.personality;
-      return { honorific: s.honorific || 'sir', userName: s.userName, name: p.name || 'Jarvis', role: p.role, traits: { ...p.traits }, pet: s.pet?.enabled ? { name: s.pet.name, speaks: s.pet.speaks, personality: s.pet.personality } : undefined, emoji: p.emoji, language: p.language, swearing: p.swearing, catchphrases: p.catchphrases, likes: p.likes };
+      return { honorific: s.honorific || 'sir', userName: s.userName, name: p.name || 'Jarvis', role: p.role, traits: { ...p.traits }, pet: s.pet?.enabled ? { name: s.pet.name, speaks: s.pet.speaks, personality: s.pet.personality, speech: s.pet.speech, sass: s.pet.sass } : undefined, emoji: p.emoji, language: p.language, swearing: p.swearing, catchphrases: p.catchphrases, likes: p.likes };
     },
     state: () => this.snapshot(),
     petAction: async kind => { const { PetService } = await import('../pet.service'); return this.injector.get(PetService).chatAction(kind); },

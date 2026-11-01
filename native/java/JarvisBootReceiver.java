@@ -8,7 +8,7 @@ import android.content.Intent;
 public class JarvisBootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context c, Intent i) {
-        if (!JarvisCoreService.enabled(c)) return;
-        try { JarvisCoreService.start(c); } catch (Exception ignored) { }
+        if (JarvisCoreService.enabled(c)) { try { JarvisCoreService.start(c); } catch (Exception ignored) { } }
+        if (JarvisPetOverlayService.enabled(c) && JarvisPetOverlayService.canDraw(c)) { try { JarvisPetOverlayService.start(c); } catch (Exception ignored) { } }
     }
 }

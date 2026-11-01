@@ -36,10 +36,12 @@ public class JarvisPetWidget extends AppWidgetProvider {
         }
     }
 
-    static void save(Context ctx, String idle, String happy, String line, String status, String reactions) {
+    static void save(Context ctx, String idle, String happy, String line, String status, String reactions, String sleep, String walk) {
         SharedPreferences.Editor e = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit();
         if (idle != null && !idle.isEmpty()) e.putString("idle", idle);
         if (happy != null && !happy.isEmpty()) e.putString("happy", happy);
+        if (sleep != null && !sleep.isEmpty()) e.putString("sleep", sleep);
+        if (walk != null && !walk.isEmpty()) e.putString("walk", walk);
         e.putString("line", line == null ? "" : line);
         e.putString("status", status == null ? "" : status);
         if (reactions != null) e.putString("reactions", reactions);
@@ -47,6 +49,7 @@ public class JarvisPetWidget extends AppWidgetProvider {
         AppWidgetManager mgr = AppWidgetManager.getInstance(ctx);
         int[] ids = mgr.getAppWidgetIds(new ComponentName(ctx, JarvisPetWidget.class));
         if (ids.length > 0) updateAll(ctx, mgr, ids, false);
+        JarvisPetOverlayService.refresh(ctx);
     }
 
     static int takeTaps(Context ctx) {
@@ -56,7 +59,7 @@ public class JarvisPetWidget extends AppWidgetProvider {
         return t;
     }
 
-    private static Bitmap decode(String b64) {
+    static Bitmap decode(String b64) {
         if (b64 == null || b64.isEmpty()) return null;
         try {
             byte[] bytes = Base64.decode(b64.replaceFirst("^data:image/\\w+;base64,", ""), Base64.DEFAULT);

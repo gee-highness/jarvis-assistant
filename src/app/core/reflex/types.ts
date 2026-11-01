@@ -58,7 +58,7 @@ export interface HostProfile {
   name: string;
   role: string;
   traits: Record<string, number>;
-  pet?: { name: string; speaks: boolean; personality: string };
+  pet?: { name: string; speaks: boolean; personality: string; speech?: string; sass?: number };
   emoji: 'none' | 'some' | 'lots';
   language: string;
   swearing: 'none' | 'mild' | 'free';

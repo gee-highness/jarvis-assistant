@@ -39,7 +39,7 @@ const MOOD_LABEL: Record<PetMood, string> = { sleeping: 'sleeping', hungry: 'pec
         <div class="track"><i [style.width.%]="pet.bond().pct"></i></div>
       </div>
 
-      <jarvis-pet-scene #scene [look]="look()" [mood]="pet.mood()" [scene]="p().scene" [toy]="p().toy" [calm]="calmMotion()" [speech]="speech()"
+      <jarvis-pet-scene #scene [look]="look()" [mood]="pet.mood()" [scene]="p().scene" [toy]="p().toy" [calm]="calmMotion()" [speech]="speech()" [meaning]="meaning()" [alwaysMeaning]="p().speech === 'both'"
         [rain]="p().ambient === 'rain' && p().sound" (pat)="onPat()" (holdStart)="onHoldStart()" (holdEnd)="onHoldEnd($event)" (stageTap)="onStageTap($event)" (dream)="dream()" />
       @if (fetchMode()) { <div class="fetchhint">🎾 Tap anywhere in the scene to throw the {{ toyName() }}. <button class="small" (click)="fetchMode.set(false)">Done</button></div> }
       @else { <div class="tip small muted">Tap {{ p().name }} to pet him. Hold to cuddle.</div> }
@@ -60,6 +60,17 @@ const MOOD_LABEL: Record<PetMood, string> = { sleeping: 'sleeping', hungry: 'pec
 
       @switch (tab()) {
         @case ('home') {
+          <div class="card col">
+            <b>Give {{ p().name }} an order</b>
+            <form class="orderrow" (submit)="$event.preventDefault(); order()">
+              <input [(ngModel)]="orderText" name="order" [placeholder]="'e.g. open WhatsApp, add buy milk, what is on today'" autocomplete="off" [disabled]="ordering()">
+              <button class="primary" type="submit" [disabled]="ordering() || !orderText.trim()">{{ ordering() ? '…' : 'Go' }}</button>
+            </form>
+            <div class="chips">
+              @for (e of examples; track e) { <button class="small" (click)="orderText = e; order()" [disabled]="ordering()">{{ e }}</button> }
+            </div>
+            <div class="small muted">{{ p().name }} does it for real, then answers in dog. He will never delete or send anything without you.</div>
+          </div>
           <div class="card col">
             <div class="acts">
               <button (click)="onPat(true)"><span>🤚</span>Pet</button>
@@ -115,6 +126,17 @@ const MOOD_LABEL: Record<PetMood, string> = { sleeping: 'sleeping', hungry: 'pec
               <label class="field grow">Ears &amp; patches <input type="color" [ngModel]="p().patch" (ngModelChange)="save({ patch: $event })"></label>
               <label class="field grow">Bandana <input type="color" [ngModel]="p().bandana" (ngModelChange)="save({ bandana: $event })"></label>
             </div>
+            <label class="field">How {{ p().name }} talks
+              <select [ngModel]="p().speech" (ngModelChange)="save({ speech: $event })">
+                <option value="dog">Dog language (tap his bubble to translate)</option>
+                <option value="both">Dog language with the meaning always shown</option>
+                <option value="english">Plain English</option>
+              </select>
+            </label>
+            <label class="field">Sass: {{ sassLabel() }}
+              <input type="range" min="0" max="100" step="5" [ngModel]="p().sass" (ngModelChange)="save({ sass: +$event })">
+              <span class="small muted">Sass takes the day off by itself when you are having a hard time.</span>
+            </label>
             <label class="field">Personality
               <select [ngModel]="p().personality" (ngModelChange)="save({ personality: $event })">
                 <option value="goofy">Goofy: clumsy, silly, always smiling</option>
@@ -159,8 +181,33 @@ const MOOD_LABEL: Record<PetMood, string> = { sleeping: 'sleeping', hungry: 'pec
           </div>
 
           <div class="card col">
+            <b>Roam my screen</b>
+            <p class="small muted" style="margin:0">{{ p().name }} walks around your whole home screen as a see-through overlay. Tap him to pet, drag to move him, hold to talk to Jarvis. He sleeps at night and stays out of the way of everything else.</p>
+            <label class="row small"><input type="checkbox" [ngModel]="p().roam" (ngModelChange)="roam($event)"> Let {{ p().name }} wander</label>
+            @if (p().roam) {
+              <label class="field">Where
+                <select [ngModel]="p().roamWhere" (ngModelChange)="save({ roamWhere: $event }); resync()">
+                  <option value="home">Only on my home screen</option>
+                  <option value="everywhere">On top of other apps too</option>
+                </select>
+              </label>
+              <label class="field">Size: {{ p().roamSize }}
+                <input type="range" min="56" max="160" step="4" [ngModel]="p().roamSize" (ngModelChange)="save({ roamSize: +$event }); resync()">
+              </label>
+              @if (pet.roamState().granted) {
+                <div class="small muted">{{ pet.roamState().running ? 'He is out walking right now.' : 'Permission granted. Starting…' }}
+                @if (p().roamWhere === 'home' && !pet.roamState().usageAccess) { Tip: turn on Usage access for Jarvis (Health &amp; senses) so he can hide when you open other apps; until then he shows everywhere. }</div>
+              } @else {
+                <div class="small warn">One step left: allow “Display over other apps” for Jarvis, then come back here.
+                  <button class="small" (click)="grant()">Open the setting</button></div>
+              }
+            }
+            @if (roamMsg()) { <div class="small muted">{{ roamMsg() }}</div> }
+          </div>
+
+          <div class="card col">
             <b>Home-screen widget</b>
-            <p class="small muted" style="margin:0">Long-press your home screen, then Widgets, then Jarvis · pet. Tap {{ p().name }} on the widget to pet him, even when the app is closed; tap his speech bubble to open this page.</p>
+            <p class="small muted" style="margin:0">Long-press your home screen, then Widgets, then Jarvis · pet. It has no background, so he sits right on your wallpaper. Tap {{ p().name }} to pet him, even when the app is closed; tap his speech bubble to open this page.</p>
           </div>
         }
         @case ('badges') {
@@ -228,6 +275,8 @@ const MOOD_LABEL: Record<PetMood, string> = { sleeping: 'sleeping', hungry: 'pec
     .statgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; margin-top: 4px; }
     .statgrid div { border: 1px solid var(--line); border-radius: 12px; padding: 8px 4px; } .statgrid b { display: block; font-size: 1.2rem; } .statgrid span { font-size: .7rem; color: var(--muted); }
     button.on { border-color: var(--cyan); }
+    .orderrow { display: flex; gap: 8px; } .orderrow input { flex: 1; min-width: 0; }
+    .warn { color: var(--warn-text); }
     .toasts { position: fixed; left: 12px; right: 12px; bottom: calc(var(--safe-bottom) + 84px); z-index: 120; display: flex; flex-direction: column; gap: 8px; pointer-events: none; align-items: center; }
     .toast { pointer-events: auto; display: flex; gap: 10px; align-items: center; background: var(--panel-solid); border: 1px solid var(--line-strong); border-radius: 16px; padding: 10px 14px; box-shadow: 0 8px 24px rgba(0,0,0,.4); max-width: 420px; animation: slide .35s ease-out; }
     .toast span { font-size: 1.6rem; } .toast b { display: block; font-size: .92rem; } .toast i { font-style: normal; font-size: .78rem; color: var(--muted); }
@@ -253,6 +302,12 @@ export class PetPage implements OnInit, OnDestroy {
   readonly game = signal<'catch' | 'cups' | null>(null);
   readonly fetchMode = signal(false);
   readonly speech = signal('');
+  readonly meaning = signal('');
+  readonly ordering = signal(false);
+  readonly roamMsg = signal('');
+  orderText = '';
+  readonly examples = ['Open WhatsApp', 'What is on today?', 'Add buy milk', 'Set a timer for 10 minutes'];
+  readonly sassLabel = computed(() => { const s = this.p().sass; return s < 15 ? 'sweet' : s < 45 ? 'a little cheeky' : s < 75 ? 'sassy' : 'maximum sass'; });
   readonly look = computed(() => { const p = this.p(); return { fur: p.fur, patch: p.patch, bandana: p.bandana, accessory: p.accessory }; });
   readonly moodLabel = computed(() => MOOD_LABEL[this.pet.mood()]);
   readonly calmMotion = computed(() => this.p().calmMotion || (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches));
@@ -276,6 +331,7 @@ export class PetPage implements OnInit, OnDestroy {
     const t = this.route.snapshot.queryParamMap.get('tab') as Tab | null;
     if (t && TABS.some(x => x.id === t)) this.tab.set(t);
     this.pet.visit().catch(() => undefined);
+    this.pet.roamStatus().catch(() => undefined);
   }
   ngOnDestroy() {
     clearTimeout(this.speechTimer); clearInterval(this.purrTimer);
@@ -284,11 +340,37 @@ export class PetPage implements OnInit, OnDestroy {
   }
 
   // ------------------------------------------------------------------ helpers
-  say(t: string, ms = 7000) {
-    this.speech.set(t);
-    clearTimeout(this.speechTimer);
-    this.speechTimer = setTimeout(() => this.speech.set(''), ms);
+  /** The pup says something: in dog, with the meaning behind a tap (or in plain words if you prefer). */
+  say(english: string, ms = 7000) {
+    if (this.p().speech === 'english') this.show(english, '', ms);
+    else this.show(this.pet.dogFor(english), english, ms);
   }
+  private show(text: string, meaning: string, ms: number) {
+    this.speech.set(text); this.meaning.set(meaning);
+    clearTimeout(this.speechTimer);
+    this.speechTimer = setTimeout(() => { this.speech.set(''); this.meaning.set(''); }, ms);
+  }
+  async order() {
+    const text = this.orderText.trim();
+    if (!text || this.ordering()) return;
+    this.ordering.set(true);
+    this.orderText = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    try {
+      const errand = this.scene().errand();
+      const reply = await this.pet.order(text);
+      await errand;
+      const v = this.pet.splitVoice(reply);
+      this.show(v.dog || reply, v.dog ? v.meaning : '', 12000);
+    } catch { this.say('I could not do that one.', 4000); }
+    this.ordering.set(false);
+  }
+  async roam(on: boolean) {
+    const r = await this.pet.setRoam(on);
+    this.roamMsg.set(r === 'unsupported' ? 'Roaming works in the Android app (not in the browser).' : r === 'permission' ? 'Allow “Display over other apps” and come back; he will start by himself.' : '');
+  }
+  resync() { this.pet.pushRoam(false).catch(() => undefined); }
+  grant() { this.pet.setRoam(true).catch(() => undefined); }
   label(h: (typeof HEARTS)[number]) { return HEART_LABEL[h]; }
   done(h: (typeof HEARTS)[number]) { return heartDone(this.pet.care(), h); }
   unlocked(u: Unlockable) { return isUnlocked(u.id, this.pet.bond().level); }

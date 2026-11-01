@@ -254,11 +254,21 @@ export const JarvisSense = registerPlugin<JarvisSensePlugin>('JarvisSense', { we
 
 // ---------------------------------------------------------------- pet widget
 export interface JarvisPetPlugin {
-  update(o: { idle?: string; happy?: string; line: string; status: string; reactions?: string }): Promise<void>;
+  update(o: { idle?: string; happy?: string; sleep?: string; walk?: string; line: string; status: string; reactions?: string }): Promise<void>;
   takeTaps(): Promise<{ taps: number }>;
+  overlayStatus(): Promise<{ granted: boolean; running: boolean; enabled: boolean; usageAccess: boolean }>;
+  requestOverlayPermission(): Promise<void>;
+  overlayStart(o: { where: string; size: number; lines: string; name: string }): Promise<void>;
+  overlayConfig(o: { where: string; size: number; lines: string; name: string }): Promise<void>;
+  overlayStop(): Promise<void>;
 }
 class JarvisPetWeb extends WebPlugin {
   async update() {}
   async takeTaps() { return { taps: 0 }; }
+  async overlayStatus() { return { granted: false, running: false, enabled: false, usageAccess: false }; }
+  async requestOverlayPermission() {}
+  async overlayStart() { throw new Error('Android only'); }
+  async overlayConfig() {}
+  async overlayStop() {}
 }
 export const JarvisPet = registerPlugin<JarvisPetPlugin>('JarvisPet', { web: () => new JarvisPetWeb() });

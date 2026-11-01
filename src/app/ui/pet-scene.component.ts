@@ -93,7 +93,14 @@ type Idle = 'tilt' | 'hop' | 'shake' | 'stretch' | 'sniff' | 'spin' | 'wiggle';
 
       <div class="pupwrap" #pupwrap [style.left.%]="x()" [class]="'pupwrap ' + idleClass() + (running() ? ' running' : '') + (holding() ? ' holding' : '')" [style.--face]="face()"
            (pointerdown)="down($event)" (pointerup)="up($event)" (pointercancel)="up($event)" (pointerleave)="up($event)" (click)="$event.stopPropagation()">
-        @if (speech()) { <div class="bubble" [class.dream]="mood() === 'sleeping'">{{ speech() }}</div> }
+        @if (speech()) {
+          <div class="bubble" [class.dream]="mood() === 'sleeping'" (click)="toggleMeaning($event)" (pointerdown)="$event.stopPropagation()">
+            {{ speech() }}
+            @if (meaning()) {
+              @if (alwaysMeaning() || open()) { <div class="mean">{{ meaning() }}</div> } @else { <div class="hint">tap to translate</div> }
+            }
+          </div>
+        }
         <div class="pup" [innerHTML]="html()"></div>
         <div class="shadow"></div>
       </div>
@@ -144,7 +151,9 @@ type Idle = 'tilt' | 'hop' | 'shake' | 'stretch' | 'sniff' | 'spin' | 'wiggle';
     .pupwrap.stretch .pup { animation: stretch 1.8s ease-in-out; } .pupwrap.sniff .pup { animation: sniff 1.6s ease-in-out; } .pupwrap.spin .pup { animation: spin 1s ease-in-out; } .pupwrap.wiggle .pup { animation: wiggle .8s ease-in-out; }
     .pupwrap.running .pup { animation: run .32s ease-in-out infinite; } .pupwrap.holding .pup { animation: purr .18s linear infinite; }
     .calm .pupwrap { transition-duration: 2.4s; }
-    .bubble { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); width: max-content; max-width: 230px; background: rgba(255,255,255,.96); color: #1f2937; border-radius: 16px; padding: 8px 12px; font-size: .84rem; line-height: 1.3; box-shadow: 0 4px 14px rgba(0,0,0,.25); text-align: center; z-index: 8; pointer-events: none; animation: pop .25s ease-out; margin-bottom: -26px; }
+    .bubble { cursor: pointer; pointer-events: auto !important; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); width: max-content; max-width: 230px; background: rgba(255,255,255,.96); color: #1f2937; border-radius: 16px; padding: 8px 12px; font-size: .84rem; line-height: 1.3; box-shadow: 0 4px 14px rgba(0,0,0,.25); text-align: center; z-index: 8; animation: pop .25s ease-out; margin-bottom: -26px; }
+    .bubble .mean { margin-top: 5px; padding-top: 5px; border-top: 1px dashed rgba(0,0,0,.2); font-size: .78rem; font-style: italic; color: #4b5563; }
+    .bubble .hint { font-size: .62rem; color: #94a3b8; margin-top: 2px; letter-spacing: .03em; }
     .bubble::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -7px; border: 7px solid transparent; border-top-color: rgba(255,255,255,.96); border-bottom: 0; }
     .bubble.dream { background: rgba(230,236,255,.9); font-style: italic; border-radius: 22px; }
     .toy { position: absolute; z-index: 5; width: 34px; height: 34px; pointer-events: none; transform: translate(-50%, 0); }
@@ -183,6 +192,10 @@ export class PetSceneComponent implements OnInit, OnDestroy {
   readonly toy = input<PetToy>('ball');
   readonly calm = input(false);
   readonly speech = input('');
+  /** What the pup actually means (shown on tap, or always). */
+  readonly meaning = input('');
+  readonly alwaysMeaning = input(false);
+  readonly open = signal(false);
   readonly rain = input(false);
   /** Fires on a short tap on the pup. */
   readonly pat = output<{ x: number; y: number }>();
@@ -238,6 +251,7 @@ export class PetSceneComponent implements OnInit, OnDestroy {
 
   constructor() {
     effect(() => { this.mood(); this.look(); queueMicrotask(() => this.applyGaze(0, 0)); });
+    effect(() => { this.speech(); this.open.set(false); });
   }
 
   ngOnInit() {
@@ -347,6 +361,30 @@ export class PetSceneComponent implements OnInit, OnDestroy {
     for (let i = 0; i < 3; i++) this.later(() => this.burst({ clientX: r.left + r.width * (0.35 + Math.random() * 0.3), clientY: r.top + r.height * 0.3 }, e), i * 220);
     void s;
   }
+  toggleMeaning(ev: Event) { ev.stopPropagation(); if (this.meaning()) this.open.update(v => !v); }
+
+  /** The pup trots off to do something for you and comes back. */
+  async errand(): Promise<void> {
+    if (this.busy || this.mood() === 'sleeping') return;
+    this.busy = true;
+    const right = this.x() < 55;
+    this.face.set(right ? 1 : -1);
+    this.running.set(true);
+    this.x.set(right ? 88 : 12);
+    await new Promise(r => this.later(() => r(null), 1250));
+    this.running.set(false);
+    this.emote('sniff');
+    await new Promise(r => this.later(() => r(null), 900));
+    this.face.set(right ? -1 : 1);
+    this.running.set(true);
+    this.x.set(50);
+    await new Promise(r => this.later(() => r(null), 1250));
+    this.running.set(false);
+    this.face.set(1);
+    this.emote('hop');
+    this.busy = false;
+  }
+
   stageClick(ev: MouseEvent) {
     const r = this.stageEl().nativeElement.getBoundingClientRect();
     this.stageTap.emit(((ev.clientX - r.left) / r.width) * 100);

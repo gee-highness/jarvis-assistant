@@ -72,12 +72,12 @@ ok('sky colours valid for every half hour', Array.from({ length: 48 }, (_, i) =>
   };
   const eng = new ReflexEngine(host);
   await eng.init();
-  const syms = ['pet.greet', 'pet.welcome', 'pet.levelup', 'pet.perfect', 'pet.fed', 'pet.fed.none', 'pet.played', 'pet.walked', 'pet.calm.done', 'pet.gift', 'pet.open', 'pet.report', 'pet.joke', 'pet.wisdom', 'pet.dream', 'pet.talk.sad', 'pet.talk.how', 'pet.react', 'pet.line'];
+  const syms = ['pet.greet', 'pet.welcome', 'pet.levelup', 'pet.perfect', 'pet.fed', 'pet.fed.none', 'pet.played', 'pet.walked', 'pet.calm.done', 'pet.gift', 'pet.open', 'pet.report', 'pet.joke', 'pet.wisdom', 'pet.dream', 'pet.talk.sad', 'pet.talk.how', 'pet.react', 'pet.line', 'pet.dog', 'pet.dog.core', 'pet.dog.act', 'pet.sass.cmd', 'pet.sass.chat', 'pet.sass.pat', 'pet.sass.feed'];
   const pers = ['goofy', 'loyal', 'chill', 'hyper', 'grumpy'];
   let bad = 0, total = 0;
   const uniq = new Map<string, Set<string>>();
   for (const sym of syms) for (const p of pers) for (const m of moods) for (let i = 0; i < 3; i++) {
-    const t = eng.petSay(sym, { mood: m, p, name: 'Comet', h: 'Gerry', done: 3, streak: 4, steps: '5,000', level: 3, treats: 2, jar: 2, away: '3 days', hearts: 2, bondTitle: 'Pals' });
+    const t = eng.petSay(sym, { mood: m, p, name: 'Comet', h: 'Gerry', done: 3, streak: 4, steps: '5,000', level: 3, treats: 2, jar: 2, x: 'Opening WhatsApp.', away: '3 days', hearts: 2, bondTitle: 'Pals' });
     total++;
     if (!t || /[{}#]|undefined|NaN|\bnull\b/.test(t) || /\s{2,}/.test(t) || t.length > 260) { bad++; if (bad < 8) console.log(`  bad speech: ${sym} [${p}/${m}] → "${t}"`); }
     (uniq.get(sym) ?? uniq.set(sym, new Set()).get(sym)!).add(t);
@@ -89,6 +89,33 @@ ok('sky colours valid for every half hour', Array.from({ length: 48 }, (_, i) =>
   const guilt = /\b(neglect|abandon|ignored|forgot about me|you never|disappointed|starv|punish|died|dead|sad because you)\b/i;
   const all = [...uniq.values()].flatMap(s => [...s]);
   ok('no guilt language', !all.some(t => guilt.test(t)), all.find(t => guilt.test(t)) ?? '');
+  // ---- addressing the pup, dog language, sass and safety
+  const mk = (speech: string, sass: number, speaks = false) => {
+    const h = { ...host, petName: () => 'Comet', petAction: async (k: string) => ({ ok: true, line: `Done ${k}` }) };
+    const base = host.profile();
+    h.profile = () => ({ ...base, pet: { name: 'Comet', speaks, personality: 'goofy', speech, sass } });
+    return new ReflexEngine(h);
+  };
+  const dogE = mk('dog', 100); await dogE.init();
+  const r1 = await dogE.respond('Comet, open whatsapp');
+  ok('ordered pup answers in dog + meaning', /^[^“]+ — “.+”$/.test(r1.text) && /whatsapp/i.test(r1.text), r1.text);
+  ok('order still runs the real action', r1.intent === 'phone.open', r1.intent);
+  const r1b = await dogE.respond('hey Comet add buy milk');
+  ok('vocative with greeting works', r1b.intent === 'task.add', r1b.intent);
+  const r2 = await dogE.respond('add buy bread');
+  ok('not addressed, not speaking: Jarvis stays Jarvis', !/ — “/.test(r2.text), r2.text);
+  const sadE = mk('dog', 100, true); await sadE.init();
+  const r3 = await sadE.respond('I feel really sad today');
+  ok('hard day: no sass, no bark spam', !/NOW you need me|Obviously|thumbs/i.test(r3.text), r3.text);
+  const r4 = await sadE.respond('Comet I want to end my life');
+  ok('crisis stays plain human English', !/ — “|woof|arf|bork|ruff/i.test(r4.text) && /(help|line|emergency|reach|someone)/i.test(r4.text), r4.text);
+  const engE = mk('english', 100, true); await engE.init();
+  const r5 = await engE.respond('add buy eggs');
+  ok('english mode has no dog translation format', !/ — “/.test(r5.text), r5.text);
+  const sweet = mk('dog', 0, true); await sweet.init();
+  const r6 = await sweet.respond('add buy eggs');
+  ok('sass 0 = plain meaning', /Buy eggs|Added|noted/i.test(r6.text) && !/(Ugh|Fine\.|Obviously|thumbs|owe me|medal|welcome\.)/.test(r6.text), r6.text);
+  ok('honorific not in the pup mouth', !/\bsir\b/i.test(r1.text) && !/\bsir\b/i.test(r6.text), r1.text + ' | ' + r6.text);
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 })();

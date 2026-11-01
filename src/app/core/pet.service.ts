@@ -109,6 +109,7 @@ export class PetService {
   async init() {
     if (!this.pet().bornAt) this.save({ bornAt: Date.now() });
     await this.collectTaps();
+    this.syncRoam().catch(() => undefined);
   }
 
   /** Called once the store is ready and whenever the page opens: new day, welcome, visit. */
@@ -223,11 +224,14 @@ export class PetService {
     this.status.set(r.status);
     if (!isNative() || !this.pet().enabled) return;
     const p = this.pet();
+    const plain = p.speech === 'english';
     const key = `${p.fur}${p.patch}${p.bandana}${p.accessory}${mood}`;
     const look = { fur: p.fur, patch: p.patch, bandana: p.bandana, accessory: p.accessory };
-    const imgs = key !== this.lastKey ? { idle: await petPng(look, mood), happy: await petPng(look, 'excited') } : {};
+    const imgs = key !== this.lastKey ? { idle: await petPng(look, mood), happy: await petPng(look, 'excited'), sleep: await petPng(look, 'sleeping'), walk: await petPng(look, 'walk') } : {};
     this.lastKey = key;
-    await JarvisPet.update({ ...imgs, line: r.line, status: r.status, reactions: r.reactions.join('|') }).catch(() => undefined);
+    const line = plain ? r.line : this.dogFor(r.line, mood);
+    const reactions = plain ? r.reactions : r.reactions.map(() => this.dogFor('', 'happy'));
+    await JarvisPet.update({ ...imgs, line, status: r.status, reactions: reactions.join('|') }).catch(() => undefined);
   }
 
   // ------------------------------------------------------------------ interactions
@@ -236,7 +240,7 @@ export class PetService {
     this.setFlash('happy', 4000);
     this.haptic('light');
     this.sfx(a => a.voice(Math.random() < 0.3 ? 'happy' : 'yip'));
-    if (Math.random() < 0.55) this.speak('pet.react');
+    if (Math.random() < 0.55) this.speak(Math.random() < this.pet().sass / 100 * 0.6 ? 'pet.sass.pat' : 'pet.react');
     this.checkBadges();
   }
 
@@ -251,7 +255,7 @@ export class PetService {
     this.setFlash('excited', 5000);
     this.haptic('medium');
     this.sfx(a => a.voice('happy'));
-    this.speak('pet.fed');
+    this.speak(Math.random() < this.pet().sass / 100 * 0.5 ? 'pet.sass.feed' : 'pet.fed');
     return true;
   }
   earnTreats(n: number) { if (n > 0) this.careSet(c => ({ treats: Math.min(20, c.treats + n) })); }
@@ -336,6 +340,74 @@ export class PetService {
         return { ok: true, line: this.say('pet.report', { hearts, bondTitle: b.title, jar: c.treats, moodLabel: this.mood() }) };
       }
     }
+  }
+
+  // ------------------------------------------------------------------ dog language, orders and roaming
+  /** The pup's bark for a moment (the real meaning is shown separately). */
+  dogFor(english = '', mood: PetMood = this.mood()): string {
+    if (!this.reflex.ready()) return 'Woof!';
+    try {
+      let d = this.reflex.engine.petSay('pet.dog', { ...this.vars(mood), mood });
+      if (english.split(' ').length > 16) d += ' ' + this.reflex.engine.petSay('pet.dog.core', { ...this.vars(mood), mood });
+      return d;
+    } catch { return 'Woof!'; }
+  }
+  /** What the pup says on screens that only have room for one line: dog by default, plain words if chosen. */
+  display(english: string): string { return this.pet().speech === 'english' ? english : this.dogFor(english); }
+  /** Splits "Woof! — “meaning”" (how chat shows it) back into its two parts. */
+  splitVoice(text: string): { dog: string; meaning: string } {
+    const m = /^([\s\S]*?) — “([\s\S]*)”$/.exec(text.trim());
+    return m ? { dog: m[1], meaning: m[2] } : { dog: '', meaning: text };
+  }
+
+  /** Give the pup an order ("open WhatsApp", "add buy milk", "what is on today"). He does it, and answers in his own way. */
+  async order(text: string): Promise<string> {
+    const clean = text.trim();
+    if (!clean) return '';
+    await this.reflex.init();
+    this.setFlash('playful', 8000);
+    // orders from the pup never delete or send anything without you: risky actions are declined here
+    const r = await this.reflex.respond(`${this.pet().name}, ${clean}`, async () => false);
+    this.stat(st => ({ talks: st.talks + 1 }));
+    this.grant(XP.talk, 'order');
+    this.sfx(a => a.voice('happy'));
+    this.haptic('light');
+    return r.text;
+  }
+
+  /** Overlay (the pup walking around your screen). Android only; needs "Display over other apps". */
+  readonly roamState = signal<{ granted: boolean; running: boolean; usageAccess: boolean }>({ granted: false, running: false, usageAccess: false });
+  async roamStatus() {
+    if (!isNative()) return;
+    const st = await JarvisPet.overlayStatus().catch(() => null);
+    if (st) this.roamState.set({ granted: st.granted, running: st.running, usageAccess: st.usageAccess });
+  }
+  async setRoam(on: boolean): Promise<'ok' | 'permission' | 'unsupported'> {
+    if (!isNative()) return 'unsupported';
+    if (!on) { this.save({ roam: false }); await JarvisPet.overlayStop().catch(() => undefined); await this.roamStatus(); return 'ok'; }
+    await this.roamStatus();
+    if (!this.roamState().granted) { this.save({ roam: true }); await JarvisPet.requestOverlayPermission().catch(() => undefined); return 'permission'; }
+    this.save({ roam: true });
+    await this.pushRoam(true);
+    return 'ok';
+  }
+  /** Start or update the overlay with the current look and settings. */
+  async pushRoam(start = false) {
+    if (!isNative()) return;
+    await this.refresh(this.mood()).catch(() => undefined);
+    const p = this.pet();
+    const lines = Array.from({ length: 14 }, () => this.dogFor('', Math.random() < 0.5 ? 'happy' : 'playful')).filter((v, i, a) => a.indexOf(v) === i).join('|');
+    const cfg = { where: p.roamWhere, size: p.roamSize, lines, name: p.name };
+    if (start) await JarvisPet.overlayStart(cfg).catch(() => undefined); else await JarvisPet.overlayConfig(cfg).catch(() => undefined);
+    await this.roamStatus();
+  }
+  /** On launch and resume: pick the overlay up again if it should be running (e.g. after granting the permission). */
+  async syncRoam() {
+    if (!isNative()) return;
+    await this.roamStatus();
+    const p = this.pet();
+    if (p.roam && p.enabled && this.roamState().granted) await this.pushRoam(!this.roamState().running);
+    else if (this.roamState().running && !p.roam) await JarvisPet.overlayStop().catch(() => undefined);
   }
 
   // ------------------------------------------------------------------ cosmetics
