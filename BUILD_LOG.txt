@@ -1,0 +1,440 @@
+Loading package information...                                                  Loading local repository...                                                     [                                       ] 3% Loading local repository...        [                                       ] 3% Fetch remote repository...         [=                                      ] 3% Fetch remote repository...         [=                                      ] 4% Fetch remote repository...         [=                                      ] 5% Fetch remote repository...         [==                                     ] 5% Fetch remote repository...         [==                                     ] 6% Fetch remote repository...         [==                                     ] 7% Fetch remote repository...         [==                                     ] 7% Computing updates...               [===                                    ] 8% Computing updates...               [===                                    ] 10% Computing updates...              [===                                    ] 10% Installing CMake 3.31.6           [===                                    ] 10% Downloading cmake-3.31.6-linux.zip[====                                   ] 10% Downloading cmake-3.31.6-linux.zip[====                                   ] 11% Downloading cmake-3.31.6-linux.zip[====                                   ] 12% Downloading cmake-3.31.6-linux.zip[=====                                  ] 13% Downloading cmake-3.31.6-linux.zip[=====                                  ] 14% Downloading cmake-3.31.6-linux.zip[=====                                  ] 15% Downloading cmake-3.31.6-linux.zip[======                                 ] 15% Downloading cmake-3.31.6-linux.zip[======                                 ] 16% Downloading cmake-3.31.6-linux.zip[======                                 ] 17% Downloading cmake-3.31.6-linux.zip[=======                                ] 18% Downloading cmake-3.31.6-linux.zip[=======                                ] 19% Downloading cmake-3.31.6-linux.zip[=======                                ] 20% Downloading cmake-3.31.6-linux.zip[========                               ] 20% Downloading cmake-3.31.6-linux.zip[========                               ] 21% Downloading cmake-3.31.6-linux.zip[========                               ] 21% Unzipping...                      [========                               ] 21% Unzipping... bin/cmake            [========                               ] 22% Unzipping... bin/cmake            [=========                              ] 23% Unzipping... bin/cmake            [=========                              ] 24% Unzipping... bin/cmake            [=========                              ] 24% Unzipping... bin/cpack            [=========                              ] 25% Unzipping... bin/cpack            [==========                             ] 25% Unzipping... bin/cpack            [==========                             ] 26% Unzipping... bin/cpack            [==========                             ] 27% Unzipping... bin/cpack            [===========                            ] 28% Unzipping... bin/cpack            [===========                            ] 28% Unzipping... bin/ctest            [===========                            ] 29% Unzipping... bin/ctest            [===========                            ] 30% Unzipping... bin/ctest            [============                           ] 30% Unzipping... bin/ctest            [============                           ] 31% Unzipping... bin/ctest            [============                           ] 31% Unzipping... doc/openssl-openssl-3[============                           ] 31% Unzipping... doc/cmake-3.31/Copyri[============                           ] 31% Unzipping... doc/cmake-3.31/cmlibl[============                           ] 31% Unzipping... doc/cmake-3.31/cmlibr[============                           ] 31% Unzipping... doc/cmake-3.31/cmzstd[============                           ] 31% Unzipping... doc/cmake-3.31/cmcurl[============                           ] 31% Unzipping... doc/cmake-3.31/cmzlib[============                           ] 31% Unzipping... doc/cmake-3.31/cmnght[============                           ] 31% Unzipping... doc/cmake-3.31/cmcppd[============                           ] 31% Unzipping... doc/cmake-3.31/cmliba[============                           ] 31% Unzipping... doc/cmake-3.31/cmsys/[============                           ] 31% Unzipping... doc/cmake-3.31/cmlibu[============                           ] 31% Unzipping... share/emacs/site-lisp[============                           ] 31% Unzipping... share/vim/vimfiles/sy[============                           ] 31% Unzipping... share/vim/vimfiles/in[============                           ] 31% Unzipping... share/aclocal/cmake.m[============                           ] 31% Unzipping... share/bash-completion[============                           ] 31% Unzipping... share/cmake-3.31/Modu[============                           ] 32% Unzipping... share/cmake-3.31/Modu[============                           ] 32% Unzipping... share/cmake-3.31/Temp[============                           ] 32% Unzipping... share/cmake-3.31/Help[============                           ] 32% Unzipping... share/cmake-3.31/incl[============                           ] 32% Unzipping... source.properties    [============                           ] 32% Unzipping... bin/ninja            [============                           ] 32% Unzipping... doc/ninja/LICENSE    [============                           ] 32% Unzipping... share/cmake-3.31/Modu[=============                          ] 33% Unzipping... share/cmake-3.31/Modu[=====================                  ] 55% Unzipping... share/cmake-3.31/Modu[=====================                  ] 55% Installing NDK (Side by side) 29.0[=====================                  ] 55% Downloading android-ndk-r29-beta1-[======================                 ] 55% Downloading android-ndk-r29-beta1-[======================                 ] 56% Downloading android-ndk-r29-beta1-[======================                 ] 57% Downloading android-ndk-r29-beta1-[=======================                ] 58% Downloading android-ndk-r29-beta1-[=======================                ] 59% Downloading android-ndk-r29-beta1-[=======================                ] 60% Downloading android-ndk-r29-beta1-[========================               ] 60% Downloading android-ndk-r29-beta1-[========================               ] 61% Downloading android-ndk-r29-beta1-[========================               ] 62% Downloading android-ndk-r29-beta1-[=========================              ] 63% Downloading android-ndk-r29-beta1-[=========================              ] 64% Downloading android-ndk-r29-beta1-[=========================              ] 65% Downloading android-ndk-r29-beta1-[==========================             ] 65% Downloading android-ndk-r29-beta1-[==========================             ] 66% Downloading android-ndk-r29-beta1-[==========================             ] 66% Unzipping... share/cmake-3.31/Modu[==========================             ] 66% Unzipping... android-ndk-r29-beta1[==========================             ] 67% Unzipping... android-ndk-r29-beta1[===========================            ] 68% Unzipping... android-ndk-r29-beta1[===========================            ] 69% Unzipping... android-ndk-r29-beta1[===========================            ] 70% Unzipping... android-ndk-r29-beta1[============================           ] 70% Unzipping... android-ndk-r29-beta1[============================           ] 71% Unzipping... android-ndk-r29-beta1[============================           ] 72% Unzipping... android-ndk-r29-beta1[=============================          ] 73% Unzipping... android-ndk-r29-beta1[=============================          ] 74% Unzipping... android-ndk-r29-beta1[=============================          ] 75% Unzipping... android-ndk-r29-beta1[==============================         ] 75% Unzipping... android-ndk-r29-beta1[==============================         ] 76% Unzipping... android-ndk-r29-beta1[==============================         ] 77% Unzipping... android-ndk-r29-beta1[==============================         ] 78% Unzipping... android-ndk-r29-beta1[=======================================] 100% Unzipping... android-ndk-r29-beta
+
+
+added 510 packages in 22s
+[33m❯[39m Building...
+[32m✔[39m Building...
+[1mInitial chunk files[22m  [2m | [22m[1mNames[22m        [2m | [22m [1mRaw size[22m[2m | [22m[1mEstimated transfer size[22m
+[32mchunk-ZSOEV2JD.js[39m    [2m | [22m[2m-[22m            [2m | [22m[36m391.63 kB[39m[2m | [22m              [36m116.43 kB[39m
+[32mchunk-3FQA2QJD.js[39m    [2m | [22m[2m-[22m            [2m | [22m[36m289.09 kB[39m[2m | [22m               [36m86.02 kB[39m
+[32mchunk-VOUXAXUF.js[39m    [2m | [22m[2m-[22m            [2m | [22m [36m85.88 kB[39m[2m | [22m               [36m21.80 kB[39m
+[32mchunk-GT6UCE35.js[39m    [2m | [22m[2m-[22m            [2m | [22m [36m37.55 kB[39m[2m | [22m                [36m7.74 kB[39m
+[32mmain-IMAWG5RJ.js[39m     [2m | [22m[2mmain[22m         [2m | [22m [36m36.34 kB[39m[2m | [22m               [36m10.05 kB[39m
+[32mpolyfills-5CFQRCPP.js[39m[2m | [22m[2mpolyfills[22m    [2m | [22m [36m34.59 kB[39m[2m | [22m               [36m11.33 kB[39m
+[32mchunk-FTD7OHRE.js[39m    [2m | [22m[2m-[22m            [2m | [22m [36m27.81 kB[39m[2m | [22m                [36m8.44 kB[39m
+[32mchunk-MSKIMNZ5.js[39m    [2m | [22m[2m-[22m            [2m | [22m [36m18.36 kB[39m[2m | [22m                [36m5.74 kB[39m
+[32mchunk-XCGYBEG2.js[39m    [2m | [22m[2m-[22m            [2m | [22m [36m16.26 kB[39m[2m | [22m                [36m5.36 kB[39m
+[32mchunk-LODJ5ER4.js[39m    [2m | [22m[2m-[22m            [2m | [22m [36m16.21 kB[39m[2m | [22m                [36m4.68 kB[39m
+[32mchunk-SR34IFKH.js[39m    [2m | [22m[2m-[22m            [2m | [22m [36m15.62 kB[39m[2m | [22m                [36m5.42 kB[39m
+[32mstyles-6QRBB7UB.css[39m  [2m | [22m[2mstyles[22m       [2m | [22m [36m10.98 kB[39m[2m | [22m                [36m3.00 kB[39m
+[32mchunk-GPC45BTA.js[39m    [2m | [22m[2m-[22m            [2m | [22m [36m10.26 kB[39m[2m | [22m                [36m2.75 kB[39m
+[32mchunk-ZKZMZXRQ.js[39m    [2m | [22m[2m-[22m            [2m | [22m  [36m8.53 kB[39m[2m | [22m                [36m2.94 kB[39m
+[32mchunk-FUBNOKHC.js[39m    [2m | [22m[2m-[22m            [2m | [22m  [36m6.72 kB[39m[2m | [22m                [36m2.17 kB[39m
+[32mchunk-BZ7BPMSB.js[39m    [2m | [22m[2m-[22m            [2m | [22m  [36m6.51 kB[39m[2m | [22m                [36m1.68 kB[39m
+[32mchunk-Q2ACRKFG.js[39m    [2m | [22m[2m-[22m            [2m | [22m  [36m5.58 kB[39m[2m | [22m                [36m2.11 kB[39m
+[32mchunk-KQJPWQ7R.js[39m    [2m | [22m[2m-[22m            [2m | [22m  [36m5.37 kB[39m[2m | [22m                [36m1.84 kB[39m
+[32mchunk-YUXGTXOZ.js[39m    [2m | [22m[2m-[22m            [2m | [22m  [36m4.97 kB[39m[2m | [22m                [36m1.98 kB[39m
+[32mchunk-NSVQCF6G.js[39m    [2m | [22m[2m-[22m            [2m | [22m  [36m4.48 kB[39m[2m | [22m                [36m1.45 kB[39m
+[32mchunk-MFYZVTIG.js[39m    [2m | [22m[2m-[22m            [2m | [22m  [36m3.98 kB[39m[2m | [22m                [36m1.41 kB[39m
+[32mchunk-CONOGVCW.js[39m    [2m | [22m[2m-[22m            [2m | [22m  [36m3.15 kB[39m[2m | [22m                [36m1.53 kB[39m
+[32mchunk-CNQ5VUBW.js[39m    [2m | [22m[2m-[22m            [2m | [22m  [36m2.20 kB[39m[2m | [22m              [36m949 bytes[39m
+[32mchunk-OZH6TTIV.js[39m    [2m | [22m[2m-[22m            [2m | [22m  [36m1.40 kB[39m[2m | [22m              [36m666 bytes[39m
+[32mchunk-OSQMNGTH.js[39m    [2m | [22m[2m-[22m            [2m | [22m  [36m1.31 kB[39m[2m | [22m              [36m574 bytes[39m
+[32mchunk-5BOZCIHP.js[39m    [2m | [22m[2m-[22m            [2m | [22m[36m442 bytes[39m[2m | [22m              [36m442 bytes[39m
+
+[1m [22m                    [2m | [22m[1mInitial total[22m[2m | [22m  [1m1.05 MB[22m[2m | [22m              [1m308.51 kB[22m
+
+[1mLazy chunk files[22m     [2m | [22m[1mNames[22m        [2m | [22m [1mRaw size[22m[2m | [22m[1mEstimated transfer size[22m
+[32mchunk-PGOSGNRS.js[39m    [2m | [22m[2m-[22m            [2m | [22m[36m695.07 kB[39m[2m | [22m              [36m144.98 kB[39m
+[32mchunk-ROBX2Z5E.js[39m    [2m | [22m[2mpet-page[22m     [2m | [22m [36m91.36 kB[39m[2m | [22m               [36m23.53 kB[39m
+[32mchunk-LV27YADU.js[39m    [2m | [22m[2mGLTFLoader[22m   [2m | [22m [36m44.55 kB[39m[2m | [22m               [36m11.87 kB[39m
+[32mchunk-JAHXMPK4.js[39m    [2m | [22m[2msettings-page[22m[2m | [22m [36m26.71 kB[39m[2m | [22m                [36m7.53 kB[39m
+[32mchunk-LLFD2BZP.js[39m    [2m | [22m[2mtasks-page[22m   [2m | [22m [36m24.26 kB[39m[2m | [22m                [36m6.86 kB[39m
+[32mchunk-K6FWKW6H.js[39m    [2m | [22m[2mbrain-page[22m   [2m | [22m [36m21.01 kB[39m[2m | [22m                [36m6.29 kB[39m
+[32mchunk-VQAB7B2G.js[39m    [2m | [22m[2m-[22m            [2m | [22m [36m15.70 kB[39m[2m | [22m                [36m5.53 kB[39m
+[32mchunk-CHL3FXCB.js[39m    [2m | [22m[2mfocus-page[22m   [2m | [22m [36m13.60 kB[39m[2m | [22m                [36m4.69 kB[39m
+[32mchunk-WQ7T3LKO.js[39m    [2m | [22m[2mgoals-page[22m   [2m | [22m [36m11.18 kB[39m[2m | [22m                [36m3.58 kB[39m
+[32mchunk-4ERL4MTE.js[39m    [2m | [22m[2mthree-module[22m [2m | [22m [36m11.04 kB[39m[2m | [22m                [36m3.29 kB[39m
+[32mchunk-UNNDS53K.js[39m    [2m | [22m[2mbriefing-page[22m[2m | [22m [36m10.92 kB[39m[2m | [22m                [36m3.78 kB[39m
+[32mchunk-V5WNWUNK.js[39m    [2m | [22m[2mjournal-page[22m [2m | [22m [36m10.86 kB[39m[2m | [22m                [36m3.96 kB[39m
+[32mchunk-S73PYATT.js[39m    [2m | [22m[2mvoices-page[22m  [2m | [22m [36m10.51 kB[39m[2m | [22m                [36m3.50 kB[39m
+[32mchunk-QKUTVD4O.js[39m    [2m | [22m[2mtheme-page[22m   [2m | [22m [36m10.51 kB[39m[2m | [22m                [36m3.25 kB[39m
+[32mchunk-SXSKMKSH.js[39m    [2m | [22m[2mchat-page[22m    [2m | [22m [36m10.25 kB[39m[2m | [22m                [36m3.29 kB[39m
+[2m...and 18 more lazy chunks files. Use "--verbose" to show all the files.[22m
+
+Application bundle generation complete. [14.261 seconds] - 2026-11-01T05:17:06.353Z
+
+Output location: /home/runner/work/jarvis-assistant/jarvis-assistant/dist/jarvis
+
+✔ Adding native android project in android in 39.70ms
+✔ add in 40.45ms
+✔ Copying web assets from browser to android/app/src/main/assets/public in 10.50ms
+✔ Creating capacitor.config.json in android/app/src/main/assets in 402.38μs
+✔ copy android in 28.94ms
+✔ Updating Android plugins in 3.90ms
+[info] Found 3 Capacitor plugins for android:
+       @capacitor/app@8.1.2
+       @capacitor/local-notifications@8.3.1
+       @capgo/capacitor-speech-recognition@8.4.6
+✔ update android in 28.10ms
+✔ Syncing Gradle in 214.58μs
+[success] android platform added!
+Follow the Developer Workflow guide to get building:
+https://capacitorjs.com/docs/basics/workflow
+✔ Copying web assets from browser to android/app/src/main/assets/public in 15.75ms
+✔ Creating capacitor.config.json in android/app/src/main/assets in 666.49μs
+✔ copy android in 33.51ms
+✔ Updating Android plugins in 3.68ms
+[info] Found 3 Capacitor plugins for android:
+       @capacitor/app@8.1.2
+       @capacitor/local-notifications@8.3.1
+       @capgo/capacitor-speech-recognition@8.4.6
+✔ update android in 37.44ms
+[info] Sync finished in 0.092s
+
+✓ Android project ready. Build with: cd android && ./gradlew assembleDebug
+Downloading https://services.gradle.org/distributions/gradle-8.14.3-all.zip
+.....................10%.....................20%......................30%.....................40%......................50%.....................60%.....................70%......................80%.....................90%......................100%
+
+Welcome to Gradle 8.14.3!
+
+Here are the highlights of this release:
+ - Java 24 support
+ - GraalVM Native Image toolchain selection
+ - Enhancements to test reporting
+ - Build Authoring improvements
+
+For more details see https://docs.gradle.org/8.14.3/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Configure project :capacitor-cordova-android-plugins
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :capacitor-android:preBuild UP-TO-DATE
+> Task :capacitor-android:preDebugBuild UP-TO-DATE
+> Task :capacitor-app:preBuild UP-TO-DATE
+> Task :capacitor-app:preDebugBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:preBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:preDebugBuild UP-TO-DATE
+> Task :capacitor-android:writeDebugAarMetadata
+> Task :capacitor-app:writeDebugAarMetadata
+> Task :app:javaPreCompileDebug
+> Task :capacitor-local-notifications:preBuild UP-TO-DATE
+> Task :capacitor-local-notifications:preDebugBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:writeDebugAarMetadata
+> Task :capgo-capacitor-speech-recognition:preBuild UP-TO-DATE
+> Task :capgo-capacitor-speech-recognition:preDebugBuild UP-TO-DATE
+> Task :capacitor-local-notifications:writeDebugAarMetadata
+> Task :capgo-capacitor-speech-recognition:writeDebugAarMetadata
+> Task :capacitor-android:processDebugNavigationResources
+> Task :app:checkDebugAarMetadata
+> Task :capacitor-app:processDebugNavigationResources
+> Task :capacitor-cordova-android-plugins:processDebugNavigationResources
+> Task :capacitor-local-notifications:processDebugNavigationResources
+> Task :capgo-capacitor-speech-recognition:processDebugNavigationResources
+> Task :app:processDebugNavigationResources
+> Task :app:generateDebugResValues
+> Task :capacitor-android:generateDebugResValues
+> Task :app:compileDebugNavigationResources
+> Task :capacitor-android:generateDebugResources
+> Task :capacitor-android:packageDebugResources
+> Task :capacitor-app:generateDebugResValues
+> Task :capacitor-app:generateDebugResources
+> Task :capacitor-app:packageDebugResources
+> Task :capacitor-cordova-android-plugins:generateDebugResValues
+> Task :capacitor-cordova-android-plugins:generateDebugResources
+> Task :capacitor-cordova-android-plugins:packageDebugResources
+> Task :capacitor-local-notifications:generateDebugResValues
+> Task :capacitor-local-notifications:generateDebugResources
+> Task :capacitor-local-notifications:packageDebugResources
+> Task :capgo-capacitor-speech-recognition:generateDebugResValues
+> Task :capgo-capacitor-speech-recognition:generateDebugResources
+> Task :capgo-capacitor-speech-recognition:packageDebugResources
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:mergeDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :capacitor-android:extractDeepLinksDebug
+> Task :capacitor-app:extractDeepLinksDebug
+> Task :capacitor-cordova-android-plugins:extractDeepLinksDebug
+> Task :capacitor-app:processDebugManifest
+> Task :capacitor-cordova-android-plugins:processDebugManifest
+> Task :capacitor-android:processDebugManifest
+> Task :capacitor-local-notifications:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :capgo-capacitor-speech-recognition:extractDeepLinksDebug
+> Task :capgo-capacitor-speech-recognition:processDebugManifest
+> Task :capacitor-local-notifications:processDebugManifest
+> Task :capacitor-android:compileDebugLibraryResources
+
+> Task :app:processDebugMainManifest
+/home/runner/work/jarvis-assistant/jarvis-assistant/android/app/src/main/AndroidManifest.xml:30:9-41 Warning:
+	android:extractNativeLibs should not be specified in this source AndroidManifest.xml file. See https://d.android.com/guide/topics/manifest/application-element#extractNativeLibs for more information.
+The AGP Upgrade Assistant can remove the attribute from the AndroidManifest.xml file and update the build file accordingly. See https://d.android.com/studio/build/agp-upgrade-assistant for more information.
+
+> Task :app:processDebugManifest
+> Task :capacitor-app:compileDebugLibraryResources
+> Task :capacitor-android:parseDebugLocalResources
+> Task :capacitor-app:parseDebugLocalResources
+> Task :capacitor-cordova-android-plugins:compileDebugLibraryResources
+> Task :app:processDebugManifestForPackage
+> Task :capacitor-local-notifications:compileDebugLibraryResources
+> Task :capacitor-android:generateDebugRFile
+> Task :capacitor-app:generateDebugRFile
+> Task :capacitor-cordova-android-plugins:parseDebugLocalResources
+> Task :capacitor-local-notifications:parseDebugLocalResources
+> Task :capacitor-cordova-android-plugins:generateDebugRFile
+> Task :capgo-capacitor-speech-recognition:compileDebugLibraryResources
+> Task :capacitor-local-notifications:generateDebugRFile
+> Task :capacitor-android:javaPreCompileDebug
+> Task :capacitor-app:javaPreCompileDebug
+> Task :capgo-capacitor-speech-recognition:parseDebugLocalResources
+
+> Task :capacitor-android:compileDebugJavaWithJavac
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :capgo-capacitor-speech-recognition:generateDebugRFile
+> Task :capacitor-android:bundleLibCompileToJarDebug
+> Task :capacitor-app:compileDebugJavaWithJavac
+> Task :capacitor-app:bundleLibCompileToJarDebug
+> Task :capacitor-local-notifications:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :capacitor-cordova-android-plugins:javaPreCompileDebug
+> Task :app:processDebugResources
+> Task :capacitor-cordova-android-plugins:compileDebugJavaWithJavac NO-SOURCE
+> Task :capacitor-cordova-android-plugins:bundleLibCompileToJarDebug
+> Task :capacitor-local-notifications:javaPreCompileDebug
+> Task :capgo-capacitor-speech-recognition:javaPreCompileDebug
+> Task :app:mergeDebugShaders
+> Task :capgo-capacitor-speech-recognition:compileDebugJavaWithJavac
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :capgo-capacitor-speech-recognition:bundleLibCompileToJarDebug
+> Task :capacitor-android:mergeDebugShaders
+> Task :capacitor-android:compileDebugShaders NO-SOURCE
+> Task :capacitor-android:generateDebugAssets UP-TO-DATE
+> Task :capacitor-android:mergeDebugAssets
+> Task :capacitor-app:mergeDebugShaders
+> Task :capacitor-app:compileDebugShaders NO-SOURCE
+> Task :capacitor-app:generateDebugAssets UP-TO-DATE
+> Task :capacitor-app:mergeDebugAssets
+> Task :capacitor-cordova-android-plugins:mergeDebugShaders
+> Task :capacitor-cordova-android-plugins:compileDebugShaders NO-SOURCE
+> Task :capacitor-cordova-android-plugins:generateDebugAssets UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeDebugAssets
+> Task :capacitor-local-notifications:mergeDebugShaders
+> Task :capacitor-local-notifications:compileDebugShaders NO-SOURCE
+> Task :capacitor-local-notifications:generateDebugAssets UP-TO-DATE
+> Task :capacitor-local-notifications:mergeDebugAssets
+> Task :capgo-capacitor-speech-recognition:mergeDebugShaders
+> Task :capgo-capacitor-speech-recognition:compileDebugShaders NO-SOURCE
+> Task :capgo-capacitor-speech-recognition:generateDebugAssets UP-TO-DATE
+> Task :capgo-capacitor-speech-recognition:mergeDebugAssets
+> Task :app:mergeDebugAssets
+> Task :capgo-capacitor-speech-recognition:bundleLibRuntimeToJarDebug
+> Task :capacitor-app:bundleLibRuntimeToJarDebug
+> Task :app:compressDebugAssets
+> Task :capacitor-android:bundleLibRuntimeToJarDebug
+> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToJarDebug
+> Task :app:desugarDebugFileDependencies
+> Task :app:processDebugJavaRes NO-SOURCE
+> Task :capacitor-android:processDebugJavaRes NO-SOURCE
+> Task :capacitor-app:processDebugJavaRes NO-SOURCE
+> Task :capacitor-cordova-android-plugins:processDebugJavaRes NO-SOURCE
+> Task :capgo-capacitor-speech-recognition:processDebugJavaRes NO-SOURCE
+> Task :capacitor-app:bundleLibRuntimeToDirDebug
+> Task :app:checkDebugDuplicateClasses
+> Task :capacitor-local-notifications:compileDebugKotlin
+> Task :capacitor-local-notifications:compileDebugJavaWithJavac NO-SOURCE
+> Task :capacitor-local-notifications:bundleLibCompileToJarDebug
+> Task :capacitor-local-notifications:bundleLibRuntimeToJarDebug
+> Task :capacitor-local-notifications:processDebugJavaRes
+
+> Task :app:compileDebugJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:mergeExtDexDebug
+> Task :capacitor-local-notifications:bundleLibRuntimeToDirDebug
+> Task :capgo-capacitor-speech-recognition:bundleLibRuntimeToDirDebug
+> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToDirDebug
+> Task :capacitor-android:bundleLibRuntimeToDirDebug
+> Task :app:mergeProjectDexDebug
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:mergeDebugJavaResource
+
+> Task :app:configureCMakeRelease[arm64-v8a]
+C/C++: CMAKE_BUILD_TYPE=Release
+C/C++: CMake Warning (dev) at /usr/local/lib/android/sdk/cmake/3.31.6/share/cmake-3.31/Modules/FetchContent.cmake:1953 (message):
+C/C++:   Calling FetchContent_Populate(kleidiai) is deprecated, call
+C/C++:   FetchContent_MakeAvailable(kleidiai) instead.  Policy CMP0169 can be set to
+C/C++:   OLD to allow FetchContent_Populate(kleidiai) to be called directly for now,
+C/C++:   but the ability to call it with declared details will be removed completely
+C/C++:   in a future version.
+C/C++: Call Stack (most recent call first):
+C/C++:   llama.cpp/ggml/src/ggml-cpu/CMakeLists.txt:680 (FetchContent_Populate)
+C/C++:   llama.cpp/ggml/src/CMakeLists.txt:484 (ggml_add_cpu_backend_variant_impl)
+C/C++:   llama.cpp/ggml/src/CMakeLists.txt:536 (ggml_add_cpu_backend_variant)
+C/C++: This warning is for project developers.  Use -Wno-dev to suppress it.
+
+> Task :app:mergeLibDexDebug
+
+> Task :app:buildCMakeRelease[arm64-v8a]
+C/C++: ninja: Entering directory `/home/runner/work/jarvis-assistant/jarvis-assistant/native/.cxx/Release/2dom3068/arm64-v8a'
+C/C++: /home/runner/work/jarvis-assistant/jarvis-assistant/native/.cxx/Release/2dom3068/arm64-v8a/_deps/kleidiai-src/kai/ukernels/matmul/pack/kai_lhs_quant_pack_qsi8d32pscalef32_f16_neon.c:104:34: warning: implicit conversion increases floating-point precision: 'float16_t' (aka '__fp16') to 'float' [-Wdouble-promotion]
+C/C++:   104 |             const float scale0 = absmax == 0.0F ? 0.0F : qmax / absmax;
+C/C++:       |                                  ^~~~~~ ~~
+C/C++: /home/runner/work/jarvis-assistant/jarvis-assistant/native/.cxx/Release/2dom3068/arm64-v8a/_deps/kleidiai-src/kai/ukernels/matmul/pack/kai_lhs_quant_pack_qsi8d32pscalef32_f16_neon.c:104:65: warning: implicit conversion increases floating-point precision: 'float16_t' (aka '__fp16') to 'float' [-Wdouble-promotion]
+C/C++:   104 |             const float scale0 = absmax == 0.0F ? 0.0F : qmax / absmax;
+C/C++:       |                                                               ~ ^~~~~~
+C/C++: /home/runner/work/jarvis-assistant/jarvis-assistant/native/.cxx/Release/2dom3068/arm64-v8a/_deps/kleidiai-src/kai/ukernels/matmul/pack/kai_lhs_quant_pack_qsi8d32pscalef32_f16_neon.c:117:55: warning: implicit conversion increases floating-point precision: 'const float16_t' (aka 'const __fp16') to 'float' [-Wdouble-promotion]
+C/C++:   117 |                     int32_t v0_s32 = (int32_t)(roundf(src0_0 * scale0));
+C/C++:       |                                                       ^~~~~~ ~
+C/C++: 3 warnings generated.
+C/C++: /home/runner/work/jarvis-assistant/jarvis-assistant/native/.cxx/Release/2dom3068/arm64-v8a/_deps/kleidiai-src/kai/ukernels/matmul/pack/kai_lhs_quant_pack_qai8dxp_f16_neon.c:153:45: warning: implicit conversion increases floating-point precision: 'float16_t' (aka '__fp16') to 'float' [-Wdouble-promotion]
+C/C++:   153 |             const float rmin0 = fminf(0.0F, min0);
+C/C++:       |                                 ~~~~~       ^~~~
+C/C++: /home/runner/work/jarvis-assistant/jarvis-assistant/native/.cxx/Release/2dom3068/arm64-v8a/_deps/kleidiai-src/kai/ukernels/matmul/pack/kai_lhs_quant_pack_qai8dxp_f16_neon.c:154:45: warning: implicit conversion increases floating-point precision: 'float16_t' (aka '__fp16') to 'float' [-Wdouble-promotion]
+C/C++:   154 |             const float rmax0 = fmaxf(0.0F, max0);
+C/C++:       |                                 ~~~~~       ^~~~
+C/C++: /home/runner/work/jarvis-assistant/jarvis-assistant/native/.cxx/Release/2dom3068/arm64-v8a/_deps/kleidiai-src/kai/ukernels/matmul/pack/kai_lhs_quant_pack_qai8dxp_f16_neon.c:156:45: warning: implicit conversion increases floating-point precision: 'float16_t' (aka '__fp16') to 'float' [-Wdouble-promotion]
+C/C++:   156 |             const float rmin1 = fminf(0.0F, min1);
+C/C++:       |                                 ~~~~~       ^~~~
+C/C++: /home/runner/work/jarvis-assistant/jarvis-assistant/native/.cxx/Release/2dom3068/arm64-v8a/_deps/kleidiai-src/kai/ukernels/matmul/pack/kai_lhs_quant_pack_qai8dxp_f16_neon.c:157:45: warning: implicit conversion increases floating-point precision: 'float16_t' (aka '__fp16') to 'float' [-Wdouble-promotion]
+C/C++:   157 |             const float rmax1 = fmaxf(0.0F, max1);
+C/C++:       |                                 ~~~~~       ^~~~
+C/C++: /home/runner/work/jarvis-assistant/jarvis-assistant/native/.cxx/Release/2dom3068/arm64-v8a/_deps/kleidiai-src/kai/ukernels/matmul/pack/kai_lhs_quant_pack_qai8dxp_f16_neon.c:159:45: warning: implicit conversion increases floating-point precision: 'float16_t' (aka '__fp16') to 'float' [-Wdouble-promotion]
+C/C++:   159 |             const float rmin2 = fminf(0.0F, min2);
+C/C++:       |                                 ~~~~~       ^~~~
+C/C++: /home/runner/work/jarvis-assistant/jarvis-assistant/native/.cxx/Release/2dom3068/arm64-v8a/_deps/kleidiai-src/kai/ukernels/matmul/pack/kai_lhs_quant_pack_qai8dxp_f16_neon.c:160:45: warning: implicit conversion increases floating-point precision: 'float16_t' (aka '__fp16') to 'float' [-Wdouble-promotion]
+C/C++:   160 |             const float rmax2 = fmaxf(0.0F, max2);
+C/C++:       |                                 ~~~~~       ^~~~
+C/C++: /home/runner/work/jarvis-assistant/jarvis-assistant/native/.cxx/Release/2dom3068/arm64-v8a/_deps/kleidiai-src/kai/ukernels/matmul/pack/kai_lhs_quant_pack_qai8dxp_f16_neon.c:162:45: warning: implicit conversion increases floating-point precision: 'float16_t' (aka '__fp16') to 'float' [-Wdouble-promotion]
+C/C++:   162 |             const float rmin3 = fminf(0.0F, min3);
+C/C++:       |                                 ~~~~~       ^~~~
+C/C++: /home/runner/work/jarvis-assistant/jarvis-assistant/native/.cxx/Release/2dom3068/arm64-v8a/_deps/kleidiai-src/kai/ukernels/matmul/pack/kai_lhs_quant_pack_qai8dxp_f16_neon.c:163:45: warning: implicit conversion increases floating-point precision: 'float16_t' (aka '__fp16') to 'float' [-Wdouble-promotion]
+C/C++:   163 |             const float rmax3 = fmaxf(0.0F, max3);
+C/C++:       |                                 ~~~~~       ^~~~
+C/C++: /home/runner/work/jarvis-assistant/jarvis-assistant/native/.cxx/Release/2dom3068/arm64-v8a/_deps/kleidiai-src/kai/ukernels/matmul/pack/kai_lhs_quant_pack_qai8dxp_f16_neon.c:393:41: warning: implicit conversion increases floating-point precision: 'float16_t' (aka '__fp16') to 'float' [-Wdouble-promotion]
+C/C++:   393 |         const float rmin0 = fminf(0.0F, min0);
+C/C++:       |                             ~~~~~       ^~~~
+C/C++: /home/runner/work/jarvis-assistant/jarvis-assistant/native/.cxx/Release/2dom3068/arm64-v8a/_deps/kleidiai-src/kai/ukernels/matmul/pack/kai_lhs_quant_pack_qai8dxp_f16_neon.c:394:41: warning: implicit conversion increases floating-point precision: 'float16_t' (aka '__fp16') to 'float' [-Wdouble-promotion]
+C/C++:   394 |         const float rmax0 = fmaxf(0.0F, max0);
+C/C++:       |                             ~~~~~       ^~~~
+C/C++: 10 warnings generated.
+
+> Task :app:mergeDebugJniLibFolders
+> Task :capacitor-android:mergeDebugJniLibFolders
+> Task :capacitor-android:mergeDebugNativeLibs NO-SOURCE
+> Task :capacitor-app:mergeDebugJniLibFolders
+> Task :capacitor-app:mergeDebugNativeLibs NO-SOURCE
+> Task :capacitor-android:copyDebugJniLibsProjectOnly
+> Task :capacitor-app:copyDebugJniLibsProjectOnly
+> Task :capacitor-cordova-android-plugins:mergeDebugJniLibFolders
+> Task :capacitor-cordova-android-plugins:mergeDebugNativeLibs NO-SOURCE
+> Task :capacitor-cordova-android-plugins:copyDebugJniLibsProjectOnly
+> Task :capacitor-local-notifications:mergeDebugJniLibFolders
+> Task :capacitor-local-notifications:mergeDebugNativeLibs NO-SOURCE
+> Task :capacitor-local-notifications:copyDebugJniLibsProjectOnly
+> Task :capgo-capacitor-speech-recognition:mergeDebugJniLibFolders
+> Task :capgo-capacitor-speech-recognition:mergeDebugNativeLibs NO-SOURCE
+> Task :capgo-capacitor-speech-recognition:copyDebugJniLibsProjectOnly
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :capacitor-android:stripDebugDebugSymbols NO-SOURCE
+> Task :capacitor-android:checkDebugAarMetadata
+> Task :capacitor-android:copyDebugJniLibsProjectAndLocalJars
+> Task :app:mergeDebugNativeLibs
+> Task :capacitor-android:extractDebugAnnotations
+> Task :capacitor-android:extractDeepLinksForAarDebug
+> Task :capacitor-android:mergeDebugGeneratedProguardFiles
+> Task :capacitor-android:mergeDebugConsumerProguardFiles
+> Task :capacitor-android:prepareDebugArtProfile
+> Task :capacitor-android:prepareLintJarForPublish
+> Task :capacitor-app:stripDebugDebugSymbols NO-SOURCE
+> Task :capacitor-android:mergeDebugJavaResource
+> Task :capacitor-app:checkDebugAarMetadata
+> Task :app:stripDebugDebugSymbols
+> Task :capacitor-android:syncDebugLibJars
+> Task :capacitor-android:bundleDebugAar
+> Task :capacitor-android:assembleDebug
+> Task :capacitor-app:copyDebugJniLibsProjectAndLocalJars
+> Task :capacitor-app:extractDebugAnnotations
+> Task :capacitor-app:extractDeepLinksForAarDebug
+> Task :capacitor-app:mergeDebugGeneratedProguardFiles
+> Task :capacitor-app:mergeDebugConsumerProguardFiles
+> Task :capacitor-app:prepareDebugArtProfile
+> Task :capacitor-app:prepareLintJarForPublish
+> Task :capacitor-app:mergeDebugJavaResource
+> Task :capacitor-cordova-android-plugins:checkDebugAarMetadata
+> Task :capacitor-app:syncDebugLibJars
+> Task :capacitor-app:bundleDebugAar
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+> Task :capacitor-app:assembleDebug
+> Task :capacitor-cordova-android-plugins:stripDebugDebugSymbols NO-SOURCE
+> Task :capacitor-cordova-android-plugins:copyDebugJniLibsProjectAndLocalJars
+> Task :capacitor-cordova-android-plugins:extractDebugAnnotations
+> Task :capacitor-cordova-android-plugins:extractDeepLinksForAarDebug
+> Task :capacitor-cordova-android-plugins:mergeDebugGeneratedProguardFiles
+> Task :capacitor-cordova-android-plugins:mergeDebugConsumerProguardFiles
+> Task :capacitor-cordova-android-plugins:prepareDebugArtProfile
+> Task :capacitor-cordova-android-plugins:prepareLintJarForPublish
+> Task :capacitor-cordova-android-plugins:mergeDebugJavaResource
+> Task :capacitor-local-notifications:checkDebugAarMetadata
+> Task :capacitor-cordova-android-plugins:syncDebugLibJars
+> Task :capacitor-cordova-android-plugins:bundleDebugAar
+> Task :capacitor-cordova-android-plugins:assembleDebug
+> Task :capacitor-local-notifications:stripDebugDebugSymbols NO-SOURCE
+> Task :capacitor-local-notifications:copyDebugJniLibsProjectAndLocalJars
+> Task :capacitor-local-notifications:extractDebugAnnotations
+> Task :capacitor-local-notifications:extractDeepLinksForAarDebug
+> Task :capacitor-local-notifications:mergeDebugGeneratedProguardFiles
+> Task :capacitor-local-notifications:mergeDebugConsumerProguardFiles
+> Task :capacitor-local-notifications:prepareDebugArtProfile
+> Task :capacitor-local-notifications:prepareLintJarForPublish
+> Task :capgo-capacitor-speech-recognition:checkDebugAarMetadata
+> Task :capgo-capacitor-speech-recognition:stripDebugDebugSymbols NO-SOURCE
+> Task :capacitor-local-notifications:mergeDebugJavaResource
+> Task :capgo-capacitor-speech-recognition:copyDebugJniLibsProjectAndLocalJars
+> Task :capacitor-local-notifications:syncDebugLibJars
+> Task :capacitor-local-notifications:bundleDebugAar
+> Task :capacitor-local-notifications:assembleDebug
+> Task :capgo-capacitor-speech-recognition:extractDebugAnnotations
+> Task :capgo-capacitor-speech-recognition:extractDeepLinksForAarDebug
+> Task :capgo-capacitor-speech-recognition:mergeDebugGeneratedProguardFiles
+> Task :capgo-capacitor-speech-recognition:mergeDebugConsumerProguardFiles
+> Task :capgo-capacitor-speech-recognition:prepareDebugArtProfile
+> Task :capgo-capacitor-speech-recognition:prepareLintJarForPublish
+> Task :capgo-capacitor-speech-recognition:mergeDebugJavaResource
+> Task :capgo-capacitor-speech-recognition:syncDebugLibJars
+> Task :capgo-capacitor-speech-recognition:bundleDebugAar
+> Task :capgo-capacitor-speech-recognition:assembleDebug
+
+[Incubating] Problems report is available at: file:///home/runner/work/jarvis-assistant/jarvis-assistant/android/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 6m 3s
+188 actionable tasks: 188 executed
+  1304848  1981-01-01 01:01   lib/arm64-v8a/libc++_shared.so
+   789544  1981-01-01 01:01   lib/arm64-v8a/libggml-base.so
+  1010584  1981-01-01 01:01   lib/arm64-v8a/libggml-cpu-android_armv8.0_1.so
+  1034288  1981-01-01 01:01   lib/arm64-v8a/libggml-cpu-android_armv8.2_1.so
+  1033392  1981-01-01 01:01   lib/arm64-v8a/libggml-cpu-android_armv8.2_2.so
+  1045968  1981-01-01 01:01   lib/arm64-v8a/libggml-cpu-android_armv8.6_1.so
+  1059808  1981-01-01 01:01   lib/arm64-v8a/libggml-cpu-android_armv9.0_1.so
+  1059808  1981-01-01 01:01   lib/arm64-v8a/libggml-cpu-android_armv9.2_1.so
+  1059808  1981-01-01 01:01   lib/arm64-v8a/libggml-cpu-android_armv9.2_2.so
+    56480  1981-01-01 01:01   lib/arm64-v8a/libggml.so
+   110008  1981-01-01 01:01   lib/arm64-v8a/libjarvisllm.so
+  4692272  1981-01-01 01:01   lib/arm64-v8a/libllama-common.so
+  3835248  1981-01-01 01:01   lib/arm64-v8a/libllama.so
