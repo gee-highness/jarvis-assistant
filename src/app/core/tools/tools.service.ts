@@ -30,24 +30,24 @@ interface ToolDef {
 
 /** Keyword triggers that add a tool group to the turn (keeps small models focused). */
 const TRIGGERS: Record<Exclude<ToolGroup, 'core'>, RegExp> = {
-  tasks: /task|todo|to-do|to do|mit|priorit|overdue|deadline|due|finish|done|complete|project|inbox|matrix|urgent|important|backlog|delete|remove|rename|move|push|bump|postpone|reschedule|shift|snooze|sub-?task|break (it |this )?down|split (it |this )?up|\bunder [^:]{3,60}:|recurring|repeat|every (day|week|month|weekday|other|mon|tue|wed|thu|fri|sat|sun)|weekly|monthly/i,
+  tasks: /task|todo|to-do|to do|mit|priorit|overdue|deadline|due|finish|done|complete|project|inbox|matrix|urgent|important|backlog|delete|remove|rename|move|push|bump|postpone|reschedule|shift|snooze|sub-?task|break (it |this )?down|split (it |this )?up|\bunder [^:]{3,60}:|recurring|repeat|every (day|week|month|weekday|other|mon|tue|wed|thu|fri|sat|sun)|weekly|monthly|scrap|drop |get rid of|cancel the task|not doing it|ditch|\bhide\b|not now|\bsteps\b|break .{2,60} into|\bunder [^:]{3,60} add\b/i,
   focus: /focus|pomodoro|deep work|session|concentrat|timer.*(work|focus)|break|soundscape|ambien|\b(rain|brown noise|white noise|pink noise|lo-?fi|ocean|waves|forest|cafe|fireplace|thunder\w*|birdsong|binaural|wind)\b/i,
-  habits: /habit|streak|routine|daily|every day|gym|workout|meditat|read(ing)?|journal(ing)?|water/i,
-  planning: /plan|schedule|block|calendar|agenda|day look|my day|today|tomorrow|week|review|time/i,
+  habits: /habit|streak|routine|daily|every day|gym|workout|meditat|read(ing)?|journal(ing)?|water|tick off|check off|times (a|per) week|\bi did .{2,40} today/i,
+  planning: /plan|schedule|block|calendar|agenda|day look|my day|today|tomorrow|week|review|time|summar|how's my week/i,
   notes: /note|journal|write down|jot|idea|log|diary/i,
-  memory: /remember|forget|recall|know about me|memor|who is|what do you know|my (wife|husband|sister|brother|mom|mother|dad|father|friend|boss|partner|son|daughter)|(what|when|who|where|which)('s| is| was| are)? my |what (did|do) (i|you) (tell|say|said|know)|what time do i|what do i |what \w+ do i |what (was|were) i |do i have any|remind me what|what('s| is) (the )?name of my|save this|keep in mind|for the record|fyi|note that/i,
-  reminders: /remind|reminder|notify|ping me|alert me|don't let me forget/i,
-  phone: /alarm|timer|wake me|open|launch|app|flash ?light|torch|battery|device|phone|settings|wifi|bluetooth|brightness/i,
-  comms: /sms|text |message|call |dial|phone number|email|mail|share|send/i,
-  calendar: /calendar|meeting|event|appointment/i,
-  utility: /calculat|math|\d\s*[-+*\/x^%]\s*\d|convert|how many|percent|time is it|what time|date|days (until|between)|clipboard|copy|paste/i,
-  library: /document|my files|pdf|library|according to|in my (notes|docs|files)|contract|manual|what does .* say/i,
+  memory: /remember|forget|recall|know about me|memor|who is|what do you know|my (wife|husband|sister|brother|mom|mother|dad|father|friend|boss|partner|son|daughter)|(what|when|who|where|which)('s| is| was| are)? my |what (did|do) (i|you) (tell|say|said|know)|what time do i|what do i |what \w+ do i |what (was|were) i |do i have any|remind me what|what('s| is) (the )?name of my|save this|keep in mind|for the record|fyi|note that|wipe|stop remembering|delete the memory|what have you saved|you know\b|saved so far|your memories/i,
+  reminders: /remind|reminder|notify|ping me|alert me|don't let me forget|ping(ing)?\b/i,
+  phone: /alarm|timer|wake me|open|launch|app|flash ?light|torch|battery|device|phone|settings|wifi|bluetooth|brightness|fire up|take me to|countdown|\b(spotify|maps|whatsapp|camera|chrome|gmail|youtube|photos|uber|netflix|instagram|slack|calculator)\b|\bgo to (messages|weather|clock|files|photos|maps|settings)/i,
+  comms: /sms|text |message|call |dial|phone number|email|mail|share|send|\bring |phone (my|the|mum|dad|[A-Z])|contacts?\b|'s number|\btell (?:\w+ ){1,3}(i'?m|i'?ll|i will|that|happy|thanks)|\bwhatsapp\b/i,
+  calendar: /calendar|meeting|event|appointment|book |dentist|interview|haircut|yoga|lunch with|dinner with|date night|school pickup|flight to|birthday party|doctor|call with|review with|gym class/i,
+  utility: /calculat|math|\d\s*[-+*\/x^%]\s*\d|convert|how many|percent|time is it|what time|date|days (until|between)|clipboard|copy|paste|\d\s*%|%\s*of|how much is|what's \d|equals|\bmaths?\b|work out|sqrt|\d\s*(km|miles?|kg|pounds?|lbs?|celsius|fahrenheit|litres?|liters?|gallons?|cm|inch(es)?|oz|grams?|mph|kph|feet|ft|metres?|meters?)\b|what day|\bwhat('s| is) the date/i,
+  library: /document|my files|pdf|library|according to|in my (notes|docs|files)|contract|manual|what does .* say|\b(lease|policy|warranty|mortgage|agreement|letter|cv)\b|my docs|search my files|check .* for/i,
   goals: /goal|milestone|objective|ambition|target|aim(ing)? to|on track|how far am i|progress (on|towards?)|(want|wanna|like|plan|hope) to (run|save|learn|lose|read|build|write|launch|get|bench|quit|cut|cook|walk|drink|sleep|meditate|finish|earn|reach|hit)/i,
-  journal: /journal|mood|how (am i|i'm|have i been) feel|i feel|i felt|feeling|energy|gratitude|grateful|diary|reflect|burn ?out|stress/i,
+  journal: /journal|mood|how (am i|i'm|have i been) feel|i feel|i felt|feeling|energy|gratitude|grateful|diary|reflect|burn ?out|stress|happiest|patterns?|trend|insights?|what's making me|lately|rate my day|out of 10|how have i been/i,
   templates: /template|checklist|routine|project|workflow|kick ?off|set ?up a/i,
   progress: /\bxp\b|level|streak|quest|achievement|progress|score|how am i doing|stats/i,
-  persona: /personality|be (more|less|a bit|way|so)|funnier|more (funny|serious|casual|formal|blunt|gentle|chill|hyped|sarcastic|british|encouraging|hype)|less (formal|sarcastic|blunt|preachy)|tone|your (name|style|vibe)|call (me|yourself)|talk (more|less|like)|stop (joking|being)|swear|emoji|chattier|sassy|sarcas|butler|preachy|shorter (replies|answers)|longer (replies|answers)|calmer|straight to the point|like jarvis|act (more|like)/i,
-  web: /search|google|look up|lookup|web|internet|online|news|website|url|http|weather|price of|latest/i,
+  persona: /personality|be (more|less|a bit|way|so)|funnier|more (funny|serious|casual|formal|blunt|gentle|chill|hyped|sarcastic|british|encouraging|hype)|less (formal|sarcastic|blunt|preachy)|tone|your (name|style|vibe)|call (me|yourself)|talk (more|less|like)|stop (joking|being)|swear|emoji|chattier|sassy|sarcas|butler|preachy|shorter (replies|answers)|longer (replies|answers)|calmer|straight to the point|like jarvis|act (more|like)|shorter|calmer|blunter|sassier|chattier|nicer|kinder/i,
+  web: /search|google|look up|lookup|web|internet|online|news|website|url|http|weather|price of|latest|\.(com|co\.uk|org|net|io|gov)\b|find out|\bfetch\b|how (tall|long|far|old)|capital of|population|exchange rate|recipe|train times|flights|near me|nearest|how to |\.(uk|edu|info|app|dev)\b/i,
 };
 
 @Injectable({ providedIn: 'root' })

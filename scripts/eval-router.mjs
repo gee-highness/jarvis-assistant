@@ -31,14 +31,17 @@ const RULES = [
 ];
 const files = process.argv.slice(2).length ? process.argv.slice(2) : fs.readdirSync(path.join(root, 'training')).filter(f => /^jarvis_messages_\d+\.md$/.test(f)).map(f => path.join(root, 'training', f));
 const stats = {}; const miss = {}; let n = 0, groupSum = 0, bloat = 0;
+const catFile = path.join(root, 'training/categories.json');
+const CATS = fs.existsSync(catFile) ? JSON.parse(fs.readFileSync(catFile, 'utf8')) : {}; const CN = Object.keys(CATS);
 for (const f of files) {
+  const lf = f.replace(/\.md$/, '.labels'); const labels = fs.existsSync(lf) ? fs.readFileSync(lf, 'utf8').split('\n') : null; let li = 0;
   for await (const line of readline.createInterface({ input: fs.createReadStream(f) })) {
     const m = /^\d+\. (.*)$/.exec(line); if (!m) continue; const text = m[1]; n++;
     const got = Object.entries(TRIGGERS).filter(([, re]) => re.test(text)).map(([g]) => g);
     groupSum += got.length + 1; if (got.length >= 6) bloat++;
-    const rule = RULES.find(r => r[1].test(text)); const cat = rule ? rule[0] : 'other';
-    const s = (stats[cat] ??= { n: 0, ok: 0 }); s.n++;
-    const need = rule ? rule[2] : [];
+    let rule, cat, need;
+    if (labels) { cat = CN[+labels[li++]]; need = CATS[cat]; } else { rule = RULES.find(r => r[1].test(text)); cat = rule ? rule[0] : 'other'; need = rule ? rule[2] : []; }
+    const s = (stats[cat] ??= { n: 0, ok: 0 });  s.n++;
     if (!need.length || need.some(g => got.includes(g))) s.ok++; else { const a = (miss[cat] ??= []); if (a.length < 3) a.push(text); }
   }
 }
