@@ -12,7 +12,7 @@ import { StoreService } from '../store.service';
 import { addDays, hm, prettyDate, uid, ymd } from '../util';
 import { LibraryService } from '../library.service';
 import { ProgressService } from '../progress.service';
-import { calculate, convertUnits, describeWhen, htmlToText, parseDue, parseWhen } from './helpers';
+import { calculate, convertUnits, describeWhen, fixTypos, htmlToText, parseDue, parseWhen } from './helpers';
 
 export type ToolGroup = 'core' | 'tasks' | 'focus' | 'habits' | 'planning' | 'notes' | 'memory' | 'reminders' | 'phone' | 'comms' | 'calendar' | 'utility' | 'web' | 'persona' | 'library' | 'goals' | 'journal' | 'templates' | 'progress';
 
@@ -30,14 +30,14 @@ interface ToolDef {
 
 /** Keyword triggers that add a tool group to the turn (keeps small models focused). */
 const TRIGGERS: Record<Exclude<ToolGroup, 'core'>, RegExp> = {
-  tasks: /task|todo|to-do|to do|mit|priorit|overdue|deadline|due|finish|done|complete|project|inbox|matrix|urgent|important|backlog|delete|remove|rename|move|push|bump|postpone|reschedule|shift|snooze|sub-?task|break (it |this )?down|split (it |this )?up|\bunder [^:]{3,60}:|recurring|repeat|every (day|week|month|weekday|other|mon|tue|wed|thu|fri|sat|sun)|weekly|monthly|scrap|drop |get rid of|cancel the task|not doing it|ditch|\bhide\b|not now|\bsteps\b|break .{2,60} into|\bunder [^:]{3,60} add\b/i,
+  tasks: /task|todo|to-do|to do|mit|priorit|overdue|deadline|due|finish|done|complete|project|inbox|matrix|urgent|important|backlog|delete|remove|rename|move|push|bump|postpone|reschedule|shift|snooze|sub-?task|break (it |this )?down|split (it |this )?up|\bunder [^:]{3,60}:|recurring|repeat|every (day|week|month|weekday|other|mon|tue|wed|thu|fri|sat|sun)|weekly|monthly|scrap|drop |get rid of|cancel the task|not doing it|ditch|\bhide\b|not now|\bsteps\b|break .{2,60} into|\bunder [^:]{3,60} add\b|every (morning|evening|night|afternoon|hour)/i,
   focus: /focus|pomodoro|deep work|session|concentrat|timer.*(work|focus)|break|soundscape|ambien|\b(rain|brown noise|white noise|pink noise|lo-?fi|ocean|waves|forest|cafe|fireplace|thunder\w*|birdsong|binaural|wind)\b/i,
-  habits: /habit|streak|routine|daily|every day|gym|workout|meditat|read(ing)?|journal(ing)?|water|tick off|check off|times (a|per) week|\bi did .{2,40} today/i,
+  habits: /habit|streak|routine|daily|every day|gym|workout|meditat|read(ing)?|journal(ing)?|water|tick off|check off|times (a|per) week|\bi did .{2,40} today|\blog\b/i,
   planning: /plan|schedule|block|calendar|agenda|day look|my day|today|tomorrow|week|review|time|summar|how's my week/i,
   notes: /note|journal|write down|jot|idea|log|diary/i,
   memory: /remember|forget|recall|know about me|memor|who is|what do you know|my (wife|husband|sister|brother|mom|mother|dad|father|friend|boss|partner|son|daughter)|(what|when|who|where|which)('s| is| was| are)? my |what (did|do) (i|you) (tell|say|said|know)|what time do i|what do i |what \w+ do i |what (was|were) i |do i have any|remind me what|what('s| is) (the )?name of my|save this|keep in mind|for the record|fyi|note that|wipe|stop remembering|delete the memory|what have you saved|you know\b|saved so far|your memories/i,
   reminders: /remind|reminder|notify|ping me|alert me|don't let me forget|ping(ing)?\b/i,
-  phone: /alarm|timer|wake me|open|launch|app|flash ?light|torch|battery|device|phone|settings|wifi|bluetooth|brightness|fire up|take me to|countdown|\b(spotify|maps|whatsapp|camera|chrome|gmail|youtube|photos|uber|netflix|instagram|slack|calculator)\b|\bgo to (messages|weather|clock|files|photos|maps|settings)/i,
+  phone: /alarm|timer|wake me|open|launch|app|flash ?light|torch|battery|device|phone|settings|wifi|bluetooth|brightness|fire up|take me to|countdown|\b(spotify|maps|whatsapp|camera|chrome|gmail|youtube|photos|uber|netflix|instagram|slack|calculator)\b|\bgo to (messages|weather|clock|files|photos|maps|settings)|\b(start|go to|switch to|pull up|bring up|jump into|fire up|take me to|open up) (the )?(spotify|maps|whatsapp|camera|chrome|gmail|calendar|clock|notes|youtube|settings|photos|uber|netflix|calculator|files|weather|messages|instagram|slack|tiktok|telegram|outlook|duolingo|strava|audible|zoom|contacts)\b/i,
   comms: /sms|text |message|call |dial|phone number|email|mail|share|send|\bring |phone (my|the|mum|dad|[A-Z])|contacts?\b|'s number|\btell (?:\w+ ){1,3}(i'?m|i'?ll|i will|that|happy|thanks)|\bwhatsapp\b/i,
   calendar: /calendar|meeting|event|appointment|book |dentist|interview|haircut|yoga|lunch with|dinner with|date night|school pickup|flight to|birthday party|doctor|call with|review with|gym class/i,
   utility: /calculat|math|\d\s*[-+*\/x^%]\s*\d|convert|how many|percent|time is it|what time|date|days (until|between)|clipboard|copy|paste|\d\s*%|%\s*of|how much is|what's \d|equals|\bmaths?\b|work out|sqrt|\d\s*(km|miles?|kg|pounds?|lbs?|celsius|fahrenheit|litres?|liters?|gallons?|cm|inch(es)?|oz|grams?|mph|kph|feet|ft|metres?|meters?)\b|what day|\bwhat('s| is) the date/i,
@@ -872,7 +872,7 @@ export class ToolsService {
   select(text: string, all = false): { tools: OllamaTool[]; groups: ToolGroup[] } {
     const groups = new Set<ToolGroup>(['core']);
     if (all) Object.keys(TRIGGERS).forEach(g => groups.add(g as ToolGroup));
-    else for (const [g, re] of Object.entries(TRIGGERS)) if (re.test(text)) groups.add(g as ToolGroup);
+    else { const fixed = fixTypos(text); for (const [g, re] of Object.entries(TRIGGERS)) if (re.test(text) || re.test(fixed)) groups.add(g as ToolGroup); }
     // core tools first, in a fixed order: keeps the rendered prompt prefix stable so the
     // on-device engine can reuse its KV cache between turns
     const tools = [

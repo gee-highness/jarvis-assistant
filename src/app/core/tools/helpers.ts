@@ -1,4 +1,5 @@
 import { addDays, hm, ymd } from '../util';
+import { VOCAB } from './vocab';
 
 // ---------------- safe calculator (no eval) ----------------
 const FUNCS: Record<string, (x: number) => number> = {
@@ -175,4 +176,34 @@ export function htmlToText(html: string): string {
   const title = doc.title ? `# ${doc.title}\n` : '';
   const text = (doc.body?.innerText || doc.body?.textContent || '').replace(/\n{3,}/g, '\n\n').replace(/[ \t]{2,}/g, ' ').trim();
   return title + text;
+}
+
+// ---------------- typo repair (keeps the keyword router working on fat-fingered / voice-garbled text) ----------------
+const ALPHA = 'abcdefghijklmnopqrstuvwxyz';
+function repairWord(w: string): string | null {
+  const lw = w.toLowerCase();
+  if (lw.length < 4 || VOCAB.has(lw) || /[^a-z]/.test(lw)) return null;
+  const hits = new Set<string>();
+  const tryC = (c: string) => { if (VOCAB.has(c)) hits.add(c); };
+  for (let i = 0; i < lw.length - 1; i++) tryC(lw.slice(0, i) + lw[i + 1] + lw[i] + lw.slice(i + 2)); // swapped letters
+  for (let i = 0; i < lw.length; i++) tryC(lw.slice(0, i) + lw.slice(i + 1)); // extra letter
+  for (let i = 0; i <= lw.length; i++) for (const ch of ALPHA) tryC(lw.slice(0, i) + ch + lw.slice(i)); // missing letter
+  return hits.size === 1 ? [...hits][0] : null;
+}
+/** Repairs one-keystroke typos against the learned vocabulary ("aalrm", "reminedr", "forestm ate"). */
+export function fixTypos(text: string): string {
+  const parts = text.split(/(\s+)/); // words and whitespace, alternating
+  for (let i = 0; i < parts.length; i += 2) {
+    const w = parts[i]; const bare = w.replace(/^[^A-Za-z']+|[^A-Za-z']+$/g, '');
+    if (bare.length < 2 || VOCAB.has(bare.toLowerCase())) continue;
+    const next = parts[i + 2];
+    if (next !== undefined && parts[i + 1] === ' ') { // a letter slid across the space: "rainf or" -> "rain for"
+      const nb = next.replace(/^[^A-Za-z']+|[^A-Za-z']+$/g, '');
+      const a = bare.slice(0, -1).toLowerCase(), b = (bare.slice(-1) + nb).toLowerCase();
+      if (a.length >= 2 && VOCAB.has(a) && VOCAB.has(b)) { parts[i] = w.replace(bare, bare.slice(0, -1)); parts[i + 2] = next.replace(nb, bare.slice(-1) + nb); continue; }
+    }
+    const fixed = repairWord(bare);
+    if (fixed) parts[i] = w.replace(bare, fixed);
+  }
+  return parts.join('');
 }

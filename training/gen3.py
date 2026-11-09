@@ -4,7 +4,7 @@ import random, json, os
 exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),"gen.py")).read().split("a,s=gen(1")[0])
 N=1_000_000
 S=dict(
- task=tasks, when=whens, pr=["high","low","urgent","medium","top","p1","p2","p3"], proj=projs, goal=goals, mood=moods, fact=facts, snd=sounds,
+ task=tasks, when=[w for w in whens if not w.startswith("every") and w not in ("monthly",)], every="day|week|weekday|monday|friday|morning|other day|month|evening|sunday".split("|"), pr=["high","low","urgent","medium","top","p1","p2","p3"], proj=projs, goal=goals, mood=moods, fact=facts, snd=sounds,
  person="mum|dad|Sarah|Tom|Emma|Dave|my boss|the landlord|Dr Patel|grandma|my sister|Alex|Priya|Jamal|Chen|Olu|Sofia|the plumber|my brother|Lena".split("|"),
  app="Spotify|Maps|WhatsApp|Camera|Chrome|Gmail|Calendar|Clock|Notes|YouTube|Settings|Photos|Uber|Netflix|Calculator|Files|Weather|Messages|Instagram|Slack".split("|"),
  setting="wifi|bluetooth|display|battery|sound|notifications|location|storage|accessibility|developer options|airplane mode|brightness".split("|"),
@@ -32,8 +32,8 @@ T={ # cat: (expected groups any-of, templates)
  'mits':(['tasks'],["set my top 3 tasks for today","my MITs today are {task} and {task}","make {task} my most important task","pick my priorities for {when}","what are my MITs"]),
  'snooze':(['tasks'],["snooze {task} until {when}","snooze {task} for {num} minutes","postpone {task} to {when}","not now, hide {task} till {when}","push {task} back a day"]),
  'subtasks':(['tasks'],["break {task} into steps","add subtasks to {task}: {sub}, {sub}","split up {task}: {sub} and {sub}","under {task} add {sub}","{task} needs steps: {sub}, {sub}, {sub}"]),
- 'recurring':(['tasks','habits'],["{task} every {when}","make {task} repeat weekly","set {task} to recur every monday","{task} daily at {hr}{mer}","repeat {task} monthly","recurring task: {task} every weekday"]),
- 'project':(['templates','tasks'],["create project {proj}","start a project called {proj}","what's in my {proj} project","list my projects","add {task} to {proj}","new project {proj} due {when}"]),
+ 'recurring':(['tasks','habits'],["{task} every {every}","make {task} repeat weekly","set {task} to recur every monday","{task} daily at {hr}{mer}","{task} weekly","repeat {task} monthly","do {task} every {every} at {hr}{mer}","recurring task: {task} every weekday"]),
+ 'project':(['templates','tasks'],["create project {proj}","start a project called {proj}","what's in my {proj} project","list my projects","new project {proj} due {when}"]),
  'template':(['templates'],["apply the {tmpl} template","save this as a template called {tmpl}","use my {tmpl} template","list my templates","make a {tmpl} checklist","kick off a {tmpl}"]),
  'goal':(['goals'],["new goal: {goal}","I want to {goal}","set a goal to {goal} by {when}","add the goal {goal}","my ambition is to {goal}","I'm aiming to {goal}"]),
  'goal_progress':(['goals'],["how's my goal to {goal}","update my {goal} goal to {num}%","am I on track to {goal}","show my goals","I'm {num}% of the way to my goal to {goal}","milestone reached on {goal}"]),

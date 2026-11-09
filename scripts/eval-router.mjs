@@ -9,7 +9,7 @@ const block = src.slice(src.indexOf('const TRIGGERS'), src.indexOf('};', src.ind
 const TRIGGERS = new Function(block.replace(/;$/, ''))();
 const out = path.join(process.env.TMPDIR || '/tmp', `jarvis-helpers-${process.pid}.mjs`);
 await build({ entryPoints: [path.join(root, 'src/app/core/tools/helpers.ts')], bundle: true, format: 'esm', outfile: out, logLevel: 'silent' });
-const { parseWhen, parseDue } = await import(out);
+const { parseWhen, parseDue, fixTypos } = await import(out);
 
 // intent -> acceptable tool groups (any one suffices). [] = core tools already cover it.
 const sounds = 'rain|brown noise|lo-fi|white noise|ocean waves|forest|cafe ambience|fireplace|thunderstorm|pink noise|birdsong|binaural beats|deep focus|wind';
@@ -37,16 +37,16 @@ for (const f of files) {
   const lf = f.replace(/\.md$/, '.labels'); const labels = fs.existsSync(lf) ? fs.readFileSync(lf, 'utf8').split('\n') : null; let li = 0;
   for await (const line of readline.createInterface({ input: fs.createReadStream(f) })) {
     const m = /^\d+\. (.*)$/.exec(line); if (!m) continue; const text = m[1]; n++;
-    const got = Object.entries(TRIGGERS).filter(([, re]) => re.test(text)).map(([g]) => g);
+    const fixed = fixTypos(text); const got = Object.entries(TRIGGERS).filter(([, re]) => re.test(text) || re.test(fixed)).map(([g]) => g);
     groupSum += got.length + 1; if (got.length >= 6) bloat++;
     let rule, cat, need;
     if (labels) { cat = CN[+labels[li++]]; need = CATS[cat]; } else { rule = RULES.find(r => r[1].test(text)); cat = rule ? rule[0] : 'other'; need = rule ? rule[2] : []; }
     const s = (stats[cat] ??= { n: 0, ok: 0 });  s.n++;
-    if (!need.length || need.some(g => got.includes(g))) s.ok++; else { const a = (miss[cat] ??= []); if (a.length < 3) a.push(text); }
+    if (!need.length || need.some(g => got.includes(g))) s.ok++; else { const a = (miss[cat] ??= []); if (a.length < (+process.env.SHOW_MISS || 3)) a.push(text); }
   }
 }
 console.log(`\nROUTER: ${n.toLocaleString()} messages, avg ${(groupSum / n).toFixed(2)} tool groups offered/msg, ${(100 * bloat / n).toFixed(1)}% offer ≥7 groups`);
-for (const [c, s] of Object.entries(stats).sort()) console.log(`  ${c.padEnd(14)} ${String(s.n).padStart(8)}  right group offered: ${(100 * s.ok / s.n).toFixed(1)}%${miss[c] ? '   e.g. ' + JSON.stringify(miss[c][0]) : ''}`);
+for (const [c, s] of Object.entries(stats).sort()) console.log(`  ${c.padEnd(14)} ${String(s.n).padStart(8)}  right group offered: ${(100 * s.ok / s.n).toFixed(1)}%${miss[c] ? '   e.g. ' + miss[c].map(x => JSON.stringify(x)).join(' ') : ''}`);
 const whens = fs.readFileSync(path.join(root, 'training/gen.py'), 'utf8').match(/whens="""([\s\S]*?)"""/)[1].split('|').map(s => s.replace(/\n/g, ''));
 let bad = [];
 for (const w of whens) { const d = parseWhen(w), due = parseDue(w); if (!d || !due) bad.push(w); }
