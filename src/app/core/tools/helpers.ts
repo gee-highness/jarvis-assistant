@@ -97,7 +97,8 @@ export function convertUnits(value: number, from: string, to: string): number {
 }
 
 // ---------------- natural time parsing ----------------
-/** Parses ISO datetimes, "HH:mm", "3pm", "in 20 minutes", "tomorrow at 9", "monday 14:00". */
+/** Parses ISO datetimes, "HH:mm", "3pm", "in 20 minutes", "in an hour", "tomorrow at 9", "monday 14:00",
+ *  "noon", "end of day", "after work", "this weekend", "next week/month", "on the 1st", "every weekday" (first occurrence). */
 export function parseWhen(input: string, now = new Date()): Date | null {
   const s = input.trim().toLowerCase();
   if (!s) return null;
@@ -105,32 +106,51 @@ export function parseWhen(input: string, now = new Date()): Date | null {
     const d = new Date(s.length <= 10 ? `${s}T09:00` : s.replace(' ', 'T'));
     return isNaN(d.getTime()) ? null : d;
   }
+  const MULT: Record<string, number> = { second: 1e3, sec: 1e3, minute: 6e4, min: 6e4, hour: 36e5, hr: 36e5, day: 864e5, week: 6048e5 };
   const rel = s.match(/in\s+(\d+(?:\.\d+)?)\s*(second|sec|minute|min|hour|hr|day|week)s?/);
-  if (rel) {
-    const n = parseFloat(rel[1]);
-    const mult = { second: 1e3, sec: 1e3, minute: 6e4, min: 6e4, hour: 36e5, hr: 36e5, day: 864e5, week: 6048e5 }[rel[2]] ?? 6e4;
-    return new Date(now.getTime() + n * mult);
-  }
+  if (rel) return new Date(now.getTime() + parseFloat(rel[1]) * (MULT[rel[2]] ?? 6e4));
+  const WORDS: Record<string, number> = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12, 'a couple of': 2, 'a few': 3, 'half a': 0.5, 'half an': 0.5 };
+  const relw = s.match(/in\s+(an?|one|two|three|four|five|six|seven|eight|nine|ten|twelve|a couple of|a few|half an?)\s+(second|sec|minute|min|hour|hr|day|week)s?/);
+  if (relw) return new Date(now.getTime() + WORDS[relw[1]] * MULT[relw[2]]);
   let date = ymd(now);
   let dayGiven = false;
+  let preset: [number, number] | null = null; // default clock time implied by a phrase ("noon", "after work")
+  const recur = /\b(every|each|daily|weekly|monthly)\b/.test(s);
   if (/\btomorrow\b/.test(s)) { date = addDays(date, 1); dayGiven = true; }
   else if (/\btoday\b|\btonight\b/.test(s)) dayGiven = true;
+  else if (/next month|\bmonthly\b|every month/.test(s)) { const d = new Date(now); d.setMonth(d.getMonth() + 1); date = ymd(d); dayGiven = true; }
+  else if (/next week|\bweekly\b|every week\b/.test(s)) { date = addDays(date, 7); dayGiven = true; }
+  else if (/end of (the )?week|\beow\b/.test(s)) { date = addDays(date, (5 - now.getDay() + 7) % 7); dayGiven = true; preset = [17, 0]; }
+  else if (/weekend/.test(s)) { date = addDays(date, (6 - now.getDay() + 7) % 7); dayGiven = true; }
+  const ord = s.match(/\b(\d{1,2})(st|nd|rd|th)\b/);
+  if (ord) {
+    let d = new Date(now.getFullYear(), now.getMonth(), +ord[1]);
+    if (ymd(d) < ymd(now)) d = new Date(now.getFullYear(), now.getMonth() + 1, +ord[1]);
+    date = ymd(d); dayGiven = true;
+  }
   const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const wd = days.findIndex(d => s.includes(d));
   if (wd >= 0) { let diff = (wd - now.getDay() + 7) % 7; if (diff === 0) diff = 7; date = addDays(ymd(now), diff); dayGiven = true; }
-  const t = s.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+  if (/\bnoon\b|midday/.test(s)) preset = [12, 0];
+  else if (/lunchtime|at lunch/.test(s)) preset = [12, 30];
+  else if (/before lunch/.test(s)) preset = [11, 30];
+  else if (/after work|end of (the )?(work ?)?day|\beod\b|after hours/.test(s)) preset = /after work/.test(s) ? [18, 0] : [17, 0];
+  const ts = s.replace(/\d{1,2}(st|nd|rd|th)\b/g, ' ');
+  const t = ts.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
   let hh = 9, mm = 0;
-  if (t && (t[2] || t[3] || /at\s+\d/.test(s) || /^\d{1,2}(:\d{2})?$/.test(s))) {
+  if (t && (t[2] || t[3] || /at\s+\d/.test(ts) || /^\d{1,2}(:\d{2})?$/.test(ts))) {
     hh = parseInt(t[1], 10); mm = t[2] ? parseInt(t[2], 10) : 0;
     if (t[3] === 'pm' && hh < 12) hh += 12;
     if (t[3] === 'am' && hh === 12) hh = 0;
-  } else if (/morning/.test(s)) hh = 8;
+  } else if (preset) [hh, mm] = preset;
+  else if (/morning/.test(s)) hh = 8;
   else if (/afternoon/.test(s)) hh = 14;
   else if (/evening|tonight/.test(s)) hh = 19;
-  else if (!dayGiven) return null;
+  else if (!dayGiven && !recur) return null;
   const [y, mo, d] = date.split('-').map(Number);
   const out = new Date(y, mo - 1, d, hh, mm);
   if (!dayGiven && out.getTime() <= now.getTime()) out.setDate(out.getDate() + 1);
+  if (/weekday/.test(s)) while (out.getDay() === 0 || out.getDay() === 6) out.setDate(out.getDate() + 1);
   return out;
 }
 

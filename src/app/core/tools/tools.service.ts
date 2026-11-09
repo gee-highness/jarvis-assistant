@@ -30,23 +30,23 @@ interface ToolDef {
 
 /** Keyword triggers that add a tool group to the turn (keeps small models focused). */
 const TRIGGERS: Record<Exclude<ToolGroup, 'core'>, RegExp> = {
-  tasks: /task|todo|to-do|to do|mit|priorit|overdue|deadline|due|finish|done|complete|project|inbox|matrix|urgent|important|backlog|delete|remove|rename|move/i,
-  focus: /focus|pomodoro|deep work|session|concentrat|timer.*(work|focus)|break/i,
+  tasks: /task|todo|to-do|to do|mit|priorit|overdue|deadline|due|finish|done|complete|project|inbox|matrix|urgent|important|backlog|delete|remove|rename|move|push|bump|postpone|reschedule|shift|snooze|sub-?task|break (it |this )?down|split (it |this )?up|\bunder [^:]{3,60}:|recurring|repeat|every (day|week|month|weekday|other|mon|tue|wed|thu|fri|sat|sun)|weekly|monthly/i,
+  focus: /focus|pomodoro|deep work|session|concentrat|timer.*(work|focus)|break|soundscape|ambien|\b(rain|brown noise|white noise|pink noise|lo-?fi|ocean|waves|forest|cafe|fireplace|thunder\w*|birdsong|binaural|wind)\b/i,
   habits: /habit|streak|routine|daily|every day|gym|workout|meditat|read(ing)?|journal(ing)?|water/i,
   planning: /plan|schedule|block|calendar|agenda|day look|my day|today|tomorrow|week|review|time/i,
   notes: /note|journal|write down|jot|idea|log|diary/i,
-  memory: /remember|forget|recall|know about me|memor|who is|what do you know|my (wife|husband|sister|brother|mom|mother|dad|father|friend|boss|partner|son|daughter)/i,
+  memory: /remember|forget|recall|know about me|memor|who is|what do you know|my (wife|husband|sister|brother|mom|mother|dad|father|friend|boss|partner|son|daughter)|(what|when|who|where|which)('s| is| was| are)? my |what (did|do) (i|you) (tell|say|said|know)|what time do i|what do i |what \w+ do i |what (was|were) i |do i have any|remind me what|what('s| is) (the )?name of my|save this|keep in mind|for the record|fyi|note that/i,
   reminders: /remind|reminder|notify|ping me|alert me|don't let me forget/i,
   phone: /alarm|timer|wake me|open|launch|app|flash ?light|torch|battery|device|phone|settings|wifi|bluetooth|brightness/i,
   comms: /sms|text |message|call |dial|phone number|email|mail|share|send/i,
   calendar: /calendar|meeting|event|appointment/i,
   utility: /calculat|math|\d\s*[-+*\/x^%]\s*\d|convert|how many|percent|time is it|what time|date|days (until|between)|clipboard|copy|paste/i,
   library: /document|my files|pdf|library|according to|in my (notes|docs|files)|contract|manual|what does .* say/i,
-  goals: /goal|milestone|objective|ambition|target|aim to|want to (run|save|learn|lose|read|build|write)/i,
-  journal: /journal|mood|how (am i|i'm) feel|i feel|feeling|energy|gratitude|grateful|diary|reflect|burn ?out|stress/i,
+  goals: /goal|milestone|objective|ambition|target|aim(ing)? to|on track|how far am i|progress (on|towards?)|(want|wanna|like|plan|hope) to (run|save|learn|lose|read|build|write|launch|get|bench|quit|cut|cook|walk|drink|sleep|meditate|finish|earn|reach|hit)/i,
+  journal: /journal|mood|how (am i|i'm|have i been) feel|i feel|i felt|feeling|energy|gratitude|grateful|diary|reflect|burn ?out|stress/i,
   templates: /template|checklist|routine|project|workflow|kick ?off|set ?up a/i,
   progress: /\bxp\b|level|streak|quest|achievement|progress|score|how am i doing|stats/i,
-  persona: /personality|be (more|less)|funnier|more (funny|serious|casual|formal|blunt|gentle|chill|hyped)|less (formal|sarcastic|blunt)|tone|your (name|style|vibe)|call (me|yourself)|talk (more|less|like)|stop (joking|being)|swear|emoji/i,
+  persona: /personality|be (more|less|a bit|way|so)|funnier|more (funny|serious|casual|formal|blunt|gentle|chill|hyped|sarcastic|british|encouraging|hype)|less (formal|sarcastic|blunt|preachy)|tone|your (name|style|vibe)|call (me|yourself)|talk (more|less|like)|stop (joking|being)|swear|emoji|chattier|sassy|sarcas|butler|preachy|shorter (replies|answers)|longer (replies|answers)|calmer|straight to the point|like jarvis|act (more|like)/i,
   web: /search|google|look up|lookup|web|internet|online|news|website|url|http|weather|price of|latest/i,
 };
 
