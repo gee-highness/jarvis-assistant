@@ -2,7 +2,7 @@
 # Per-10M-group workflow:  scripts/group.sh gen|eval|miss|fold|post <lo>   (k = (lo-41)/10 for gen)
 cd "$(dirname "$0")/.." || exit 1; lo=$2; mkdir -p /tmp/nbc
 case $1 in
- gen) PYTHONHASHSEED=0 python3 -I training/genr.py $(( (lo-41)/10 )) ;;
+ gen) if [ $lo -ge 101 ]; then PYTHONHASHSEED=0 python3 -I training/genr2.py $(( (lo-101)/10 )); else PYTHONHASHSEED=0 python3 -I training/genr.py $(( (lo-41)/10 )); fi ;;
  eval) for n in $(seq $lo $((lo+9))); do node scripts/eval-router.mjs training/jarvis_messages_$n.md > /tmp/ev$n.txt 2>&1 & done; wait; python3 scripts/agg-eval.py $lo $((lo+9)) ;;
  miss) python3 - $lo <<'PY'
 import re,sys,collections
