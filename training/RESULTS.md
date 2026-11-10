@@ -12,3 +12,9 @@
 
 Final regression (final rules + 1.16 MB model, one file per group): 99.95%-100.00% on sets 10,20,...,100; avg 2.7 tool groups offered per message.
 Note: pre-tuning numbers are the honest held-out scores; post-tuning numbers are in-family (the group's own misses were used to tune).
+
+## Real-speech sets 101-200 (genr2.py: conversational frames, fillers, indirect requests)
+
+| Sets | Phrasing | Before tuning | After tuning |
+|---|---|---|---|
+| 101-110 | speech round 1 | 98.61% | 100.00% |

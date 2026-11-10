@@ -191,6 +191,10 @@ function repairWord(w: string): string | null {
   return hits.size === 1 ? [...hits][0] : null;
 }
 /** Repairs one-keystroke typos against the learned vocabulary ("aalrm", "reminedr", "forestm ate"). */
+/** Drop spoken filler words ("um", "like", "you know", "kind of"...) so intent phrases sit together again. */
+export function stripFillers(text: string): string {
+  return text.replace(/(^|[\s,])(?:u+m+|u+h+|e+r+m*|you know|i mean|kind of|sort of|kinda|sorta|basically|literally|like(?=,|\s+(?:um|uh|i|can|could|the|my|a)\b))(?=[\s,.!?]|$),?/gi, '$1').replace(/\s{2,}/g, ' ').replace(/\s+([,.!?])/g, '$1').trim();
+}
 export function fixTypos(text: string): string {
   const parts = text.split(/(\s+)/); // words and whitespace, alternating
   for (let i = 0; i < parts.length; i += 2) {
