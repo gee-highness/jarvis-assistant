@@ -10,6 +10,9 @@ const TRIGGERS = new Function(block.replace(/;$/, ''))();
 const out = path.join(process.env.TMPDIR || '/tmp', `jarvis-helpers-${process.pid}.mjs`);
 await build({ entryPoints: [path.join(root, 'src/app/core/tools/helpers.ts')], bundle: true, format: 'esm', outfile: out, logLevel: 'silent' });
 const { parseWhen, parseDue, fixTypos } = await import(out);
+const nbOut = out.replace('helpers', 'nb');
+await build({ entryPoints: [path.join(root, 'src/app/core/tools/router-nb.ts')], bundle: true, format: 'esm', outfile: nbOut, logLevel: 'silent' });
+const { classifyGroups } = await import(nbOut); const MARGIN = +(process.env.MARGIN ?? 3); const USE_NB = process.env.NO_NB !== '1', USE_RE = process.env.NO_RE !== '1';
 
 // intent -> acceptable tool groups (any one suffices). [] = core tools already cover it.
 const sounds = 'rain|brown noise|lo-fi|white noise|ocean waves|forest|cafe ambience|fireplace|thunderstorm|pink noise|birdsong|binaural beats|deep focus|wind';
@@ -37,7 +40,7 @@ for (const f of files) {
   const lf = f.replace(/\.md$/, '.labels'); const labels = fs.existsSync(lf) ? fs.readFileSync(lf, 'utf8').split('\n') : null; let li = 0;
   for await (const line of readline.createInterface({ input: fs.createReadStream(f) })) {
     const m = /^\d+\. (.*)$/.exec(line); if (!m) continue; const text = m[1]; n++;
-    const fixed = fixTypos(text); const got = Object.entries(TRIGGERS).filter(([, re]) => re.test(text) || re.test(fixed)).map(([g]) => g);
+    const fixed = fixTypos(text); const got = USE_RE ? Object.entries(TRIGGERS).filter(([, re]) => re.test(text) || re.test(fixed)).map(([g]) => g) : []; if (USE_NB) for (const g of classifyGroups(text, MARGIN)) if (!got.includes(g)) got.push(g);
     groupSum += got.length + 1; if (got.length >= 6) bloat++;
     let rule, cat, need;
     if (labels) { cat = CN[+labels[li++]]; need = CATS[cat]; } else { rule = RULES.find(r => r[1].test(text)); cat = rule ? rule[0] : 'other'; need = rule ? rule[2] : []; }
