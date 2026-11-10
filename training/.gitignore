@@ -1,3 +1,4 @@
 *.md
+!RESULTS.md
 *.gz
 *.labels
