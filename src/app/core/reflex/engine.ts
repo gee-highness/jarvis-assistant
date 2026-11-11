@@ -52,14 +52,14 @@ const HOLIDAYS: Record<string, string> = {
 export interface ReflexStats { intents: number; examples: number; learned: number; symbols: number; responses: number; personaResponses: number; semantic: boolean; }
 
 /** Trained category -> [Reflex intents of that kind, default intent]. Categories Reflex has no handler for are left out. */
-const TRAINED_LEAD = 6;
+const TRAINED_LEAD = 6, TRAINED_SURE = 30;
 /** Which intent inside a trained category, when the wording says so. */
 const TRAINED_HINT: Record<string, [RegExp, string][]> = {
   calendar: [[/\b(put|add|schedule|book|pencil|stick|pop|create|set up|block)\b/, 'calendar.add']],
   time: [[/\b(until|till|sleeps|days (to|until|left)|how long)\b/, 'info.days'], [/\b(date|what day|day is it|day of the week)\b/, 'info.date']],
   clipboard: [[/\bcop(y|ied)\b/, 'phone.copy']], device: [[/\b(torch|flash ?light)\b/, 'phone.torch'], [/\b(battery|charge|power)\b/, 'phone.battery']],
   habit: [[/\b(new habit|start tracking|build a habit|track)\b/, 'habit.add'], [/\b(how (am|are)|consisten|streaks?|stats|report)\b/, 'habit.report']],
-  note: [[/\b(find|search|look (for|up)|what did i (write|note))\b/, 'note.search']], focus: [[/\b(stop|end|finish|cancel)\b/, 'focus.stop'], [/\b(how (much|long)|stats|total)\b/, 'focus.stats']],
+  note: [[/\b(find|search|look (for|up)|what did i (write|note))\b/, 'note.search']], focus: [[/\b(play|put on|music|sounds?|noise|playlist)\b/, 'phone.play'], [/\b(stop|end|finish|cancel)\b/, 'focus.stop'], [/\b(how (much|long)|stats|total)\b/, 'focus.stats']],
   mits: [[/\b(what|which|decide|choose|pick|should)\b/, 'plan.day']],
 };
 const OPENERS = /^(?:(?:ok(?:ay)?|hey|hi|hiya|hello|yo|so|um+|uh+|erm?|er|well|right|oh|and|also|actually|sorry|alright|mate|jarvis|please|kindly|quickly|just|morning|evening|afternoon|good (?:morning|evening|afternoon)|one more thing|another thing|quick (?:one|thing|question)|hang on|hold on|before i forget|by the way|btw|while you are at it|can you|could you|would you|will you|can i get you to|i want you to|i need you to|i would like you to|i was hoping you could|i am hoping you can|do me a favou?r and|any chance you could|is there any chance you could|go ahead and|if you could)[ ,.!:]+)+/;
@@ -78,7 +78,7 @@ const TRAINED_MAP: Record<string, [RegExp, string]> = {
   alarm: [/^alarm\.set$/, 'alarm.set'], timer: [/^timer\.set$/, 'timer.set'], open_app: [/^phone\.(open|navigate|play)$/, 'phone.open'], device: [/^phone\.(torch|battery|settings)$/, 'phone.settings'], sms: [/^comm\.text$/, 'comm.text'],
   call: [/^comm\.call$/, 'comm.call'], email: [/^comm\.email$/, 'comm.email'], calendar: [/^calendar\.(add|read)$/, 'calendar.read'], planning: [/^plan\./, 'plan.day'], time: [/^info\.(time|date|days)$/, 'info.time'], calc: [/^info\.calc$/, 'info.calc'],
   convert: [/^info\.convert$/, 'info.convert'], clipboard: [/^phone\.(copy|paste)$/, 'phone.paste'], web: [/^(info\.web|phone\.navigate)$/, 'info.web'], library: [/^info\.library$/, 'info.library'], habit: [/^habit\./, 'habit.log'],
-  note: [/^note\./, 'note.create'], focus: [/^focus\./, 'focus.start'], persona: [/^persona\./, 'persona.adjust'], progress: [/^(progress\.stats|habit\.report|focus\.stats)$/, 'progress.stats'],
+  note: [/^note\./, 'note.create'], focus: [/^(focus\.|phone\.play$)/, 'focus.start'], persona: [/^persona\./, 'persona.adjust'], progress: [/^(progress\.stats|habit\.report|focus\.stats)$/, 'progress.stats'],
 };
 
 export class ReflexEngine {
@@ -548,13 +548,15 @@ export class ReflexEngine {
   private trained(text: string, ranked: Ranked[]): Ranked[] {
     const nb = classifyTop(text); if (!nb || nb.lead < TRAINED_LEAD) return ranked;
     const m = TRAINED_MAP[nb.cls]; if (!m) return ranked;
-    const top = ranked[0]; const sure = nb.lead >= 15;
+    const top = ranked[0];
     if (top && m[0].test(top.id)) return ranked;
-    if (top && /^(pet|well|health|fun|mind|research|advice|meta|feel|chat)\./.test(top.id) && top.score >= BANDS.mid) return ranked;
-    if (top && !sure && (top.score >= 0.62 || (top.pattern && top.score >= 0.5))) return ranked;
+    // Reflex already has a real answer: only a very clear verdict from the trained model overrules it, and never on care/safety topics
+    if (top && top.score >= BANDS.mid) {
+      if (nb.lead < TRAINED_SURE || /^(pet|well|health|mind|meta)\./.test(top.id)) return ranked;
+    }
     const hint = TRAINED_HINT[nb.cls]?.find(h => h[0].test(text))?.[1];
     const pick = (hint && this.handlers[hint] ? ranked.find(r => r.id === hint) ?? { id: hint, score: 0, lex: 0, sem: 0, pattern: false } : undefined)
-      ?? ranked.find(r => m[0].test(r.id) && this.handlers[r.id]) ?? (this.handlers[m[1]] ? { id: m[1], score: 0, lex: 0, sem: 0, pattern: false } : undefined);
+      ?? ranked.find(r => m[0].test(r.id) && r.score >= 0.3 && this.handlers[r.id]) ?? (this.handlers[m[1]] ? { id: m[1], score: 0, lex: 0, sem: 0, pattern: false } : undefined);
     if (!pick) return ranked;
     return [{ ...pick, score: Math.max(pick.score, 0.6) }, ...ranked.filter(r => r.id !== pick.id)];
   }
