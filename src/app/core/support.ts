@@ -102,3 +102,6 @@ export function offlineSupportReply(text: string, level: SupportLevel, honorific
   const note = 'My thinking engine is not running at the moment, so my replies will be simple, but everything you write here is kept and I am here.';
   return level === 2 ? `${body}\n\n${CRISIS_NOTE}\n\n${note}` : `${body}\n\n${note}`;
 }
+
+/** A clear instruction (add, remind, open, play...) rather than something to sit with. */
+export function isCommand(text: string): boolean { return COMMANDISH.test(text); }

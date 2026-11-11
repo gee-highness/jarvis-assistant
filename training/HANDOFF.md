@@ -44,3 +44,6 @@ Regression eval on one file per group (10,20,...,200), update RESULTS.md with ho
 
 ## Status (after set 200)
 All ten real-speech groups tuned and logged; final regression logged in RESULTS.md. APK builds 49 and 50 were produced by workflow_dispatch of android.yml on this branch and sent to the user in chat. NOT merged to main (user has not confirmed the merge since the listening-mode work was added).
+
+## Reflex listening mode (added after merging main)
+Main's default brain is Reflex (no LLM, `src/app/core/reflex/`). The user runs Reflex, so listening mode must work there: `reflex/listener.ts` (stateful reflective conversation) is called from `ReflexService.respond` when `supportLevel()` fires or a listening conversation is active; crisis wording still goes to the engine's own safety flow (`riskOf`). Replay test: `npx esbuild scripts/listen-test.ts --bundle --platform=node --outfile=/tmp/lt.cjs && node /tmp/lt.cjs`. main is merged INTO this branch; this branch is not merged to main.

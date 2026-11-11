@@ -55,6 +55,8 @@ export class ReflexEngine {
   private intents: IntentSpec[] = [];
   private learned: { intent: string; text: string }[] = [];
   private ds: DialogueState = { turn: 0, recentIntents: [] };
+  /** A question of Reflex's own is waiting for an answer (safety check, screener, confirmation). */
+  hasPending(): boolean { return !!this.ds.pending; }
   inner!: InnerState;
   private handlers: Record<string, Handler> = {};
   private ready: Promise<void> | null = null;

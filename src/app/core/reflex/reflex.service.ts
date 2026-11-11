@@ -1,3 +1,7 @@
+import { Listener } from './listener';
+import { normalize } from './text';
+import { helpFor, helpText, riskOf } from './wellbeing';
+import { isCommand, supportLevel } from '../support';
 import { Injectable, Injector, inject, signal } from '@angular/core';
 import Dexie, { Table } from 'dexie';
 import { FocusService } from '../focus.service';
@@ -70,6 +74,7 @@ export class ReflexService {
   };
 
   readonly engine = new ReflexEngine(this.host);
+  private listener = new Listener();
   private initP: Promise<void> | null = null;
 
   init(): Promise<void> {
@@ -87,6 +92,20 @@ export class ReflexService {
   async respond(text: string, confirm: ToolContext['confirm']): Promise<ReflexReply> {
     await this.init();
     this.confirmFn = confirm;
+    // listening mode: when they are hurting, sit with them instead of routing to commands, tips or trivia
+    const t0 = Date.now();
+    const risk = riskOf(normalize(text).text);
+    if (risk) this.listener.touch();
+    else if (!this.engine.hasPending()) {
+      const level = supportLevel(text);
+      if (isCommand(text) && level < 2) { if (this.listener.active) this.listener.end(); }
+      else if (level || this.listener.active) {
+        const cc = this.host.country?.();
+        const out = this.listener.reply(text, { honorific: this.store.settings().honorific || 'sir', help: helpText(cc), emergency: helpFor(cc).emergency, level });
+        this.lastMs.set(Date.now() - t0);
+        return { text: out.text, intent: 'listen', confidence: 1, tools: [], deferred: false, ms: Date.now() - t0 };
+      }
+    }
     const r = await this.engine.respond(text);
     this.lastMs.set(r.ms);
     return r;
