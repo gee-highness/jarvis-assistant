@@ -549,7 +549,7 @@ export class ReflexEngine {
     const nb = classifyTop(text); if (!nb || nb.lead < TRAINED_LEAD) return ranked;
     const m = TRAINED_MAP[nb.cls]; if (!m) return ranked;
     const top = ranked[0];
-    if (top && m[0].test(top.id)) return ranked;
+    if (top && m[0].test(top.id) && top.score >= BANDS.mid) return ranked;
     // Reflex already has a real answer: only a very clear verdict from the trained model overrules it, and never on care/safety topics
     if (top && top.score >= BANDS.mid) {
       if (nb.lead < TRAINED_SURE || /^(pet|well|health|mind|meta)\./.test(top.id)) return ranked;
@@ -558,7 +558,7 @@ export class ReflexEngine {
     const pick = (hint && this.handlers[hint] ? ranked.find(r => r.id === hint) ?? { id: hint, score: 0, lex: 0, sem: 0, pattern: false } : undefined)
       ?? ranked.find(r => m[0].test(r.id) && r.score >= 0.3 && this.handlers[r.id]) ?? (this.handlers[m[1]] ? { id: m[1], score: 0, lex: 0, sem: 0, pattern: false } : undefined);
     if (!pick) return ranked;
-    return [{ ...pick, score: Math.max(pick.score, 0.6) }, ...ranked.filter(r => r.id !== pick.id)];
+    return [{ ...pick, score: Math.max(pick.score, nb.lead >= TRAINED_SURE ? 0.8 : 0.6) }, ...ranked.filter(r => r.id !== pick.id)];
   }
 
   private async answerPending(p: Pending, h: H): Promise<{ out: Out; intent: string } | null> {

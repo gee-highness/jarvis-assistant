@@ -78,4 +78,5 @@ import { classifyTop } from '../src/app/core/tools/router-nb';
 import { normalize } from '../src/app/core/reflex/text';
 (async () => { const eng = new ReflexEngine(host); await eng.init();
   for (const m of process.argv.slice(2)) { const t = normalize(m).text; const r = (await (eng as any).model.rank(t))[0]; const nb = classifyTop(t);
-    console.log(`${r.id.padEnd(16)} ${r.score.toFixed(2)} ${r.pattern ? 'P' : '-'} | nb ${nb ? nb.cls + ' ' + nb.lead.toFixed(0) : 'null'} | ${m}`); } })();
+    const rt = (await (eng as any).rankText(t))[0]; const full = await eng.respond(m); (eng as any).ds.pending = undefined;
+    console.log(`[rankText ${rt.id} ${rt.score.toFixed(2)} -> ${full.intent}] norm="${t}"`); console.log(`${r.id.padEnd(16)} ${r.score.toFixed(2)} ${r.pattern ? 'P' : '-'} | nb ${nb ? nb.cls + ' ' + nb.lead.toFixed(0) : 'null'} | ${m}`); } })();
