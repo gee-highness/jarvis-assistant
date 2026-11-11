@@ -20,3 +20,15 @@ Note: pre-tuning numbers are the honest held-out scores; post-tuning numbers are
 | 101-110 | speech round 1 (natural-grammar regeneration) | 99.96% | 100.00% |
 
 Note on 101-110: the model had already seen an earlier, clumsier version of these frames, so 99.96% is not fully held-out. Fix: spoken maths ("12 times 8", "divided by", "square root").
+
+| 111-120 | speech round 2 | 99.84% | 99.99% |
+
+## Listening-mode detector (venting / crisis, learned alongside the router from set 111 on)
+
+Each batch now mixes in natural venting sentences (training/vent.py, no tell-tale words required). "Heard" = message switches Jarvis to listening mode.
+Hand-written = 78 phrases written by hand, never generated (scripts/test-support.mjs); this is the honest number.
+
+| Sets | Venting heard before / after | Crisis heard before / after | False alarms on commands (after) | Hand-written before / after |
+|---|---|---|---|---|
+| 111-120 | 20.90% (keywords only) / 100.00% | 38.20% / 98.66% | 0.00% | 55/78 -> 71/78 |
+

@@ -10,7 +10,11 @@ Also "enhance everything to do with the non-LLM model" (router rules, typo repai
 - `training/genr2.py K` (K=0..9) makes sets 101+10K..110+10K. Rewritten for natural grammar (verb phrase vs gerund slots, typed time phrases, "!" = imperative frame, "?" = question). Round K uses frames with index%10==K.
 - Group 101-110 (K=0): DONE (99.96% -> 100.00%, logged, pushed).
 - Listening mode added (`src/app/core/support.ts`, wired in `jarvis.service.ts`; test: `node scripts/test-support.mjs`): detects venting/distress without the LLM, drops tools and productivity talk, injects reflective-listening prompt, fixed crisis note, offline fallback reply. User wants Jarvis to be a place to vent; keep improving it.
-- Groups 111-200 (K=1..9): not started.
+- Group 111-120 (K=1): DONE (99.84% -> 99.99%).
+- From K=1 every batch includes venting/crisis sentences (`training/vent.py`, labels 44/45 = vent/crisis in categories.json). The NB model learns them; `distressLead()` in router-nb.ts feeds `supportLevel()` in support.ts. User wants detection to be conversational (no specific words needed).
+- Per round now: `scripts/round.sh pre $lo` (honest scores + misses), patch triggers, `scripts/round.sh post $lo`, also `node scripts/test-support.mjs` (hand-written phrases; add the count to the RESULTS.md listening table). Debug model confidence: `node scripts/lead.mjs "sentence"`.
+- Groups 121-200 (K=2..9): generation queued in background (/tmp/gen$lo.done marks each); if the container was reset, regenerate with `scripts/group.sh gen $lo`. Not yet tuned.
+- User asked: when set 200 is reached, build the APK (workflow_dispatch of android.yml on this branch publishes a release) and give it to them in chat.
 
 ## Per-group commands (lo = 101, 111, ...)
 ```
