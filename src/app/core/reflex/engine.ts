@@ -3,6 +3,7 @@
  * remembers (rule-based fact learning) and talks (persona-aware generative grammar with millions of
  * distinct replies). Typical turn: 2–20 ms.
  */
+import { classifyTop } from '../tools/router-nb';
 import { ALIVE_RULES, InnerState, chooseSpice, freshInner, opinion } from './alive';
 import { ACTIONS } from './banks/actions';
 import { CHAT } from './banks/chat';
@@ -48,6 +49,19 @@ const HOLIDAYS: Record<string, string> = {
 };
 
 export interface ReflexStats { intents: number; examples: number; learned: number; symbols: number; responses: number; personaResponses: number; semantic: boolean; }
+
+/** Trained category -> [Reflex intents of that kind, default intent]. Categories Reflex has no handler for are left out. */
+const TRAINED_LEAD = 6;
+const TRAINED_MAP: Record<string, [RegExp, string]> = {
+  add_task: [/^task\.add$/, 'task.add'], complete: [/^(task\.done|habit\.log)$/, 'task.done'], list_tasks: [/^task\.list$/, 'task.list'], update_task: [/^task\.(move|mit)$/, 'task.move'], delete_task: [/^task\.delete$/, 'task.delete'],
+  mits: [/^(task\.mit|plan\.day)$/, 'task.mit'], snooze: [/^task\.move$/, 'task.move'], recurring: [/^(task\.add|habit\.add|reminder\.add)$/, 'task.add'], goal: [/^goal\.add$/, 'goal.add'], goal_progress: [/^goal\.list$/, 'goal.list'],
+  mood: [/^mood\.log$/, 'mood.log'], journal_insights: [/^well\.report$/, 'well.report'], journal_entry: [/^journal\.add$/, 'journal.add'], remember: [/^memory\.remember$/, 'memory.remember'], recall: [/^memory\.recall$/, 'memory.recall'],
+  forget: [/^memory\.forget$/, 'memory.forget'], list_memories: [/^memory\.list$/, 'memory.list'], reminder: [/^reminder\.add$/, 'reminder.add'], list_reminders: [/^reminder\.list$/, 'reminder.list'], cancel_reminder: [/^reminder\.cancel$/, 'reminder.cancel'],
+  alarm: [/^alarm\.set$/, 'alarm.set'], timer: [/^timer\.set$/, 'timer.set'], open_app: [/^phone\.(open|navigate|play)$/, 'phone.open'], device: [/^phone\.(torch|battery|settings)$/, 'phone.settings'], sms: [/^comm\.text$/, 'comm.text'],
+  call: [/^comm\.call$/, 'comm.call'], email: [/^comm\.email$/, 'comm.email'], calendar: [/^calendar\.(add|read)$/, 'calendar.read'], planning: [/^plan\./, 'plan.day'], time: [/^info\.(time|date|days)$/, 'info.time'], calc: [/^info\.calc$/, 'info.calc'],
+  convert: [/^info\.convert$/, 'info.convert'], clipboard: [/^phone\.(copy|paste)$/, 'phone.paste'], web: [/^(info\.web|phone\.navigate)$/, 'info.web'], library: [/^info\.library$/, 'info.library'], habit: [/^habit\./, 'habit.log'],
+  note: [/^note\./, 'note.create'], focus: [/^focus\./, 'focus.start'], persona: [/^persona\./, 'persona.adjust'], progress: [/^(progress\.stats|habit\.report|focus\.stats)$/, 'progress.stats'],
+};
 
 export class ReflexEngine {
   readonly grammar = new Grammar();
@@ -498,13 +512,29 @@ export class ReflexEngine {
 
   /** Ranks the utterance and its de-politified form ("can you add X" → "add X"); keeps the best score per intent. */
   private async rankText(text: string, opts: { context?: string; embed?: boolean } = {}): Promise<Ranked[]> {
-    const a = await this.model.rank(text, opts);
+    const a = this.trained(text, await this.model.rank(text, opts));
     const stripped = text.replace(/^(?:(?:ok|okay|hey|hi|yo|so|um+|uh+|please|jarvis|can you|could you|would you|will you|i want you to|i need you to|go ahead and|kindly|quickly|just)[ ,]+)+/, '').trim();
     if (!stripped || stripped === text) return a;
     const b = await this.model.rank(stripped, opts);
     const best = new Map<string, Ranked>();
     for (const r of [...a, ...b]) { const o = best.get(r.id); if (!o || r.score > o.score) best.set(r.id, { ...r, pattern: r.pattern || !!o?.pattern }); }
-    return [...best.values()].sort((x, y) => y.score - x.score);
+    return this.trained(text, [...best.values()].sort((x, y) => y.score - x.score));
+  }
+
+  /**
+   * Second opinion from the intent model trained on the real-speech sets (router-nb): when it is confident about the
+   * kind of request and Reflex's own exemplar match is not a strong pattern hit, the best Reflex intent of that kind leads.
+   */
+  private trained(text: string, ranked: Ranked[]): Ranked[] {
+    const nb = classifyTop(text); if (!nb || nb.lead < TRAINED_LEAD) return ranked;
+    const m = TRAINED_MAP[nb.cls]; if (!m) return ranked;
+    const top = ranked[0];
+    if (top && m[0].test(top.id)) return ranked;
+    if (top && top.pattern && top.score >= 0.5) return ranked;
+    if (top && top.score >= BANDS.mid && /^(pet|well|health|fun|mind|research|advice|meta|feel|chat)\./.test(top.id)) return ranked;
+    const pick = ranked.find(r => m[0].test(r.id) && this.handlers[r.id]) ?? (this.handlers[m[1]] ? { id: m[1], score: 0, lex: 0, sem: 0, pattern: false } : undefined);
+    if (!pick) return ranked;
+    return [{ ...pick, score: Math.max(pick.score, 0.72) }, ...ranked.filter(r => r.id !== pick.id)];
   }
 
   private async answerPending(p: Pending, h: H): Promise<{ out: Out; intent: string } | null> {

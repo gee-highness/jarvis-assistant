@@ -39,3 +39,14 @@ export function distressLead(text: string): { vent: number; crisis: number } | n
   let other = -Infinity; sc.forEach((v, c) => { if (c !== vi && c !== ci && v > other) other = v; });
   return { vent: Math.max(sc[vi], sc[ci]) - other, crisis: sc[ci] - Math.max(other, sc[vi]) };
 }
+
+/** Best-scoring trained category and its lead (nats) over the runner-up; null when there is too little to go on. */
+export function classifyTop(text: string): { cls: string; lead: number } | null {
+  const { classes, rows } = ROUTER_MODEL; if (!classes.length) return null;
+  const sc = new Array<number>(classes.length).fill(0); let hits = 0;
+  for (const f of featurize(text)) { const r = rows[f]; if (!r) continue; hits++; for (let c = 0; c < classes.length; c++) sc[c] -= (r.charCodeAt(c) - 33) / 2; }
+  if (hits < 2) return null;
+  let b = 0, s2 = -Infinity; for (let c = 1; c < sc.length; c++) if (sc[c] > sc[b]) b = c;
+  sc.forEach((v, c) => { if (c !== b && v > s2) s2 = v; });
+  return { cls: classes[b], lead: sc[b] - s2 };
+}

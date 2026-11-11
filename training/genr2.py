@@ -93,12 +93,13 @@ def fillx(r,t):
     return re.sub(r"\{(\w+)\}",lambda m:r.choice(X.get(m.group(1)) or S[m.group(1)]),t)
 def genk(k,seed,seen):
     r=random.Random(seed); out=[]; lab=[]
+    k0=k; k=k%10   # rounds 10+ (sets 201+) reuse the frame slices with fresh seeds, so the sentences are new
     FR={c:[f for i,f in enumerate(F[c]) if i%10==k] for c in CATS}
     PR=[p for i,p in enumerate(PRE) if i%3==k%3 or p==""]
     IN=[p for i,p in enumerate(IND) if i%2==k%2 or p==""]
     SU=[p for i,p in enumerate(SUF) if i%3==(k//3)%3 or p==""]
     while len(out)<N:
-        if k and r.random()<.04:   # venting: no command wrappers, people write these lower-case and unpunctuated a lot
+        if k0 and r.random()<.04:   # venting: no command wrappers, people write these lower-case and unpunctuated a lot
             m,vc=make(r,k); x=r.random()
             if x<.3: m=re.sub(r"[,.!?:]","",m).lower()
             elif x<.55: m=m.lower()
