@@ -63,8 +63,8 @@ def make(r,k):
     o=r.choice(_sl(OPEN,k)); Vs=_sl(V,k); x=r.random()
     if x<.16:
         c=r.choice(_sl(C,k)); y=r.random()
-        if y<.4: m=c
-        elif y<.7: m=c+r.choice(CONN)+r.choice(Vs)
+        if y<.76: m=c   # mostly on their own, so the crisis class learns its own words, not general sadness
+        elif y<.88: m=c+r.choice(CONN)+r.choice(Vs)
         else: m=r.choice(Vs)+r.choice(CONN)+c
         return o+m+r.choice(_sl(TAIL,k)),'crisis'
     if x<.3: m="my "+r.choice(PEOPLE)+" "+r.choice(_sl(PEV,k))+(r.choice(CONN)+r.choice(Vs) if r.random()<.6 else "")
