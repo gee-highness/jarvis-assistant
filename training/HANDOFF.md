@@ -47,3 +47,8 @@ All ten real-speech groups tuned and logged; final regression logged in RESULTS.
 
 ## Reflex listening mode (added after merging main)
 Main's default brain is Reflex (no LLM, `src/app/core/reflex/`). The user runs Reflex, so listening mode must work there: `reflex/listener.ts` (stateful reflective conversation) is called from `ReflexService.respond` when `supportLevel()` fires or a listening conversation is active; crisis wording still goes to the engine's own safety flow (`riskOf`). Replay test: `npx esbuild scripts/listen-test.ts --bundle --platform=node --outfile=/tmp/lt.cjs && node /tmp/lt.cjs`. main is merged INTO this branch; this branch is not merged to main.
+
+## Reflex training (user: "I can't run models on my phone, focus everything on Reflex"; "use another 50M sentences")
+- The NB intent model now feeds Reflex: `trained()` + `unwrap()` in reflex/engine.ts (TRAINED_MAP/TRAINED_HINT). Reflex real-speech accuracy 43% -> ~93-95% (see RESULTS.md).
+- Always run `scripts/reflex-ci.sh training/jarvis_messages_N.md 60` after any Reflex change (all suites + accuracy sample; ~7 min; run in background). `scripts/reflex-why.ts` shows Reflex vs trained-model confidence per sentence.
+- 50M more: sets 201-250 via `scripts/group.sh gen 201|211|221|231|241` (K>=10 reuses frame slices with new seeds). 201-220 generated; fold each group (`MIN_COUNT=400 scripts/group.sh fold $lo`) then re-run reflex-ci on its last set and log. Never run generation alongside tests (worker gets killed).

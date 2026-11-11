@@ -552,7 +552,8 @@ export class ReflexEngine {
     if (top && m[0].test(top.id) && top.score >= BANDS.mid) return ranked;
     // Reflex already has a real answer: only a very clear verdict from the trained model overrules it, and never on care/safety topics
     if (top && top.score >= BANDS.mid) {
-      if (nb.lead < TRAINED_SURE || /^(pet|well|health|mind|meta)\./.test(top.id)) return ranked;
+      // looking something up is Reflex's catch-all for questions, so a moderately clear verdict is enough to overrule it
+      if (nb.lead < (top.id === 'research.ask' ? 12 : TRAINED_SURE) || /^(pet|well|health|mind|meta)\./.test(top.id)) return ranked;
     }
     const hint = TRAINED_HINT[nb.cls]?.find(h => h[0].test(text))?.[1];
     const pick = (hint && this.handlers[hint] ? ranked.find(r => r.id === hint) ?? { id: hint, score: 0, lex: 0, sem: 0, pattern: false } : undefined)

@@ -53,3 +53,20 @@ Hand-written = 78 phrases written by hand, never generated (scripts/test-support
 Router: 99.86%-100.00% on sets 10,20,...,200 (lowest: set 60 at 99.86%, set 90 at 99.88%; 100.00% on 110-200 except 120 at 99.99%); avg 2.6-2.9 tool groups offered per message.
 Listening detector: 78/78 hand-written phrases; 0.00%-0.04% false alarms on commands across sampled sets 20, 60, 100, 110, 150, 200; no crisis false alarms.
 Caveats: all data is synthetic; before-tuning columns are the honest held-out numbers; the on-device LLM's handling of the listening-mode prompt is untested.
+
+## Reflex (the no-LLM brain the phone actually runs) on real speech
+
+Measured with scripts/reflex-eval.ts: 60 sentences per category (41 categories Reflex can handle), full engine, right kind of action chosen.
+All Reflex suites (reflex-test, fuzz, deep 264/264, blind, thousand 855/855, pet 51/51, listen replay) pass at every step listed as passing.
+
+| Step | Set 200 (tuned against) | Set 190 (not tuned against) | Existing suites |
+|---|---|---|---|
+| Reflex as on main | 43.25% | - | pass |
+| + trained intent model as second opinion | 71.50% | - | 3 failures |
+| + strip openers/closers before ranking | 84.19% | - | 10 failures |
+| + trained model overrules only on a very clear verdict | 87.89% | - | pass |
+| + lift low-scoring in-category matches | 95.08% | - | pass |
+| + pattern fixes (tasks question, goals, copy, pep talk) | - | 93.05% | pass |
+
+Caveats: synthetic sentences; 2,460-sentence samples; "right kind of action" does not check that the details (time, task name) were extracted correctly.
+
