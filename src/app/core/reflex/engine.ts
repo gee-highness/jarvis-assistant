@@ -4,6 +4,7 @@
  * distinct replies). Typical turn: 2–20 ms.
  */
 import { classifyTop } from '../tools/router-nb';
+import { fixTypos } from '../tools/helpers';
 import { ALIVE_RULES, InnerState, chooseSpice, freshInner, opinion } from './alive';
 import { ACTIONS } from './banks/actions';
 import { CHAT } from './banks/chat';
@@ -52,6 +53,23 @@ export interface ReflexStats { intents: number; examples: number; learned: numbe
 
 /** Trained category -> [Reflex intents of that kind, default intent]. Categories Reflex has no handler for are left out. */
 const TRAINED_LEAD = 6;
+/** Which intent inside a trained category, when the wording says so. */
+const TRAINED_HINT: Record<string, [RegExp, string][]> = {
+  calendar: [[/\b(put|add|schedule|book|pencil|stick|pop|create|set up|block)\b/, 'calendar.add']],
+  time: [[/\b(until|till|sleeps|days (to|until|left)|how long)\b/, 'info.days'], [/\b(date|what day|day is it|day of the week)\b/, 'info.date']],
+  clipboard: [[/\bcop(y|ied)\b/, 'phone.copy']], device: [[/\b(torch|flash ?light)\b/, 'phone.torch'], [/\b(battery|charge|power)\b/, 'phone.battery']],
+  habit: [[/\b(new habit|start tracking|build a habit|track)\b/, 'habit.add'], [/\b(how (am|are)|consisten|streaks?|stats|report)\b/, 'habit.report']],
+  note: [[/\b(find|search|look (for|up)|what did i (write|note))\b/, 'note.search']], focus: [[/\b(stop|end|finish|cancel)\b/, 'focus.stop'], [/\b(how (much|long)|stats|total)\b/, 'focus.stats']],
+  mits: [[/\b(what|which|decide|choose|pick|should)\b/, 'plan.day']],
+};
+const OPENERS = /^(?:(?:ok(?:ay)?|hey|hi|hiya|hello|yo|so|um+|uh+|erm?|er|well|right|oh|and|also|actually|sorry|alright|mate|jarvis|please|kindly|quickly|just|morning|evening|afternoon|good (?:morning|evening|afternoon)|one more thing|another thing|quick (?:one|thing|question)|hang on|hold on|before i forget|by the way|btw|while you are at it|can you|could you|would you|will you|can i get you to|i want you to|i need you to|i would like you to|i was hoping you could|i am hoping you can|do me a favou?r and|any chance you could|is there any chance you could|go ahead and|if you could)[ ,.!:]+)+/;
+const CLOSERS = /(?:[ ,.!]+(?:thanks|thank you|thx|cheers|ta|please|mate|jarvis|if that is ok(?:ay)?|when you get a (?:sec|second|minute|chance)|when you can|that would be great|no rush|for me|asap|lol|ok(?:ay)?))+[ .!?]*$/;
+/** The request without its conversational wrapping. */
+export function unwrap(text: string): string {
+  let s = text, p = '';
+  while (s !== p) { p = s; s = s.replace(OPENERS, '').replace(CLOSERS, '').trim(); }
+  return s;
+}
 const TRAINED_MAP: Record<string, [RegExp, string]> = {
   add_task: [/^task\.add$/, 'task.add'], complete: [/^(task\.done|habit\.log)$/, 'task.done'], list_tasks: [/^task\.list$/, 'task.list'], update_task: [/^task\.(move|mit)$/, 'task.move'], delete_task: [/^task\.delete$/, 'task.delete'],
   mits: [/^(task\.mit|plan\.day)$/, 'task.mit'], snooze: [/^task\.move$/, 'task.move'], recurring: [/^(task\.add|habit\.add|reminder\.add)$/, 'task.add'], goal: [/^goal\.add$/, 'goal.add'], goal_progress: [/^goal\.list$/, 'goal.list'],
@@ -512,12 +530,14 @@ export class ReflexEngine {
 
   /** Ranks the utterance and its de-politified form ("can you add X" → "add X"); keeps the best score per intent. */
   private async rankText(text: string, opts: { context?: string; embed?: boolean } = {}): Promise<Ranked[]> {
-    const a = this.trained(text, await this.model.rank(text, opts));
-    const stripped = text.replace(/^(?:(?:ok|okay|hey|hi|yo|so|um+|uh+|please|jarvis|can you|could you|would you|will you|i want you to|i need you to|go ahead and|kindly|quickly|just)[ ,]+)+/, '').trim();
-    if (!stripped || stripped === text) return a;
-    const b = await this.model.rank(stripped, opts);
+    const a = await this.model.rank(text, opts);
+    // people wrap requests in openers and thanks ("one more thing, ... cheers Jarvis"): judge the request, not the wrapping
+    const core = unwrap(text);
+    if (!core || core === text) return this.trained(text, a);
     const best = new Map<string, Ranked>();
-    for (const r of [...a, ...b]) { const o = best.get(r.id); if (!o || r.score > o.score) best.set(r.id, { ...r, pattern: r.pattern || !!o?.pattern }); }
+    const wrapOnly = core.split(' ').length >= 2;
+    for (const r of a) if (!(wrapOnly && /^(chat\.|fun\.another)/.test(r.id))) best.set(r.id, r);
+    for (const t of new Set([core, fixTypos(core)])) for (const r of await this.model.rank(t, opts)) { const o = best.get(r.id); if (!o || r.score > o.score) best.set(r.id, { ...r, pattern: r.pattern || !!o?.pattern }); }
     return this.trained(text, [...best.values()].sort((x, y) => y.score - x.score));
   }
 
@@ -528,13 +548,15 @@ export class ReflexEngine {
   private trained(text: string, ranked: Ranked[]): Ranked[] {
     const nb = classifyTop(text); if (!nb || nb.lead < TRAINED_LEAD) return ranked;
     const m = TRAINED_MAP[nb.cls]; if (!m) return ranked;
-    const top = ranked[0];
+    const top = ranked[0]; const sure = nb.lead >= 15;
     if (top && m[0].test(top.id)) return ranked;
-    if (top && top.pattern && top.score >= 0.5) return ranked;
-    if (top && top.score >= BANDS.mid && /^(pet|well|health|fun|mind|research|advice|meta|feel|chat)\./.test(top.id)) return ranked;
-    const pick = ranked.find(r => m[0].test(r.id) && this.handlers[r.id]) ?? (this.handlers[m[1]] ? { id: m[1], score: 0, lex: 0, sem: 0, pattern: false } : undefined);
+    if (top && /^(pet|well|health|fun|mind|research|advice|meta|feel|chat)\./.test(top.id) && top.score >= BANDS.mid) return ranked;
+    if (top && !sure && (top.score >= 0.62 || (top.pattern && top.score >= 0.5))) return ranked;
+    const hint = TRAINED_HINT[nb.cls]?.find(h => h[0].test(text))?.[1];
+    const pick = (hint && this.handlers[hint] ? ranked.find(r => r.id === hint) ?? { id: hint, score: 0, lex: 0, sem: 0, pattern: false } : undefined)
+      ?? ranked.find(r => m[0].test(r.id) && this.handlers[r.id]) ?? (this.handlers[m[1]] ? { id: m[1], score: 0, lex: 0, sem: 0, pattern: false } : undefined);
     if (!pick) return ranked;
-    return [{ ...pick, score: Math.max(pick.score, 0.72) }, ...ranked.filter(r => r.id !== pick.id)];
+    return [{ ...pick, score: Math.max(pick.score, 0.6) }, ...ranked.filter(r => r.id !== pick.id)];
   }
 
   private async answerPending(p: Pending, h: H): Promise<{ out: Out; intent: string } | null> {

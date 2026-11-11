@@ -81,7 +81,7 @@ const WANT: Record<string, RegExp | null> = {
   subtasks: null, project: null, template: null, recurring: /^(task\.add|habit\.add|reminder\.add)/, goal: /^goal\.add/, goal_progress: /^(goal\.|progress)/, mood: /^(mood\.log|feel\.|journal|well\.)/,
   journal_insights: /^(well\.report|mood|journal|health\.report)/, journal_entry: /^(journal\.add|note\.create)/, remember: /^(memory\.remember|learn\.fact)/, recall: /^(memory\.recall|memory\.list|mind\.)/, forget: /^memory\.forget/,
   list_memories: /^memory\.(list|recall)/, reminder: /^reminder\.add/, list_reminders: /^reminder\.list/, cancel_reminder: /^reminder\.cancel/, alarm: /^alarm\.set/, timer: /^timer\.set/, open_app: /^phone\.(open|navigate|play)/,
-  device: /^phone\.(torch|battery|settings)/, sms: /^comm\.text/, call: /^comm\.call/, email: /^comm\.email/, calendar: /^calendar\./, planning: /^(plan\.|task\.mit)/, time: /^info\.(time|date|days)/, calc: /^info\.calc/,
+  device: /^phone\.(torch|battery|settings)/, sms: /^comm\.text/, call: /^comm\.call/, email: /^comm\.email/, calendar: /^(calendar\.|plan\.schedule)/, planning: /^(plan\.|task\.mit)/, time: /^info\.(time|date|days)/, calc: /^info\.calc/,
   convert: /^info\.convert/, clipboard: /^phone\.(copy|paste)/, web: /^(info\.web|research|phone\.(open|navigate))/, library: /^info\.library/, habit: /^habit\./, note: /^note\./, focus: /^(focus\.|phone\.play)/, persona: /^persona\./,
   progress: /^(progress|habit\.report|focus\.stats)/, smalltalk: /^(chat\.|fun\.|feel\.|well\.|advice|mind|pet|learn)/, vent: null, crisis: null,
 };
