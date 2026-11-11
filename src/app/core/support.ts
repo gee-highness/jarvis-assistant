@@ -27,7 +27,9 @@ export function supportLevel(text: string): SupportLevel {
   if (CRISIS.test(t) || CRISIS.test(f)) return 2;
   // the trained intent model hears what the word lists cannot (and may raise sadness to crisis)
   const lead = COMMANDISH.test(t) ? null : distressLead(t);
-  if (lead && lead.crisis >= CRISIS_LEAD && CRISIS_CUE.test(t)) return 2;
+  // "dying inside" is an everyday way of saying it hurts, not a statement about dying
+  const idiom = /\b(dying|dead) (inside|from (the )?inside|on the inside|within)\b/i.test(t);
+  if (lead && !idiom && lead.crisis >= CRISIS_LEAD && CRISIS_CUE.test(t)) return 2;
   if (LOW.test(t) || LOW.test(f)) return 1;
   return lead && lead.vent >= VENT_LEAD ? 1 : 0;
 }
