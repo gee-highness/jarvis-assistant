@@ -40,7 +40,7 @@ export const ACTIONS: Bank = {
     { id: 'habit.add', kind: 'action', topic: 'habits',
       examples: ['add a habit to read every day', 'new habit meditate', 'track a habit drink water', 'create a habit gym 3 times a week', 'i want to build a habit of journaling', 'start tracking push ups'],
       patterns: [/\b(add|new|create|track|start tracking|build)\b.*\bhabit\b/, /^new habit\b/] },
-    { id: 'habit.log', kind: 'action', topic: 'habits',
+    { id: 'habit.log', not: [/\b(feeling|my mood)\b/], kind: 'action', topic: 'habits',
       examples: ['i meditated', 'i went to the gym', 'log my workout', 'i read today', 'tick off water', 'mark meditation done', 'i did my push ups', 'log reading', 'i exercised', 'i ran today', 'habit done journaling', 'i drank my water'],
       patterns: [/^log (my )?\w+/, /\bi (meditated|exercised|worked out|ran|read|journaled|journalled|stretched|walked|went to the gym|drank (my )?water)\b/, /\bhabit\b.*\b(done|log|tick)\b/] },
     { id: 'habit.report', kind: 'action', topic: 'habits',

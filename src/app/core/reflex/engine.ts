@@ -549,11 +549,13 @@ export class ReflexEngine {
     const nb = classifyTop(text); if (!nb || nb.lead < TRAINED_LEAD) return ranked;
     const m = TRAINED_MAP[nb.cls]; if (!m) return ranked;
     const top = ranked[0];
-    if (top && m[0].test(top.id) && top.score >= BANDS.mid) return ranked;
-    // Reflex already has a real answer: only a very clear verdict from the trained model overrules it, and never on care/safety topics
+    const sure = nb.lead >= TRAINED_SURE;
+    if (top && m[0].test(top.id) && top.score >= BANDS.mid) return sure && top.score < 0.8 ? [{ ...top, score: 0.8 }, ...ranked.slice(1)] : ranked;
+    // Reflex already has an answer: the firmer that answer, the clearer the trained model's verdict must be to overrule it
     if (top && top.score >= BANDS.mid) {
-      // looking something up is Reflex's catch-all for questions, so a moderately clear verdict is enough to overrule it
-      if (nb.lead < (top.id === 'research.ask' ? 12 : TRAINED_SURE) || /^(pet|well|health|mind|meta)\./.test(top.id)) return ranked;
+      if (/^(pet|well|health|mind|meta)\./.test(top.id)) return ranked;
+      const need = top.id === 'research.ask' ? 12 : top.pattern || top.score >= 0.5 ? TRAINED_SURE : top.score >= 0.4 ? 18 : 10;
+      if (nb.lead < need) return ranked;
     }
     const hint = TRAINED_HINT[nb.cls]?.find(h => h[0].test(text))?.[1];
     const pick = (hint && this.handlers[hint] ? ranked.find(r => r.id === hint) ?? { id: hint, score: 0, lex: 0, sem: 0, pattern: false } : undefined)
