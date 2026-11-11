@@ -47,3 +47,9 @@ Hand-written = 78 phrases written by hand, never generated (scripts/test-support
 | 171-180 | 100.00% / 100.00% | 99.03% / 99.03% | 0.00% | 78/78 -> 78/78 |
 | 181-190 | 100.00% / 100.00% | 100.00% / 100.00% | 0.00% | 78/78 -> 78/78 |
 | 191-200 | 100.00% / 100.00% | 100.00% / 100.00% | 0.00% | 78/78 -> 78/78 |
+
+## Final regression after set 200 (final rules + 2.0 MB model, one file per group)
+
+Router: 99.86%-100.00% on sets 10,20,...,200 (lowest: set 60 at 99.86%, set 90 at 99.88%; 100.00% on 110-200 except 120 at 99.99%); avg 2.6-2.9 tool groups offered per message.
+Listening detector: 78/78 hand-written phrases; 0.00%-0.04% false alarms on commands across sampled sets 20, 60, 100, 110, 150, 200; no crisis false alarms.
+Caveats: all data is synthetic; before-tuning columns are the honest held-out numbers; the on-device LLM's handling of the listening-mode prompt is untested.

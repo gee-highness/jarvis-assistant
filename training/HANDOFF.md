@@ -41,3 +41,6 @@ Run long steps with run_in_background; raw data stays local.
 
 ## Final steps
 Regression eval on one file per group (10,20,...,200), update RESULTS.md with honest caveats (synthetic data; pre-tune is the honest number; on-device LLM untested), type-check, merge to main, release.
+
+## Status (after set 200)
+All ten real-speech groups tuned and logged; final regression logged in RESULTS.md. APK builds 49 and 50 were produced by workflow_dispatch of android.yml on this branch and sent to the user in chat. NOT merged to main (user has not confirmed the merge since the listening-mode work was added).
