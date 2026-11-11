@@ -66,6 +66,22 @@ jobs:
           set -o pipefail
           npm install --no-audit --no-fund 2>&1 | tee -a build.log
 
+      - name: Reflex brain tests
+        continue-on-error: true
+        run: |
+          npx --yes esbuild scripts/reflex-test.ts --bundle --platform=node --outfile="$RUNNER_TEMP/rt.cjs" --log-level=warning
+          npx --yes esbuild scripts/reflex-fuzz.ts --bundle --platform=node --outfile="$RUNNER_TEMP/rf.cjs" --log-level=warning
+          npx --yes esbuild scripts/reflex-deep.ts --bundle --platform=node --outfile="$RUNNER_TEMP/rd.cjs" --log-level=warning
+          npx --yes esbuild scripts/reflex-blind.ts --bundle --platform=node --outfile="$RUNNER_TEMP/rb.cjs" --log-level=warning
+          node "$RUNNER_TEMP/rt.cjs" | tail -n 6
+          node "$RUNNER_TEMP/rf.cjs" | tail -n 4
+          node "$RUNNER_TEMP/rd.cjs" | tail -n 16
+          node "$RUNNER_TEMP/rb.cjs" | tail -n 6
+          npx --yes esbuild scripts/reflex-thousand.ts --bundle --platform=node --outfile="$RUNNER_TEMP/r1k.cjs" --log-level=warning
+          npx --yes esbuild scripts/pet-test.ts --bundle --platform=node --outfile="$RUNNER_TEMP/pt.cjs" --log-level=warning
+          node "$RUNNER_TEMP/r1k.cjs" | head -n 8
+          node "$RUNNER_TEMP/pt.cjs" | tail -n 6
+
       - name: Build web app
         run: |
           set -o pipefail
@@ -73,6 +89,15 @@ jobs:
 
       # Stable signing: the keystore lives in the repo secret JARVIS_KEYSTORE_B64 (never in git).
       # Without it the build falls back to a debug-signed APK, which cannot update over earlier builds.
+      # Without the JARVIS_KEYSTORE_B64 secret the build would use a fresh random debug key every run, and
+      # Android refuses to update an installed app signed with a different key. So: keep one key in a cache.
+      - name: Stable signing key (cache)
+        id: ksCache
+        uses: actions/cache@v4
+        with:
+          path: .ci/jarvis-debug.jks
+          key: jarvis-debug-keystore-v2
+
       - name: Signing key
         env:
           KS_B64: ${{ secrets.JARVIS_KEYSTORE_B64 }}
@@ -83,9 +108,19 @@ jobs:
             echo "GRADLE_TASK=assembleRelease" >> "$GITHUB_ENV"
             echo "APK_PATH=release/app-release.apk" >> "$GITHUB_ENV"
           else
+            mkdir -p .ci
+            if [ -f .ci/jarvis-debug.jks ]; then
+              echo "Restored the saved signing key: this APK will update the installed app."
+            else
+              keytool -genkeypair -keystore .ci/jarvis-debug.jks -storetype JKS -alias jarvis \
+                -storepass "$JARVIS_KS_PASS" -keypass "$JARVIS_KS_PASS" -keyalg RSA -keysize 2048 -validity 36500 \
+                -dname "CN=Jarvis, O=Jarvis, C=ZA" 2>&1 | tail -n 2
+              echo "::warning::No saved signing key found: created a new one. This APK needs the previous app uninstalled once; later builds update it in place."
+            fi
+            keytool -list -keystore .ci/jarvis-debug.jks -storepass "$JARVIS_KS_PASS" 2>&1 | grep -i "fingerprint" | sed 's/^/signing key /'
+            echo "JARVIS_KEYSTORE=$GITHUB_WORKSPACE/.ci/jarvis-debug.jks" >> "$GITHUB_ENV"
             echo "GRADLE_TASK=assembleDebug" >> "$GITHUB_ENV"
             echo "APK_PATH=debug/app-debug.apk" >> "$GITHUB_ENV"
-            echo "::warning::JARVIS_KEYSTORE_B64 secret missing: building a debug-signed APK"
           fi
 
       - name: Prepare Android project

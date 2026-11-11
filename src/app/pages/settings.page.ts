@@ -24,7 +24,12 @@ import { VoiceService } from '../core/voice.service';
       @if (setup() || !s().onboarded) {
         <div class="card glow col">
           <div class="upper">Setup checklist</div>
-          @if (s().engine === 'device') {
+          @if (s().brain !== 'llm') {
+            <div class="step ok">
+              <b>1. Brain</b>
+              <p class="small muted">Jarvis runs on Reflex: instant, fully offline, no model download needed. You can switch to a language model any time under Brain.</p>
+            </div>
+          } @else if (s().engine === 'device') {
             <div class="step" [class.ok]="llm.activeInstalled()">
               <b>1. Download a brain</b>
               <p class="small muted">Jarvis runs a private AI model on this phone: no internet, no account. One download, then fully offline. Best fit for your phone: <b>{{ llm.recommended().name }}</b> ({{ llm.recommended().sizeMb >= 1000 ? (llm.recommended().sizeMb / 1024).toFixed(1) + ' GB' : llm.recommended().sizeMb + ' MB' }}).</p>
@@ -239,7 +244,7 @@ import { VoiceService } from '../core/voice.service';
     .step.ok b::after { content: ' ✓'; color: var(--green); }
     .step p { margin: 0; }
     .cmd { white-space: pre-wrap; word-break: break-all; background: rgba(0,0,0,.45); border: 1px solid var(--line); border-radius: 8px; padding: 8px; margin: 0; }
-    .progress { height: 6px; border-radius: 3px; background: rgba(34,211,238,.12); overflow: hidden; }
+    .progress { height: 6px; border-radius: 3px; background: rgba(var(--accent-rgb), .12); overflow: hidden; }
     .progress div { height: 100%; background: var(--cyan); transition: width .3s; }
     .small-tabs button { padding: 4px 10px; font-size: .78rem; }
     label.btn { cursor: pointer; }

@@ -1,0 +1,33 @@
+name: Signing key check
+
+# Fast proof (no Android build) that the signing key survives between runs:
+# run 1 creates and caches the key; every later run must restore the SAME key or this job fails.
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      JARVIS_KS_PASS: "jarvis-release"
+    steps:
+      - uses: actions/cache@v4
+        id: ks
+        with:
+          path: .ci/jarvis-debug.jks
+          key: jarvis-debug-keystore-v2
+
+      - name: Create the key if missing, then compare with the recorded fingerprint
+        run: |
+          mkdir -p .ci
+          if [ ! -f .ci/jarvis-debug.jks ]; then
+            keytool -genkeypair -keystore .ci/jarvis-debug.jks -storetype JKS -alias jarvis -storepass "$JARVIS_KS_PASS" -keypass "$JARVIS_KS_PASS" -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=Jarvis, O=Jarvis, C=ZA" 2>&1 | tail -n 2
+            echo "created a new key (cache-hit=${{ steps.ks.outputs.cache-hit }})"
+          else
+            echo "restored the saved key (cache-hit=${{ steps.ks.outputs.cache-hit }})"
+          fi
+          FP=$(keytool -list -keystore .ci/jarvis-debug.jks -storepass "$JARVIS_KS_PASS" 2>&1 | grep -i "fingerprint" | head -n 1 | sed 's/.*: //')
+          echo "fingerprint: $FP"
+          echo "## Signing key" >> "$GITHUB_STEP_SUMMARY"
+          echo "cache-hit: ${{ steps.ks.outputs.cache-hit }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "fingerprint: \`$FP\`" >> "$GITHUB_STEP_SUMMARY"

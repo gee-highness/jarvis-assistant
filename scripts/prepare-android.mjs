@@ -51,6 +51,11 @@ const permissions = [
   'android.permission.READ_CALENDAR',
   'android.permission.READ_CONTACTS',
   'android.permission.SEND_SMS',
+  'android.permission.FOREGROUND_SERVICE',
+  'android.permission.FOREGROUND_SERVICE_SPECIAL_USE',
+  'android.permission.ACTIVITY_RECOGNITION',
+  'android.permission.PACKAGE_USAGE_STATS',
+  'android.permission.SYSTEM_ALERT_WINDOW',
 ];
 for (const p of permissions) {
   if (!m.includes(`android:name="${p}"`)) m = m.replace('<application', `<uses-permission android:name="${p}" />\n    <application`);
@@ -60,6 +65,7 @@ if (!m.includes('<queries>')) {
   m = m.replace('<application', `<queries>
         <package android:name="com.termux" />
         <intent><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent>
+        <intent><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.HOME" /></intent>
         <intent><action android:name="android.speech.RecognitionService" /></intent>
         <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
         <intent><action android:name="android.intent.action.VIEW" /><data android:scheme="https" /></intent>
@@ -89,6 +95,7 @@ const widgets = [
   ['JarvisWideWidget', 'jarvis_widget_wide', 'jarvis_widget_wide_info'],
   ['JarvisChatWidget', 'jarvis_widget_chat', 'jarvis_widget_chat_info'],
   ['JarvisTodayWidget', 'jarvis_widget_today', 'jarvis_widget_today_info'],
+  ['JarvisPetWidget', 'jarvis_widget_pet', 'jarvis_widget_pet_info'],
 ];
 for (const [cls, label, info] of widgets) {
   if (m.includes(`.${cls}"`)) continue;
@@ -98,6 +105,26 @@ for (const [cls, label, info] of widgets) {
         </receiver>
     </application>`);
 }
+
+// always-on companion: foreground service + boot restart (opt-in at runtime).
+// No NotificationListener / Accessibility services: Play Protect blocks sideloaded apps that declare them.
+if (!m.includes('.JarvisCoreService"')) {
+  m = m.replace('</application>', `    <service android:name=".JarvisCoreService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Personal assistant that logs on-device wellbeing signals (steps, screen time, sleep) chosen by the user" />
+        </service>
+        <service android:name=".JarvisPetOverlayService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Shows the user's companion pet walking around the screen as an optional, user-enabled overlay" />
+        </service>
+        <receiver android:name=".JarvisBootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+    </application>`);
+}
+if (!m.includes('xmlns:tools')) m = m.replace('<manifest ', '<manifest xmlns:tools="http://schemas.android.com/tools" ');
+m = m.replace('<uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />', '<uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />');
 
 // keep the WebView alive and avoid re-creating the activity on widget taps
 m = m.replace(/android:launchMode="[^"]*"/, 'android:launchMode="singleTask"');

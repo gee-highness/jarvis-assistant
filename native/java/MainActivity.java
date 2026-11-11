@@ -9,6 +9,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(JarvisDevicePlugin.class);
         registerPlugin(JarvisLlmPlugin.class);
         registerPlugin(JarvisDataPlugin.class);
+        registerPlugin(JarvisSensePlugin.class);
+        registerPlugin(JarvisPetPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

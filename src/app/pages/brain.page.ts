@@ -8,6 +8,8 @@ import { JarvisDevice, isNative } from '../core/native';
 import { OllamaService } from '../core/ollama.service';
 import { StoreService } from '../core/store.service';
 import { MemoryService } from '../core/memory.service';
+import { ReflexService } from '../core/reflex/reflex.service';
+import { BrainMode } from '../core/models';
 
 @Component({
   standalone: true,
@@ -22,6 +24,37 @@ import { MemoryService } from '../core/memory.service';
         </span>
       </div>
 
+      <div class="tabs">
+        <button [class.on]="s().brain !== 'llm'" (click)="setBrain('reflex')">⚡ Reflex (no model)</button>
+        <button [class.on]="s().brain === 'llm'" (click)="setBrain('llm')">🧠 Language model</button>
+      </div>
+
+      @if (s().brain !== 'llm') {
+        <div class="card col glow">
+          <div class="row between">
+            <div><div class="upper">Active brain</div><b>Reflex</b></div>
+            <span class="chip green">instant · offline</span>
+          </div>
+          <p class="small muted" style="margin:0">No language model, no download, no waiting. Reflex understands what you mean, acts on your tasks, reminders, habits and memory, learns facts you tell it, and composes every reply fresh from a persona-aware grammar.</p>
+          @if (reflex.stats(); as st) {
+            <div class="stats small">
+              <span class="chip cyan">{{ big(st.responses) }} distinct replies</span>
+              <span class="chip">{{ big(st.personaResponses) }} in this personality</span>
+              <span class="chip">{{ st.intents }} skills</span>
+              <span class="chip">{{ st.examples }} phrasings</span>
+              <span class="chip violet">{{ st.learned }} learned from you</span>
+              @if (st.semantic) { <span class="chip green">semantic matching</span> } @else { <span class="chip gold">keyword matching</span> }
+              @if (reflex.lastMs()) { <span class="chip">last reply {{ reflex.lastMs() }} ms</span> }
+            </div>
+          }
+          @if (!st2().semanticOk) {
+            <p class="small dim" style="margin:0">Optional: install the 25 MB memory engine below for meaning-based matching (it understands paraphrases even better). Reflex works fully without it.</p>
+            @if (isNative && !llm.embedInstalled() && !llm.downloads()[embed.id]) { <button class="small" (click)="downloadEmbed()">⬇ Memory engine ({{ embed.sizeMb }} MB)</button> }
+          }
+          <p class="small dim" style="margin:0">If Reflex misunderstands, reply "teach" and tell it what you meant. It remembers.</p>
+          @if (reflex.stats()?.learned) { <button class="small" (click)="forgetLearned()">Forget learned phrasings</button> }
+        </div>
+      } @else {
       <div class="tabs">
         @for (e of engines; track e.id) {
           <button [class.on]="s().engine === e.id" (click)="setEngine(e.id)">{{ e.label }}</button>
@@ -182,18 +215,19 @@ import { MemoryService } from '../core/memory.service';
           <p class="small dim" style="margin:0">Larger context remembers more of the chat but uses more RAM. Changes apply on the next message.</p>
         </div>
       }
+      }
       @if (msg()) { <div class="banner" [class.err]="msgErr()">{{ msg() }}</div> }
     </div>
   `,
   styles: [`
     .phone .right { text-align: right; }
     .model { gap: 8px; transition: border-color .2s, transform .2s; }
-    .model.active { border-color: rgba(34,211,238,.55); box-shadow: 0 0 0 1px rgba(34,211,238,.25), 0 8px 30px -12px rgba(34,211,238,.45); }
+    .model.active { border-color: rgba(var(--accent-rgb), .55); box-shadow: 0 0 0 1px rgba(var(--accent-rgb), .25), 0 8px 30px -12px rgba(var(--accent-rgb), .45); }
     .model.heavy { opacity: .8; }
     .model .name { font-size: 1.05rem; letter-spacing: .02em; }
-    .tag { font-size: .72rem; padding: 2px 8px; border-radius: 999px; background: rgba(34,211,238,.08); border: 1px solid rgba(34,211,238,.2); color: var(--muted); }
+    .tag { font-size: .72rem; padding: 2px 8px; border-radius: 999px; background: rgba(var(--accent-rgb), .08); border: 1px solid rgba(var(--accent-rgb), .2); color: var(--muted); }
     .stats { display: flex; flex-wrap: wrap; gap: 6px; }
-    .progress { height: 6px; border-radius: 3px; background: rgba(34,211,238,.12); overflow: hidden; }
+    .progress { height: 6px; border-radius: 3px; background: rgba(var(--accent-rgb), .12); overflow: hidden; }
     .progress div { height: 100%; background: linear-gradient(90deg, var(--cyan), #7dd3fc); transition: width .4s; }
   `],
 })
@@ -203,6 +237,8 @@ export class BrainPage implements OnInit {
   private ollama = inject(OllamaService);
   private jarvis = inject(JarvisService);
   private memory = inject(MemoryService);
+  readonly reflex = inject(ReflexService);
+  readonly st2 = computed(() => ({ semanticOk: !!this.reflex.stats()?.semantic }));
 
   readonly isNative = isNative();
   readonly s = computed(() => this.store.settings());
@@ -221,7 +257,16 @@ export class BrainPage implements OnInit {
   readonly ramGb = computed(() => ((this.llm.status()?.ramTotalMb ?? 0) / 1024).toFixed(1));
   readonly freeGb = computed(() => ((this.llm.status()?.freeBytes ?? 0) / 1073741824).toFixed(1));
 
-  async ngOnInit() { await this.llm.init(); await this.llm.refresh(); }
+  async ngOnInit() { this.reflex.init().then(() => this.reflex.refreshStats()).catch(() => undefined); await this.llm.init(); await this.llm.refresh(); }
+
+  big(n: number): string {
+    if (n >= 1e12) return `${(n / 1e12).toFixed(1)} trillion`;
+    if (n >= 1e9) return `${(n / 1e9).toFixed(1)} billion`;
+    if (n >= 1e6) return `${(n / 1e6).toFixed(1)} million`;
+    return n.toLocaleString();
+  }
+  setBrain(brain: BrainMode) { this.save({ brain }); JarvisDevice.haptic({ kind: 'tick' }).catch(() => undefined); if (brain === 'reflex') this.reflex.refreshStats(); }
+  async forgetLearned() { await this.reflex.engine.forgetLearned(); this.reflex.refreshStats(); this.note('Learned phrasings cleared.'); }
 
   save(p: Parameters<StoreService['updateSettings']>[0]) { this.store.updateSettings(p); }
   file(m: DeviceModel) { return deviceModelFile(m); }

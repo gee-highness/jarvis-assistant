@@ -90,11 +90,11 @@ import { ymd } from '../core/util';
   styles: [`
     .scapes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
     .scape { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px; font-size: .72rem; }
-    .scape span { font-size: 1.3rem; } .scape.on { border-color: var(--cyan); background: rgba(34,211,238,.12); }
+    .scape span { font-size: 1.3rem; } .scape.on { border-color: var(--cyan); background: rgba(var(--accent-rgb), .12); }
     .timer-card { display: grid; place-items: center; padding: 24px 10px; }
     .ring { width: min(72vw, 280px); height: min(72vw, 280px); transform: rotate(-90deg); grid-area: 1 / 1; }
-    .track { fill: none; stroke: rgba(34,211,238,.12); stroke-width: 8; }
-    .prog { fill: none; stroke: var(--cyan); stroke-width: 8; stroke-linecap: round; filter: drop-shadow(0 0 6px rgba(34,211,238,.7)); transition: stroke-dashoffset 1s linear; }
+    .track { fill: none; stroke: rgba(var(--accent-rgb), .12); stroke-width: 8; }
+    .prog { fill: none; stroke: var(--cyan); stroke-width: 8; stroke-linecap: round; filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), .7)); transition: stroke-dashoffset 1s linear; }
     .prog.brk { stroke: var(--green); }
     .center { grid-area: 1 / 1; text-align: center; max-width: 60%; }
     .time { font-size: 3rem; letter-spacing: .04em; }

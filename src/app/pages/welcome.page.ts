@@ -61,7 +61,7 @@ const FOCUS_AREAS = [
   styles: [`
     .welcome { min-height: 100dvh; padding: calc(24px + var(--safe-top, 0px)) 20px calc(24px + var(--safe-bottom)); display: flex; flex-direction: column; gap: 14px; max-width: 560px; margin: 0 auto; }
     .dots { display: flex; gap: 6px; justify-content: center; } .dots i { width: 28px; height: 4px; border-radius: 2px; background: var(--line-strong); } .dots i.on { background: var(--cyan); }
-    .orb { font-size: 4rem; text-align: center; color: var(--cyan); text-shadow: 0 0 30px rgba(34,211,238,.8); }
+    .orb { font-size: 4rem; text-align: center; color: var(--cyan); text-shadow: 0 0 30px rgba(var(--accent-rgb), .8); }
     h1 { margin: 6px 0 0; } .presets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .preset { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; color: inherit; } .preset.on { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan) inset; }
     .pi { font-size: 1.6rem; } .preset small { opacity: .7; } .nav { margin-top: auto; padding-top: 12px; }

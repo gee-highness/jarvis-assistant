@@ -54,12 +54,12 @@ import { addDays, parseYmd } from '../core/util';
   `,
   styles: [`
     .grid-head, .grid-row { display: grid; grid-template-columns: minmax(90px, 1.6fr) repeat(7, 1fr) 30px; align-items: center; gap: 4px; }
-    .grid-row { padding: 7px 0; border-top: 1px solid rgba(34,211,238,.08); }
+    .grid-row { padding: 7px 0; border-top: 1px solid rgba(var(--accent-rgb), .08); }
     .tiny { font-size: .65rem; color: var(--dim); text-align: center; }
     .tiny.today { color: var(--cyan); }
     .name { font-size: .9rem; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-    .cell { min-height: 0; height: 28px; padding: 0; border-radius: 7px; background: rgba(34,211,238,.05); border: 1px solid var(--line); }
-    .cell.on { background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 8px rgba(34,211,238,.6); }
+    .cell { min-height: 0; height: 28px; padding: 0; border-radius: 7px; background: rgba(var(--accent-rgb), .05); border: 1px solid var(--line); }
+    .cell.on { background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 8px rgba(var(--accent-rgb), .6); }
     .streak { text-align: center; color: var(--gold); }
     .menu { padding: 6px 0 10px; }
   `],

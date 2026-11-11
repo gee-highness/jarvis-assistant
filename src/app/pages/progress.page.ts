@@ -55,16 +55,16 @@ import { ACHIEVEMENTS, ProgressService } from '../core/progress.service';
   styles: [`
     .big { font-size: 1.4rem; font-weight: 600; } .right { text-align: right; }
     h2 { margin: 18px 0 8px; }
-    .bar { height: 10px; border-radius: 6px; background: rgba(34,211,238,.12); overflow: hidden; margin: 10px 0 6px; }
+    .bar { height: 10px; border-radius: 6px; background: rgba(var(--accent-rgb), .12); overflow: hidden; margin: 10px 0 6px; }
     .bar.thin { height: 5px; margin: 8px 0 0; }
-    .bar i { display: block; height: 100%; background: linear-gradient(90deg, #22d3ee, #4ade80); border-radius: 6px; transition: width .5s cubic-bezier(.2,.9,.3,1.2); }
+    .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--cyan), #4ade80); border-radius: 6px; transition: width .5s cubic-bezier(.2,.9,.3,1.2); }
     .quest { margin-bottom: 8px; } .quest.done { border-color: rgba(74,222,128,.5); opacity: .85; }
     .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; }
     .grid4 b { display: block; font-size: 1.2rem; } .grid4 span { font-size: .72rem; color: var(--muted); }
     .heat { display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-flow: column; grid-template-rows: repeat(7, 1fr); gap: 3px; }
     .heat i { aspect-ratio: 1; border-radius: 3px; background: rgba(148,163,184,.12); }
-    .heat i.h1 { background: rgba(34,211,238,.3); } .heat i.h2 { background: rgba(34,211,238,.55); }
-    .heat i.h3 { background: rgba(34,211,238,.8); } .heat i.h4 { background: #4ade80; }
+    .heat i.h1 { background: rgba(var(--accent-rgb), .3); } .heat i.h2 { background: rgba(var(--accent-rgb), .55); }
+    .heat i.h3 { background: rgba(var(--accent-rgb), .8); } .heat i.h4 { background: #4ade80; }
     .ach { display: grid; gap: 8px; }
     .a { display: flex; gap: 12px; align-items: center; } .a.locked { opacity: .5; } .ico { font-size: 1.6rem; }
   `],

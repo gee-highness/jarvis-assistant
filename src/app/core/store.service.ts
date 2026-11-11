@@ -88,7 +88,7 @@ export class StoreService {
 
   async init(): Promise<void> {
     const s = await db.settings.get('main');
-    this.settings.set(s ? { ...DEFAULT_SETTINGS, ...s, personality: mergePersonality(s.personality), voice: { ...DEFAULT_SETTINGS.voice, ...(s.voice ?? {}) }, cloud: { ...DEFAULT_SETTINGS.cloud, ...(s.cloud ?? {}) } } : DEFAULT_SETTINGS);
+    this.settings.set(s ? { ...DEFAULT_SETTINGS, ...s, personality: mergePersonality(s.personality), voice: { ...DEFAULT_SETTINGS.voice, ...(s.voice ?? {}) }, cloud: { ...DEFAULT_SETTINGS.cloud, ...(s.cloud ?? {}) }, look: { ...DEFAULT_SETTINGS.look, ...(s.look ?? {}) }, pet: { ...DEFAULT_SETTINGS.pet, ...(s.pet ?? {}) } } : DEFAULT_SETTINGS);
     if (!s) await db.settings.put(DEFAULT_SETTINGS);
     const [tasks, habits, sessions, reviews, notes, reminders, plans, goals, journal, templates] = await Promise.all([
       db.tasks.toArray(), db.habits.toArray(), db.sessions.orderBy('start').reverse().limit(2000).toArray(),

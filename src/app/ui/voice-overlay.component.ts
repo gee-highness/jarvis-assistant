@@ -47,7 +47,7 @@ import { OrbComponent } from './orb.component';
     </div>
   `,
   styles: [`
-    .overlay { position: fixed; inset: 0; z-index: 50; background: radial-gradient(600px 600px at 50% 35%, rgba(34,211,238,.13), transparent 70%), rgba(3,6,10,.97);
+    .overlay { position: fixed; inset: 0; z-index: 50; background: radial-gradient(600px 600px at 50% 35%, rgba(var(--accent-rgb), .13), transparent 70%), rgba(3,6,10,.97);
       display: flex; flex-direction: column; align-items: center; padding: calc(14px + var(--safe-top)) 18px calc(18px + var(--safe-bottom)); gap: 14px; }
     .top, .bottom { width: 100%; max-width: 560px; }
     .orb-btn { background: none; border: none; padding: 0; margin-top: 4vh; min-height: 0; border-radius: 50%; }

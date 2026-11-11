@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { JarvisService } from '../core/jarvis.service';
+import { ReflexService } from '../core/reflex/reflex.service';
 import { JournalEntry } from '../core/models';
 import { JarvisDevice } from '../core/native';
 import { OllamaService } from '../core/ollama.service';
@@ -70,17 +71,18 @@ const TAGS = ['work', 'family', 'health', 'money', 'learning', 'rest', 'stress',
   `,
   styles: [`
     .stack { display: flex; flex-direction: column; gap: 12px; } h2 { margin: 18px 0 8px; } .wrap { flex-wrap: wrap; gap: 6px; }
-    .scale { display: flex; gap: 6px; } .scale button { flex: 1; font-size: 1.2rem; padding: 8px 0; } .scale button.on { border-color: var(--cyan); background: rgba(34,211,238,.16); transform: scale(1.06); }
+    .scale { display: flex; gap: 6px; } .scale button { flex: 1; font-size: 1.2rem; padding: 8px 0; } .scale button.on { border-color: var(--cyan); background: rgba(var(--accent-rgb), .16); transform: scale(1.06); }
     .chart { width: 100%; height: 90px; } .chart polyline { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
-    .l1 { stroke: #22d3ee; } .l2 { stroke: #facc15; } .dot1 { color: #22d3ee; margin-right: 12px; } .dot2 { color: #facc15; }
+    .l1 { stroke: var(--cyan); } .l2 { stroke: #facc15; } .dot1 { color: var(--cyan); margin-right: 12px; } .dot2 { color: #facc15; }
     .ok { color: #86efac; } .hist { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-    .bubble { margin-top: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(34,211,238,.08); border: 1px solid var(--line); }
+    .bubble { margin-top: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(var(--accent-rgb), .08); border: 1px solid var(--line); }
   `],
 })
 export class JournalPage {
   readonly store = inject(StoreService);
   private ollama = inject(OllamaService);
   private jarvis = inject(JarvisService);
+  private reflex = inject(ReflexService);
   readonly moods = MOODS; readonly tags = TAGS;
   readonly mood = signal(this.store.todayJournal()?.mood ?? 3);
   readonly energy = signal(this.store.todayJournal()?.energy ?? 3);
@@ -137,6 +139,11 @@ export class JournalPage {
   async reflect() {
     this.busy.set(true); this.reflection.set('');
     try {
+      if (this.jarvis.reflexMode()) {
+        await this.reflex.init();
+        this.reflection.set(this.reflex.engine.reflectJournal(this.days().slice(-14)));
+        return;
+      }
       if (!(await this.jarvis.ensureEngine())) { this.reflection.set('The brain is offline. Download a model on the Brain page.'); return; }
       const recent = this.days().slice(-10).map(e => `${e.date} mood ${e.mood}/5 energy ${e.energy}/5: ${e.text.slice(0, 220)}${e.gratitude ? ' | grateful: ' + e.gratitude : ''}`).join('\n');
       this.reflection.set(await this.ollama.complete(this.jarvis.persona() + '\nYou are reflecting on the user\'s journal. Notice patterns, name one strength, one watch-out, and suggest one small experiment. Max 120 words.', recent, { temperature: 0.6, background: false, maxTokens: 300 }));
