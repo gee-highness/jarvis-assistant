@@ -5,6 +5,7 @@
 import os, random, re, sys
 HERE=os.path.dirname(os.path.abspath(__file__))+"/"
 exec(open(HERE+"gen5.py").read().split("def gen5")[0])
+exec(open(HERE+"vent.py").read())   # make(r,k): venting / crisis sentences for listening mode (labels 44, 45)
 DBL={"get","put","run","prep","plan","set","chop","mop","stop","jog","swim","shop","pop","pat","tip","reset","ship","submit","top","transfer","trim","cancel","label"}
 def ing(vp):
     w,_,rest=vp.partition(" ")
@@ -97,6 +98,17 @@ def genk(k,seed,seen):
     IN=[p for i,p in enumerate(IND) if i%2==k%2 or p==""]
     SU=[p for i,p in enumerate(SUF) if i%3==(k//3)%3 or p==""]
     while len(out)<N:
+        if k and r.random()<.04:   # venting: no command wrappers, people write these lower-case and unpunctuated a lot
+            m,vc=make(r,k); x=r.random()
+            if x<.3: m=re.sub(r"[,.!?:]","",m).lower()
+            elif x<.55: m=m.lower()
+            elif x<.9: m=m[0].upper()+m[1:]
+            if r.random()<.03:
+                i=r.randrange(1,len(m)-2)
+                if m[i].isalpha() and m[i+1].isalpha(): m=m[:i]+m[i+1]+m[i]+m[i+2:]
+            h=hash(m)
+            if h in seen: continue
+            seen.add(h); out.append(m); lab.append(len(CATS)+(vc=="crisis")); continue
         c=r.choices(CATS,W)[0]; t=r.choice(FR[c]); imp=t[0]=="!"; q=t[-1]=="?"
         m=fillx(r,t.strip("!?")); pre=r.choice(PR)
         if imp:

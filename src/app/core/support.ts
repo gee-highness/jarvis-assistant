@@ -3,6 +3,7 @@
  * "get things done" to "sit with them". 0 = everyday chat, 1 = venting / low, 2 = possible crisis.
  */
 import { fixTypos } from './tools/helpers';
+import { distressLead } from './tools/router-nb';
 
 export type SupportLevel = 0 | 1 | 2;
 
@@ -13,11 +14,19 @@ const LOW = /depres|deppres|lonley|hopeless|worthless|useless|helpless|lonel|\ba
 /** Everyday phrases that contain a heavy word but are not distress. */
 const BENIGN = /dying (to|for a|of (laughter|boredom))|(deadline|traffic|workout|commute|meeting|gym|heat|homework|boss) is killing me|kill(ed|ing)? (it|time)\b|dead (tired|battery|line|on)|battery (is |'s )?dead/i;
 
+/** How clearly (nats) the learned model must prefer venting / crisis over every ordinary intent. */
+const VENT_LEAD = 4, CRISIS_LEAD = 6;
+
 export function supportLevel(text: string): SupportLevel {
   const t = text.replace(BENIGN, ' ');
   const f = fixTypos(t);
   if (CRISIS.test(t) || CRISIS.test(f)) return 2;
-  return LOW.test(t) || LOW.test(f) ? 1 : 0;
+  if (LOW.test(t) || LOW.test(f)) return 1;
+  // no tell-tale words: ask the trained intent model whether this reads like someone hurting
+  const lead = distressLead(t);
+  if (!lead) return 0;
+  if (lead.crisis >= CRISIS_LEAD) return 2;
+  return lead.vent >= VENT_LEAD ? 1 : 0;
 }
 
 /** Level for this turn, remembering the last few things they said so the tone does not snap back mid-vent. */
