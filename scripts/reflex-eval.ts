@@ -97,7 +97,7 @@ const WANT: Record<string, RegExp | null> = {
   for (const [c, a] of Object.entries(got)) {
     let ok = 0; const wrong: Record<string, number> = {}; const ex: string[] = [];
     for (const m of a) {
-      (eng as any).ds.pending = undefined; (eng as any).ds.recentIntents = []; (eng as any).ds.lastIntent = undefined; log.length = 0;
+      (eng as any).ds.pending = undefined; (eng as any).ds.recentIntents = []; (eng as any).ds.lastIntent = undefined; log.length = 0; habits.splice(3); tasks.splice(4); reminders.length = 0; mem.splice(1);   // same phone state for every sentence
       const r = await eng.respond(m);
       if (WANT[c]!.test(r.intent)) ok++; else { wrong[r.intent] = (wrong[r.intent] || 0) + 1; if (ex.length < 3) ex.push(`${m} -> ${r.intent}`); }
     }

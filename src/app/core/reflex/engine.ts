@@ -247,7 +247,7 @@ export class ReflexEngine {
       // habit hook: "gym done", "go for a run done" → log the matching habit
       const habits = this.host.state().habits;
       let habitHit = false;
-      if (habits.length && /\b(done|did|finished|completed|log|logged|tick|ticked|went)\b/.test(text) && top.score < 0.75) {
+      if (habits.length && /\b(done|did|finished|completed|log|logged|tick|ticked|went)\b/.test(text) && top.score < 0.75 && !/\b(feeling|feel|felt|mood)\b/.test(text)) {
         const hit = habits.find(hb => contentWords(hb.toLowerCase()).map(stem).some(w => w.length > 2 && text.split(' ').map(stem).includes(w)));
         if (hit) { top = { ...top, id: 'habit.log', score: 0.8 }; habitHit = true; }
       }

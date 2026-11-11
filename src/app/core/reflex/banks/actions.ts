@@ -66,7 +66,7 @@ export const ACTIONS: Bank = {
     { id: 'reminder.add', kind: 'action', topic: 'reminders',
       examples: ['remind me to call mom at 5', 'remind me in 20 minutes to check the oven', 'set a reminder for tomorrow at 9 to pay rent', 'remind me about the meeting', 'ping me at 3pm to stretch', 'do not let me forget to buy flowers tomorrow', 'remind me tonight to take my pills', 'reminder to water the plants at 6pm', 'alert me in an hour'],
       patterns: [/\bremind(er)?\b/, /\b(ping|alert|nudge|notify) me\b/, /\bdo not let me forget\b/],
-      not: [/\b(cancel|delete|remove|list|show|what are|my reminders)\b/] },
+      not: [/\b(cancel|delete|remove|list|show|what are|my reminders)\b/, /\bremind me (what|which|how many|how much|who|where|when)\b/] },
     { id: 'reminder.list', kind: 'action', topic: 'reminders',
       examples: ['what are my reminders', 'show reminders', 'list my reminders', 'do i have any reminders', 'upcoming reminders'],
       patterns: [/\b(show|list|what are|any|upcoming|my)\b.*\breminders\b/] },
