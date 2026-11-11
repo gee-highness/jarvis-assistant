@@ -17,7 +17,8 @@ Also "enhance everything to do with the non-LLM model" (router rules, typo repai
 - Do NOT run generation at the same time as eval/fold: the worker was OOM-killed once doing that.
 - Group 131-140 (K=3): DONE (99.99% -> 100.00%; detector 77/78).
 - Group 141-150: DONE (99.68% -> 100.00%; detector 77/78 -> 77/78).
-- Groups 151-200 (K=5..9): generation queued in background (/tmp/gen$lo.done marks each); if the container was reset, regenerate with `scripts/group.sh gen $lo`. Not yet tuned.
+- Group 151-160: DONE (99.76% -> 100.00%; detector 77/78 -> 78/78).
+- Groups 161-200 (K=6..9): generation queued in background (/tmp/gen$lo.done marks each); if the container was reset, regenerate with `scripts/group.sh gen $lo`. Not yet tuned.
 - User asked: when set 200 is reached, build the APK (workflow_dispatch of android.yml on this branch publishes a release) and give it to them in chat.
 
 ## Per-group commands (lo = 101, 111, ...)
