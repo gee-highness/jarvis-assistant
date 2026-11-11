@@ -20,7 +20,8 @@ Also "enhance everything to do with the non-LLM model" (router rules, typo repai
 - Group 151-160: DONE (99.76% -> 100.00%; detector 77/78 -> 78/78).
 - Group 161-170: DONE (99.98% -> 100.00%; detector 78/78 -> 78/78).
 - Group 171-180: DONE (99.95% -> 100.00%; detector 78/78 -> 78/78).
-- Groups 181-200 (K=8..9): generation queued in background (/tmp/gen$lo.done marks each); if the container was reset, regenerate with `scripts/group.sh gen $lo`. Not yet tuned.
+- Group 181-190: DONE (99.81% -> 100.00%; detector 78/78 -> 78/78).
+- Groups 191-200 (K=9..9): generation queued in background (/tmp/gen$lo.done marks each); if the container was reset, regenerate with `scripts/group.sh gen $lo`. Not yet tuned.
 - User asked: when set 200 is reached, build the APK (workflow_dispatch of android.yml on this branch publishes a release) and give it to them in chat.
 
 ## Per-group commands (lo = 101, 111, ...)

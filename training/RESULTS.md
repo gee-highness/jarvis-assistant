@@ -28,6 +28,7 @@ Note on 101-110: the model had already seen an earlier, clumsier version of thes
 | 151-160 | speech round 6 | 99.76% | 100.00% |
 | 161-170 | speech round 7 | 99.98% | 100.00% |
 | 171-180 | speech round 8 | 99.95% | 100.00% |
+| 181-190 | speech round 9 | 99.81% | 100.00% |
 
 ## Listening-mode detector (venting / crisis, learned alongside the router from set 111 on)
 
@@ -43,3 +44,4 @@ Hand-written = 78 phrases written by hand, never generated (scripts/test-support
 | 151-160 | 99.67% / 99.67% | 99.92% / 100.00% | 0.00% | 77/78 -> 78/78 |
 | 161-170 | 99.99% / 99.99% | 100.00% / 100.00% | 0.00% | 78/78 -> 78/78 |
 | 171-180 | 100.00% / 100.00% | 99.03% / 99.03% | 0.00% | 78/78 -> 78/78 |
+| 181-190 | 100.00% / 100.00% | 100.00% / 100.00% | 0.00% | 78/78 -> 78/78 |
