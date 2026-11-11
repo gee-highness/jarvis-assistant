@@ -70,3 +70,19 @@ All Reflex suites (reflex-test, fuzz, deep 264/264, blind, thousand 855/855, pet
 
 Caveats: synthetic sentences; 2,460-sentence samples; "right kind of action" does not check that the details (time, task name) were extracted correctly.
 
+### Reflex training run over sets 201-250 (50M further sentences, new seeds, same phrasing families)
+
+Each group folded into the trained intent model; Reflex scored on the group's last set (60 per category) before and after the fold.
+
+| Sets | Reflex before fold | After fold |
+|---|---|---|
+| 201-210 | 94.11% | 94.55% |
+| 211-220 | 98.13% | 98.70% |
+| 221-230 | 92.64% | 92.85% |
+| 231-240 | 94.39% | 94.72% |
+| 241-250 | 97.24% | 97.76% |
+
+After the run: all 7 Reflex suites pass; set 200 scores 98.01% (was 43.25% on main), set 180 96.59% before the run.
+The folds add roughly 0.2-0.6 points each; the large gains came from wiring the trained model into Reflex and unwrapping openers/closers.
+Known weak spots left: add_task/open_app phrasings in the 221-230 slice, smalltalk and habit phrasings in 201-210, planning/progress in 231-240.
+
