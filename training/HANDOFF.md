@@ -15,7 +15,8 @@ Also "enhance everything to do with the non-LLM model" (router rules, typo repai
 - Per round now: `scripts/round.sh pre $lo` (honest scores + misses), patch triggers, `scripts/round.sh post $lo`, also `node scripts/test-support.mjs` (hand-written phrases; add the count to the RESULTS.md listening table). Debug model confidence: `node scripts/lead.mjs "sentence"`.
 - Group 121-130 (K=2): DONE (99.43% -> 100.00%; detector 76/78 hand-written).
 - Do NOT run generation at the same time as eval/fold: the worker was OOM-killed once doing that.
-- Groups 131-200 (K=3..9): 131-140 generated; rest: generation queued in background (/tmp/gen$lo.done marks each); if the container was reset, regenerate with `scripts/group.sh gen $lo`. Not yet tuned.
+- Group 131-140 (K=3): DONE (99.99% -> 100.00%; detector 77/78).
+- Groups 141-200 (K=4..9): generation queued in background (/tmp/gen$lo.done marks each); if the container was reset, regenerate with `scripts/group.sh gen $lo`. Not yet tuned.
 - User asked: when set 200 is reached, build the APK (workflow_dispatch of android.yml on this branch publishes a release) and give it to them in chat.
 
 ## Per-group commands (lo = 101, 111, ...)

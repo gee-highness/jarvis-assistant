@@ -17,7 +17,7 @@ const BENIGN = /dying (to|for a|of (laughter|boredom))|(deadline|traffic|workout
 /** How clearly (nats) the learned model must prefer venting / crisis over every ordinary intent. */
 const VENT_LEAD = 5, CRISIS_LEAD = 10;
 /** The model may only raise the alarm to crisis when the sentence also touches on life, death, leaving or means. */
-const CRISIS_CUE = /\b(die|dying|dead|death|gone|alive|live|living|life|here|wake|waking|end|ending|goodbyes?|funeral|pills|tablets|knife|bridge|rope|hurt|hurting|cut|cutting|born|disappear|vanish(ed)?|future|birthday|christmas|around|without me|next (week|month|year)|safe|myself|way out|way to go|do it|make it)\b/i;
+const CRISIS_CUE = /\b(die|dying|dead|death|gone|alive|live|living|life|here|wake|waking|end|ending|goodbyes?|funeral|pills|tablets|knife|bridge|rope|hurt|hurting|cut|cutting|born|disappear|vanish(ed)?|future|birthday|christmas|around|without me|next (week|month|year)|safe|myself|way out|way to go|do it|make it|things away|if i went|tonight|meds|medication|note)\b/i;
 /** A clear instruction in the sentence: trust the words, not the model, so commands are never mistaken for venting. */
 const COMMANDISH = /\b(can|could|would|will) you\b|\b(remind me|a reminder|please|my (list|tasks|to-?do|calendar|habits?))\b|\bfor me\W*(thanks|cheers|please|ta)?\W*$|^\W*((hey|hi|hiya|ok|okay|yo|so|right|um|uh|erm?|well|actually|oh|also|alright|morning|evening|quick one|hang on|jarvis|mate|and)\W+)*(remind|change|add|set|open|play|start|stop|move|tick|log|show|list|delete|remove|schedule|cancel|snooze|turn|call|text|message|search|find|convert|look up|what'?s|how (many|much|long)|skip|pause|resume|rename|create|make|put|mark|tell me|give me|read|check|book|plan)\b|, (change|move|tick|add|log|set|play|open|hide|take|mark|cross|put|delete|cancel|schedule|book) /i;
 
@@ -25,13 +25,11 @@ export function supportLevel(text: string): SupportLevel {
   const t = text.replace(BENIGN, ' ');
   const f = fixTypos(t);
   if (CRISIS.test(t) || CRISIS.test(f)) return 2;
+  // the trained intent model hears what the word lists cannot (and may raise sadness to crisis)
+  const lead = COMMANDISH.test(t) ? null : distressLead(t);
+  if (lead && lead.crisis >= CRISIS_LEAD && CRISIS_CUE.test(t)) return 2;
   if (LOW.test(t) || LOW.test(f)) return 1;
-  // no tell-tale words: ask the trained intent model whether this reads like someone hurting
-  if (COMMANDISH.test(t)) return 0;
-  const lead = distressLead(t);
-  if (!lead) return 0;
-  if (lead.crisis >= CRISIS_LEAD && CRISIS_CUE.test(t)) return 2;
-  return lead.vent >= VENT_LEAD ? 1 : 0;
+  return lead && lead.vent >= VENT_LEAD ? 1 : 0;
 }
 
 /** Level for this turn, remembering the last few things they said so the tone does not snap back mid-vent. */

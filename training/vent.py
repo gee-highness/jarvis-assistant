@@ -57,7 +57,8 @@ C=["I don't see myself being around much longer","everyone would be fine without
 "I'd rather be dead than feel this","I'm a burden and they'd be relieved if I went","I've decided I'm done with life","I nearly did something to myself yesterday",
 "I don't trust myself to be alone right now","I've been saying my goodbyes","living hurts too much","I don't plan on being here for my next birthday",
 "what's the easiest way to go","I keep thinking they'd cope without me","I feel like ending everything","I'm thinking about suicide","my life isn't worth living",
-"I looked at the knife for a long time","if I vanished tomorrow nobody would care"]
+"I looked at the knife for a long time","if I vanished tomorrow nobody would care",
+"I've been saving up my tablets","I've been stockpiling my meds","I keep counting how many tablets it would take","I don't think I'll be around for Christmas","I've sorted out who gets my stuff","I just want to go to sleep forever"]
 def _sl(L,k): return [x for i,x in enumerate(L) if i%3==k%3 or x==""]
 def make(r,k):
     o=r.choice(_sl(OPEN,k)); Vs=_sl(V,k); x=r.random()
