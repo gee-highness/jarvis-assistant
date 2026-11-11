@@ -5,6 +5,7 @@ const ctx = (level: 0 | 1 | 2) => ({ honorific: 'sir', help: '• Example line: 
 const convs: string[][] = [
   ["I'm sad", "It's bad", "I'm depressed and overthinking and anxious", "I haven't smoked weed in days and I feel like shit", 'What?', 'Pick', 'I want an easy win', "I don't know I thought you had suggestions", 'Ok', 'My heart hurts from anxiety', 'another', 'ok', 'ok', "i don't know", '7', 'thanks', 'goodnight'],
   ["i dont even know why i bother", 'idk', 'idk', 'nothing', "you don't understand", 'my dad walked out and i keep going over it', 'i just want him to say sorry'],
+  ['I feel unstable and I scared my wife by being angry and trying to pick her up then dropping her', "She's really angry with me and might leave me", 'she is fine', 'what do i do', 'ok', 'another', 'i just snapped'],
   ['i think everyone would cope fine if i was gone', 'yes', 'not really'],
   ['honestly they would all be better without me around', 'no', 'just tired of it all'],
 ];

@@ -4,9 +4,12 @@
  * Stateful, so "what?", "I don't know", "ok" and "pick" are answered in context instead of as new topics.
  */
 export interface ListenCtx { honorific: string; help: string; emergency: string; level: 0 | 1 | 2; }
-type Theme = 'weed' | 'drink' | 'panic' | 'heart' | 'anxious' | 'overthink' | 'depressed' | 'sad' | 'lonely' | 'grief' | 'worth' | 'anger' | 'tired' | 'sleep' | 'numb' | 'overwhelm' | 'bottled' | 'doubt' | 'people' | 'work' | 'vague';
+type Theme = 'harm' | 'unstable' | 'leave' | 'weed' | 'drink' | 'panic' | 'heart' | 'anxious' | 'overthink' | 'depressed' | 'sad' | 'lonely' | 'grief' | 'worth' | 'anger' | 'tired' | 'sleep' | 'numb' | 'overwhelm' | 'bottled' | 'doubt' | 'people' | 'work' | 'vague';
 
 const THEMES: [Theme, RegExp][] = [
+  ['harm', /\bi (scared|frightened|hurt|hit|pushed|shoved|grabbed|dropped|slapped|shook|threw|shouted at|screamed at|yelled at|snapped at|lost it (at|with|on))\b|\b(lost my temper|lost control|got physical|was violent|raised my (hand|voice)|punched (a|the) wall|broke (something|things))\b|\bi (just )?(snapped|lost it|exploded|blew up)\b/],
+  ['unstable', /\b(unstable|losing (it|my mind|control|my grip)|out of control|not myself|going (crazy|mad|insane)|can'?t control (myself|it|my)|don'?t trust myself|falling apart)\b/],
+  ['leave', /\b(leave me|leaving me|left me|might leave|going to leave|walk(ed)? out|divorce|break(ing)? ?up|broke up|wants? (space|out|a break)|(does not|doesn'?t|not) want to be (with|around|near) me|(angry|mad|furious|upset) (with|at) me|hates me|(won'?t|will not|not) (talk|speak|look)(ing)? (to|at) me|lose (her|him|them|my (wife|husband|partner|girlfriend|boyfriend|family|kids)))\b/],
   ['weed', /\b(weed|cannabis|marijuana|joint|joints|stoned|smok(e|ed|ing)|vape|vaping|nicotine|cigarettes?)\b/],
   ['drink', /\b(drink(ing)?|drunk|alcohol|booze|sober|hungover|pills|using again|relapse|clean for|craving|withdrawal)\b/],
   ['panic', /\b(panic|panicking|can'?t breathe|cant breathe|hyperventilat\w*|shaking|trembling|heart (is )?(racing|pounding)|going to pass out)\b/],
@@ -32,6 +35,10 @@ const THEMES: [Theme, RegExp][] = [
 
 /** What was heard, said back. {h} = honorific. Several each so a long talk does not repeat. */
 const REFLECT: Record<Theme, string[]> = {
+  harm: ["That frightened you as well as them, {h}. Telling me took honesty. It does not make you a monster, and it is not something to wave away either. Both are true.",
+    "You crossed a line you did not want to cross, and you know it. That you are shaken by it matters."],
+  unstable: ["Feeling unstable is frightening. It is like not being able to trust your own reactions.", "When you cannot predict yourself, everything feels unsafe. That is a hard place to be."],
+  leave: ["You are frightened of losing them. That fear makes sense, and it shows how much they matter to you.", "The thought of them going is unbearable right now. Someone needing space after being scared is not the same as someone leaving for good."],
   weed: ["A few days without it, and you feel rough. That makes sense, {h}: the first days off it often bring low mood, anxiety, poor sleep and a short fuse. It usually peaks in the first week and eases after that. It is your body resettling, not you failing.",
     "Coming off it is harder than people admit. What you are feeling is real, and it does ease."],
   drink: ["That is a lot for your body and your head to be dealing with at once.", "Going without something you leaned on leaves a real gap. It makes sense that it hurts."],
@@ -58,6 +65,9 @@ const REFLECT: Record<Theme, string[]> = {
 
 /** One open question per theme: [id, question, simpler wording used when they say "what?"]. */
 const ASK: Record<Theme, [string, string, string][]> = {
+  harm: [['harm.ok', 'First: are they all right, physically?', 'Is the other person hurt?'], ['harm.before', 'What was happening inside you just before it tipped over?', 'What did you feel right before it happened?'], ['harm.safe', 'Are you worried it could happen again today?', 'Do you think you might lose control again today?']],
+  unstable: [['uns.look', 'What does unstable look like for you today?', 'What is happening that makes you feel unstable?'], ['uns.safe', 'Are you worried you might hurt yourself or someone else?', 'Do you feel you might hurt yourself or anyone?']],
+  leave: [['leave.fear', 'What are you most afraid will happen?', 'What is the worst thing you think could happen?'], ['leave.say', 'If they would listen for one minute, what would you want them to hear?', 'What do you want to tell them?']],
   weed: [['weed.choice', 'Was stopping your own choice, or did it just happen?', 'Did you decide to stop, or did you run out?'], ['weed.worst', 'What is the hardest part right now: the mood, the sleep, or the craving?', 'What feels worst: your mood, your sleep, or wanting to smoke?']],
   drink: [['drink.worst', 'What is the hardest part of it at this moment?', 'What feels worst right now?']],
   panic: [['panic.now', 'Is it happening right now, or is it more that you are afraid of the next one?', 'Are you panicking this minute?']],
@@ -83,6 +93,10 @@ const ASK: Record<Theme, [string, string, string][]> = {
 
 /** Small steps, only offered when they ask for one. [id, step]. */
 const STEPS: Record<string, [string, string][]> = {
+  anger: [['a.space', 'Give them space, and mean it. If they want to be in another room, or out of the house, let them go without following or pleading. Space after a fright is how trust starts to come back.'],
+    ['a.sorry', 'When they are ready to hear it, one short apology with no "but": "I scared you and I am sorry. That was not okay." Then stop talking and let them answer, or not.'],
+    ['a.exit', 'Decide now what you do the next time the anger rises: you say "I need ten minutes" and you leave the room. Walk, cold water on your hands, slow breaths out. You come back when your body has settled.'],
+    ['a.person', 'This week, tell a doctor or counsellor exactly what you told me. Anger that frightens you is something they help with every day, and going is a way of showing the person you love that you are taking it seriously.']],
   calm: [['breath', 'Breathe in through your nose for 4, and out slowly through your mouth for 6. Do that five times. The long breath out is what tells your body it is safe.'],
     ['ground', 'Look around and name five things you can see, four you can touch, three you can hear. It pulls your mind out of the storm and back into the room.'],
     ['cold', 'Run cold water over your wrists or splash your face for thirty seconds. It slows a racing heart faster than thinking can.']],
@@ -147,8 +161,8 @@ export class Listener {
     this.used.add(q[0]); this.lastAsk = q; return q[1];
   }
   private step(): string {
-    const t = this.themes; const key = t.includes('weed') || t.includes('drink') ? 'weed' : t.includes('panic') || t.includes('heart') || t.includes('anxious') ? 'calm' : t.includes('overthink') || t.includes('sleep') ? 'head' : 'low';
-    const order = [key, 'calm', 'head', 'low'];
+    const t = this.themes; const key = t.includes('harm') || t.includes('leave') || t.includes('anger') || t.includes('unstable') ? 'anger' : t.includes('weed') || t.includes('drink') ? 'weed' : t.includes('panic') || t.includes('heart') || t.includes('anxious') ? 'calm' : t.includes('overthink') || t.includes('sleep') ? 'head' : 'low';
+    const order = [key, 'calm', 'head', 'low'].filter((k, i, a) => a.indexOf(k) === i);
     for (const k of order) for (const s of STEPS[k]) if (!this.used.has('s.' + s[0])) { this.used.add('s.' + s[0]); this.lastAsk = ['step.after', 'Tell me how that goes, or say "another" if it is not the one.', 'Try it, then tell me if it helped. Say "another" for a different one.']; return s[1]; }
     return 'I have given you every small step I trust. The honest next one is a person: someone you know, or a doctor or counsellor. I will stay here either way.';
   }
@@ -183,7 +197,7 @@ export class Listener {
       return out(`Sorry, {h}. I only meant that I am here and listening. What is on your mind?`);
     }
     // -- they want something to do
-    if (WANT_STEP.test(t) || (this.pendingStep && (YES.test(t) || SHORT.test(t) && !NO.test(t)))) {
+    if ((words <= 9 && WANT_STEP.test(t)) || (this.pendingStep && (YES.test(t) || SHORT.test(t) && !NO.test(t)))) {
       this.pendingStep = false;
       return out(`Here is one small thing, {h}. ${this.step()}\n\n${this.lastAsk ? this.lastAsk[1] : ''}`.trim());
     }
@@ -221,7 +235,7 @@ export class Listener {
     if (found.includes('heart') || found.includes('worth')) found.splice(0, found.length, ...found.filter(k => k !== 'sad' && k !== 'vague'));
     const feelings = found.filter(k => ['depressed', 'overthink', 'anxious', 'sad', 'lonely', 'tired', 'numb', 'anger', 'overwhelm'].includes(k));
     const NAME: Partial<Record<Theme, string>> = { depressed: 'depressed', overthink: 'overthinking', anxious: 'anxious', sad: 'sad', lonely: 'lonely', tired: 'exhausted', numb: 'numb', anger: 'angry', overwhelm: 'overwhelmed' };
-    const specific = found.some(k => ['heart', 'panic', 'weed', 'drink', 'grief', 'people', 'bottled', 'doubt', 'worth'].includes(k));
+    const specific = found.some(k => ['harm', 'unstable', 'leave', 'heart', 'panic', 'weed', 'drink', 'grief', 'people', 'bottled', 'doubt', 'worth'].includes(k));
     if (feelings.length >= 2 && !specific && !this.used.has('mix.loudest')) {
       const names = feelings.map(k => NAME[k]!); const list = names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
       parts.push(`${list.charAt(0).toUpperCase() + list.slice(1)}, all at once. That is a heavy mix to be sitting in, {h}.`);
