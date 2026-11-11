@@ -17,4 +17,6 @@ Note: pre-tuning numbers are the honest held-out scores; post-tuning numbers are
 
 | Sets | Phrasing | Before tuning | After tuning |
 |---|---|---|---|
-| 101-110 | speech round 1 | 98.61% | 100.00% |
+| 101-110 | speech round 1 (natural-grammar regeneration) | 99.96% | 100.00% |
+
+Note on 101-110: the model had already seen an earlier, clumsier version of these frames, so 99.96% is not fully held-out. Fix: spoken maths ("12 times 8", "divided by", "square root").

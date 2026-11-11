@@ -1,0 +1,8 @@
+import { build } from 'esbuild';
+await build({ entryPoints: ['src/app/core/support.ts'], bundle: true, format: 'esm', outfile: '/tmp/jarvis-support-test.mjs', logLevel: 'silent' });
+const { supportLevel, offlineSupportReply } = await import('/tmp/jarvis-support-test.mjs');
+const T = { 2: ["i want to die","i dont want to be here anymore","sometimes i think everyone would be better off without me","i cant go on","thinking about killing myself","im going to end it all"],
+ 1: ["I'm dying from inside","i feel so depresed","i just need to vent","nobody cares about me","im not okay","i feel like a failure","been feeling really low lately","i cant stop crying","i miss my mum","i feel empty","had a rough day honestly","I'm so lonely","can i get something off my chest"],
+ 0: ["add a task to buy milk","this deadline is killing me, add 2 hours focus","i'm dying to see that film","my phone battery is dead","remind me at 5 to call sam","what's 12 times 8","set a timer for 10 minutes","log my workout","start a focus session","how many tasks are done","good morning jarvis","i killed it at the gym today","open spotify","plan my day","i lost my keys, remind me to look","copy that to clipboard"] };
+let bad = 0; for (const [k, a] of Object.entries(T)) for (const m of a) { const g = supportLevel(m); if (g != k) { bad++; console.log('MISS want', k, 'got', g, m); } }
+console.log('misses', bad); console.log(offlineSupportReply("I'm dying from inside", 1, 'sir'));

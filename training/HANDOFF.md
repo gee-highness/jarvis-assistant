@@ -8,8 +8,8 @@ Also "enhance everything to do with the non-LLM model" (router rules, typo repai
 
 ## State
 - `training/genr2.py K` (K=0..9) makes sets 101+10K..110+10K. Rewritten for natural grammar (verb phrase vs gerund slots, typed time phrases, "!" = imperative frame, "?" = question). Round K uses frames with index%10==K.
-- Group 101-110 (K=0) regenerated with the natural generator and scored: **99.96% before tuning** (weakest: calc 95.87%, typos like "whta's 12 times 8", spoken maths "divided by"). Caveat: the model had already seen the earlier clumsy version of these frames, so this number is not fully held-out. The RESULTS.md row for 101-110 (98.61% -> 100.00%) is from the old clumsy version: replace it.
-- NOT yet done for 101-110: patch calc (utility group), `scripts/build-vocab.mjs`, fold, post, RESULTS.md, commit.
+- Group 101-110 (K=0): DONE (99.96% -> 100.00%, logged, pushed).
+- Listening mode added (`src/app/core/support.ts`, wired in `jarvis.service.ts`; test: `node scripts/test-support.mjs`): detects venting/distress without the LLM, drops tools and productivity talk, injects reflective-listening prompt, fixed crisis note, offline fallback reply. User wants Jarvis to be a place to vent; keep improving it.
 - Groups 111-200 (K=1..9): not started.
 
 ## Per-group commands (lo = 101, 111, ...)

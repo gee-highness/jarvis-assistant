@@ -7,6 +7,7 @@ import { LlmService } from './llm.service';
 import { JarvisDevice, isNative } from './native';
 import { OllamaMessage, OllamaService, OllamaTool } from './ollama.service';
 import { StoreService } from './store.service';
+import { CRISIS_NOTE, SUPPORT_TOOL_ASK, SupportLevel, conversationSupportLevel, offlineSupportReply, supportLevel, supportPrompt } from './support';
 import { ToolsService } from './tools/tools.service';
 import { extractJson, hm, prettyDate, sleep, uid } from './util';
 import { VoiceService } from './voice.service';
@@ -156,7 +157,7 @@ export class JarvisService {
    * latest user message: inside the system prompt it changed every minute and forced the on-device engine to
    * re-read the tools and the whole history on every turn.
    */
-  private async systemPrompt(userText: string, tools: OllamaTool[], nativeTools: boolean, compact = false): Promise<{ system: string; context: string }> {
+  private async systemPrompt(userText: string, tools: OllamaTool[], nativeTools: boolean, compact = false, support: SupportLevel = 0): Promise<{ system: string; context: string }> {
     const s = this.store.settings();
     const mem = await this.memory.contextFor(userText);
     let persona = this.persona();
@@ -169,8 +170,10 @@ export class JarvisService {
 - When the user asks you to do something, call the matching tool, then confirm briefly what was done.
 - Prefer one clear next action over long advice. Be honest about weak plans.
 - Use remember() for new durable personal facts the user shares.
-- For dates use YYYY-MM-DD.`,
+- For dates use YYYY-MM-DD.
+- If they share how they feel, acknowledge it before anything else.`,
     ];
+    if (support) parts.push(supportPrompt(support, compact));
     if (!nativeTools && tools.length) {
       parts.push(`## Tools
 You can use these tools. To call one, reply ONLY with a line like:
@@ -219,16 +222,29 @@ ${this.tools.catalogue(tools)}`);
     const patchReply = (p: Partial<UiMessage>) => this.messages.update(a => a.map(m => (m.id === reply.id ? { ...m, ...p } : m)));
 
     try {
-      if (!(await this.ensureEngine())) throw new Error(this.offlineReason());
+      // listening mode: venting or hurting -> no productivity, no tools unless they ask to record something
+      const hurtNow = supportLevel(clean);
+      const support = conversationSupportLevel(clean, prior.filter(m => m.role === 'user').map(m => m.content));
+      const crisisNote = hurtNow === 2 && !prior.some(m => m.role === 'assistant' && m.content.includes(CRISIS_NOTE));
+      if (!(await this.ensureEngine())) {
+        if (!hurtNow) throw new Error(this.offlineReason());
+        const content = offlineSupportReply(clean, hurtNow, this.store.settings().honorific);
+        patchReply({ content, streaming: false });
+        await db.messages.put({ id: reply.id, conversationId: conv.id, role: 'assistant', content, createdAt: reply.createdAt });
+        await this.touch(conv);
+        if (opts.speak) await this.voice.speak(content);
+        return content;
+      }
       const compact = this.isCompact();
       let { tools } = this.tools.select(clean, opts.allTools);
       // tiny models: tools only when the message sounds like a command (keeps prefill short)
       if (compact && !opts.allTools && !/\b(add|remind|reminder|create|set|mark|complete|finish|done|delete|remove|schedule|log|remember|snooze|start|list|show|what'?s on|plan)\b/i.test(clean)) tools = [];
+      if (hurtNow && !opts.allTools && !SUPPORT_TOOL_ASK.test(clean)) tools = [];
       if (compact && tools.length > 12) tools = tools.slice(0, 12);
       const model = this.store.settings().chatModel;
       const cloudOn = this.store.settings().cloud.mode !== 'off' && !!this.store.settings().cloud.apiKey && navigator.onLine;
       const nativeTools = tools.length > 0 && (cloudOn || this.ollama.supportsTools(model));
-      const { system, context } = await this.systemPrompt(clean, tools, nativeTools, compact);
+      const { system, context } = await this.systemPrompt(clean, tools, nativeTools, compact, support);
       const convo: OllamaMessage[] = [{ role: 'system', content: system }, ...this.historyFor(conv, prior),
         { role: 'user', content: `[Context, not from the user]\n${context}\n\n[User message]\n${clean}` }];
       const records: ToolCallRecord[] = [];
@@ -288,6 +304,7 @@ ${this.tools.catalogue(tools)}`);
       }
 
       finalText = finalText.trim() || (records.length ? records.map(r => r.result).join('\n') : `I drew a blank on that, ${this.store.settings().honorific}. Try rephrasing, or pick a larger brain under Brain.`);
+      if (crisisNote && !/crisis line|emergency/i.test(finalText)) finalText += `\n\n${CRISIS_NOTE}`;
       const saved: Message = { id: reply.id, conversationId: conv.id, role: 'assistant', content: finalText, toolCalls: records, createdAt: reply.createdAt };
       if (this.messages().find(m => m.id === reply.id)?.thinking) saved.thinking = this.messages().find(m => m.id === reply.id)!.thinking;
       patchReply({ content: finalText, streaming: false, toolCalls: records });

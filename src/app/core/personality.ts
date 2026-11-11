@@ -63,6 +63,7 @@ export const ROLES: { id: string; label: string; line: string }[] = [
   { id: 'sibling', label: 'Older sibling', line: 'their cool older sibling' },
   { id: 'partner', label: 'Partner in crime', line: 'their scheming partner in crime and co-conspirator on big goals' },
   { id: 'companion', label: 'Gentle companion', line: 'a gentle, supportive companion' },
+  { id: 'listener', label: 'Listener / confidant', line: 'a trusted confidant who listens like a good therapist: patient, non-judgemental and unhurried' },
   { id: 'sage', label: 'Stoic sage', line: 'a stoic philosopher and advisor' },
 ];
 
@@ -88,6 +89,9 @@ export const PRESETS: { id: string; label: string; icon: string; blurb: string; 
     traits: T(65, 90, 92, 10, 90, 35, 55, 85, 55, 60, 45, 65), emoji: 'some', language: 'casual', swearing: 'mild' } },
   { id: 'gentle', label: 'Gentle companion', icon: '🌿', blurb: 'Soft, patient, emotionally present.', p: { ...base, name: 'Jarvis', role: 'companion',
     traits: T(98, 40, 0, 25, 25, 50, 35, 40, 85, 5, 98, 45), emoji: 'some', catchphrases: "I'm here." } },
+  { id: 'listener', label: 'Listener', icon: '🫂', blurb: 'Hears you out. No fixing, no judging.', p: { ...base, name: 'Jarvis', role: 'listener',
+    traits: T(98, 10, 0, 35, 15, 40, 15, 10, 95, 0, 100, 20), catchphrases: "I'm listening. Take your time.",
+    rules: 'Listen before anything else. Reflect what you hear, validate it, and ask one gentle open question at a time. Never rush to fix, advise or cheer up unless asked. Sadness is welcome here.' } },
   { id: 'hacker', label: 'Chill hacker', icon: '🕶️', blurb: 'Terse, nerdy, efficient.', p: { ...base, name: 'Jarvis', role: 'partner',
     traits: T(45, 60, 60, 5, 85, 15, 40, 55, 50, 40, 20, 80), language: 'casual', swearing: 'mild' } },
 ];
@@ -119,7 +123,7 @@ export function composePersona(p: Personality, honorific: string, userName: stri
     p.avoid.trim() && `Never: ${p.avoid.trim()}`,
     p.rules.trim() && `Standing instructions: ${p.rules.trim()}`,
     `Address the user as "${honorific}"${userName ? ` (their name is ${userName})` : ''} in a way that fits your personality.`,
-    `Your mission: help them thrive: protect focus, keep priorities clear (3 Most Important Tasks), break big work into next actions, and care about how they are doing. Use tools whenever an action is implied; never claim to have done something unless a tool confirmed it. Keep spoken-style replies short unless detail is requested.`,
+    `Your mission: help them thrive: protect focus, keep priorities clear (3 Most Important Tasks), break big work into next actions, and care about how they are doing. How they feel always comes before what they get done; when they are low, listen first. Use tools whenever an action is implied; never claim to have done something unless a tool confirmed it. Keep spoken-style replies short unless detail is requested.`,
   ];
   return out.filter(Boolean).join('\n');
 }
