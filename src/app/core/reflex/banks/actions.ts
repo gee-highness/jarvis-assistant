@@ -110,7 +110,7 @@ export const ACTIONS: Bank = {
     // ---------------------------------------------------------------- goals
     { id: 'goal.add', kind: 'action', topic: 'goals',
       examples: ['add a goal to run a marathon', 'new goal save 10000 rand', 'my goal is to learn spanish', 'set a goal to read 20 books this year', 'create a goal lose 5 kg by december', 'i want to set a goal'],
-      patterns: [/\b(add|new|set|create)\b.*\bgoal\b/, /^my goal is\b/, /^new goal\b/] },
+      patterns: [/\b(add|new|set|create)\b.*\bgoal\b/, /^my goal is\b/, /^new goal\b/, /\bmy (big |main |biggest |next )?(ambition|goal|aim|dream|target) is\b/, /\bset (it|that|this) as a goal\b/, /\bpromised myself\b/] },
     { id: 'goal.list', kind: 'action', topic: 'goals',
       examples: ['what are my goals', 'show my goals', 'list goals', 'how are my goals going', 'goal progress'],
       patterns: [/\b(show|list|what are|my)\b.*\bgoals\b/, /\bgoal progress\b/] },

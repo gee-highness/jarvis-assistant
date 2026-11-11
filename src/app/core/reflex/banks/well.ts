@@ -46,7 +46,7 @@ export const WELL: Bank = {
       patterns: [/^share (that|this|it|your (last )?(answer|reply))\b/, /\bsend (that|this) to\b/] },
     { id: 'phone.copy', kind: 'action', topic: 'phone',
       examples: ['copy that', 'copy your answer', 'copy it to my clipboard', 'copy the last reply'],
-      patterns: [/^copy (that|this|it|your|the last)\b/, /\bto (my )?clipboard\b/] },
+      patterns: [/^copy (that|this|it|your|the last)\b/, /\bto (my )?clipboard\b/, /\bcopy (this|that|the) text\b/] },
     { id: 'phone.paste', kind: 'action', topic: 'phone',
       examples: ['what is on my clipboard', 'read my clipboard', 'what did i copy', 'paste'],
       patterns: [/\b(read|what is on) my clipboard\b/, /^paste$/, /\bwhat did i copy\b/] },
