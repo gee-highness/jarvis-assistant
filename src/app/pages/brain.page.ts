@@ -52,7 +52,13 @@ import { BrainMode } from '../core/models';
             @if (isNative && !llm.embedInstalled() && !llm.downloads()[embed.id]) { <button class="small" (click)="downloadEmbed()">⬇ Memory engine ({{ embed.sizeMb }} MB)</button> }
           }
           <p class="small dim" style="margin:0">If Reflex misunderstands, reply "teach" and tell it what you meant. It remembers.</p>
-          @if (reflex.stats()?.learned) { <button class="small" (click)="forgetLearned()">Forget learned phrasings</button> }
+          <p class="small dim" style="margin:0">Reflex also learns by itself: wording that works is remembered, and a "no, I meant…" corrects it.</p>
+          <div class="row">
+            @if (reflex.stats()?.learned) { <button class="small" (click)="exportLearned()">⬆ Back up learning</button> }
+            <button class="small" (click)="learnFile.click()">⬇ Restore backup</button>
+            <input #learnFile type="file" accept="application/json,.json" hidden (change)="importLearned($event)" />
+            @if (reflex.stats()?.learned) { <button class="small" (click)="forgetLearned()">Forget learned phrasings</button> }
+          </div>
         </div>
       } @else {
       <div class="tabs">
@@ -266,6 +272,19 @@ export class BrainPage implements OnInit {
     return n.toLocaleString();
   }
   setBrain(brain: BrainMode) { this.save({ brain }); JarvisDevice.haptic({ kind: 'tick' }).catch(() => undefined); if (brain === 'reflex') this.reflex.refreshStats(); }
+  exportLearned() {
+    const url = URL.createObjectURL(new Blob([this.reflex.engine.exportLearned()], { type: 'application/json' }));
+    const a = document.createElement('a'); a.href = url; a.download = 'jarvis-learning.json'; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    this.note('Learning backed up.');
+  }
+  async importLearned(ev: Event) {
+    const input = ev.target as HTMLInputElement, f = input.files?.[0];
+    if (!f) return;
+    const n = this.reflex.engine.importLearned(await f.text());
+    input.value = ''; this.reflex.refreshStats();
+    this.note(n ? `Restored ${n} learned phrasings.` : 'Nothing new in that backup.', !n);
+  }
   async forgetLearned() { await this.reflex.engine.forgetLearned(); this.reflex.refreshStats(); this.note('Learned phrasings cleared.'); }
 
   save(p: Parameters<StoreService['updateSettings']>[0]) { this.store.updateSettings(p); }

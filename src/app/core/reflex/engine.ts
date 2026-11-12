@@ -49,6 +49,8 @@ const HOLIDAYS: Record<string, string> = {
   'freedom day': '04-27', 'workers day': '05-01', 'youth day': '06-16', 'womens day': '08-09', 'heritage day': '09-24', 'reconciliation day': '12-16', 'boxing day': '12-26',
 };
 
+/** A phrasing learned from the user: hits = trust earned (confirmed +, corrected −). */
+interface Learned { intent: string; text: string; hits?: number; t?: number }
 export interface ReflexStats { intents: number; examples: number; learned: number; symbols: number; responses: number; personaResponses: number; semantic: boolean; }
 
 /** Trained category -> [Reflex intents of that kind, default intent]. Categories Reflex has no handler for are left out. */
@@ -85,10 +87,13 @@ export class ReflexEngine {
   readonly grammar = new Grammar();
   private model!: IntentModel;
   private intents: IntentSpec[] = [];
-  private learned: { intent: string; text: string }[] = [];
+  private learned: Learned[] = [];
+  private saveT?: ReturnType<typeof setTimeout>;
   private ds: DialogueState = { turn: 0, recentIntents: [] };
-  /** Last confident, unchallenged match: becomes a learned example if the user does not push back. */
-  private prov?: { intent: string; text: string };
+  /** Last confident match: reinforced (or learned, if new wording) unless the user pushes back next turn. */
+  private lastMatch?: { intent: string; text: string; ex?: string; novel: boolean };
+  /** What the user just told me I got wrong, so the corrected meaning can be learned. */
+  private corrected?: { intent: string; text: string; turn: number };
   /** A question of Reflex's own is waiting for an answer (safety check, screener, confirmation). */
   hasPending(): boolean { return !!this.ds.pending; }
   inner!: InnerState;
@@ -118,7 +123,7 @@ export class ReflexEngine {
   init(): Promise<void> {
     this.ready ??= (async () => {
       this.inner = { ...freshInner(Date.now()), ...((await this.host.kvGet<InnerState>('inner')) ?? {}) };
-      this.learned = (await this.host.kvGet<{ intent: string; text: string }[]>('learned')) ?? [];
+      this.learned = (await this.host.kvGet<Learned[]>('learned')) ?? [];
       this.model = new IntentModel(this.intents, this.learned);
       this.episodic.load(await this.host.kvGet<Episode[]>('episodes'), await this.host.kvGet<LiveState[]>('states'));
       this.researcher = new Researcher(u => this.host.http ? this.host.http(u) : Promise.reject(new Error('offline')), c => this.host.kvSet('answers', c).catch(() => undefined));
@@ -175,11 +180,18 @@ export class ReflexEngine {
     }
     const now = this.host.now();
     // self-learning: last turn's confident match stands unless this turn corrects it
-    if (this.prov) {
-      if (!/^(no|nope|wrong|not that|that is not|that was not|i did not|i do not mean|i meant|undo|cancel|stop|never ?mind|why did you)\b/.test(text)) this.learn(this.prov.intent, this.prov.text);
-      this.prov = undefined;
+    const lm = this.lastMatch; this.lastMatch = undefined;
+    if (lm) {
+      if (/^(no|nope|wrong|not that|that is not|that was not|i did not|i do not mean|i meant|why did you)\b/.test(text)) {
+        this.unlearn(lm.intent, lm.text);
+        if (lm.ex) this.adjust(lm.intent, lm.ex, -2);
+        this.corrected = { intent: lm.intent, text: lm.text, turn: this.ds.turn };
+      } else if (!/^(undo|cancel|stop|never ?mind)\b/.test(text)) {
+        if (lm.ex) this.adjust(lm.intent, lm.ex, 1);
+        if (lm.novel) this.learn(lm.intent, lm.text);
+      }
     }
-    let prov: { intent: string; text: string } | undefined;
+    let match: { intent: string; text: string; ex?: string; novel: boolean } | undefined;
     const tools: ToolTrace[] = [];
     this.tools = tools;
     this.ds.turn++;
@@ -284,8 +296,11 @@ export class ReflexEngine {
         if (top.score >= BANDS.high && (tk === 'action' || tk === 'info') && !follow && !habitHit && text.split(' ').length >= 2) {
           // just rephrased something I did not understand: learn the earlier wording too, no "learn" needed
           if (pend?.kind === 'teach' && pend.utter && this.ds.turn - pend.turn <= 3) this.learn(top.id, pend.utter);
+          // "no, I meant ...": the thing I got wrong now means what they really wanted
+          const c = this.corrected;
+          if (c && this.ds.turn - c.turn <= 2 && top.id !== c.intent) { this.learn(top.id, c.text, 1); this.corrected = undefined; }
           // novel wording (not a near-copy of a known example) is worth remembering once unchallenged
-          if (top.lex < 0.9) prov = { intent: top.id, text };
+          match = { intent: top.id, text, ex: top.ex, novel: top.lex < 0.9 };
         }
       } else {
         if (facts.length) { out = await this.onFacts(facts, raw); intent = 'learn.fact'; conf = 0.7; }
@@ -352,7 +367,7 @@ export class ReflexEngine {
     this.ds.recentIntents = [...this.ds.recentIntents.slice(-9), intent];
     this.ds.emotion = emo;
     this.lastUser = text;
-    this.prov = prov;
+    this.lastMatch = match;
     if (text && spec && intent !== 'fallback' && !/^(meta\.|chat\.(yes|no|ack|laugh|insult|thanks|sorry|test|repeat))/.test(intent) || (intent === 'fallback' && text)) this.lastActionable = { text, raw, intent };
     this.persist();
     return { text: reply, intent, confidence: conf, tools, deferred: intent === 'fallback' && conf < BANDS.mid, ms: Date.now() - t0 };
@@ -438,7 +453,7 @@ export class ReflexEngine {
 
   /** Learned phrases (for the Brain page). */
   learnedPhrases() { return [...this.learned]; }
-  async forgetLearned() { this.learned = []; await this.host.kvSet('learned', []); this.model = new IntentModel(this.intents, []); }
+  async forgetLearned() { clearTimeout(this.saveT); this.learned = []; await this.host.kvSet('learned', []); this.model = new IntentModel(this.intents, []); }
 
   // ================================================================== rendering
   private tools: ToolTrace[] = [];
@@ -720,12 +735,52 @@ export class ReflexEngine {
     }
   }
 
-  private learn(intent: string, utter: string) {
-    if (!utter || this.learned.some(l => l.intent === intent && l.text === utter)) return;
-    this.learned.push({ intent, text: utter });
-    if (this.learned.length > 2000) this.learned.shift();
-    this.model.learn(intent, utter);
-    this.host.kvSet('learned', this.learned.slice(-2000)).catch(() => undefined);
+  private learn(intent: string, utter: string, hits = 0) {
+    if (!utter) return;
+    const known = this.learned.find(l => l.intent === intent && l.text === utter);
+    if (known) { known.hits = (known.hits ?? 0) + 1; this.model.adjust(intent, utter, 1); this.save(); return; }
+    this.learned.push({ intent, text: utter, hits, t: Date.now() });
+    // never drop what keeps proving useful: when full, the least trusted, least recent goes first
+    if (this.learned.length > 3000) {
+      const worst = this.learned.reduce((w, l) => ((l.hits ?? 0) * 1e12 + (l.t ?? 0)) < ((w.hits ?? 0) * 1e12 + (w.t ?? 0)) ? l : w);
+      this.dropLearned(worst.intent, worst.text);
+    }
+    this.model.learn(intent, utter, hits);
+    this.save();
+  }
+
+  private adjust(intent: string, utter: string, d: number) {
+    const l = this.learned.find(x => x.intent === intent && x.text === utter);
+    if (!l) return;
+    l.hits = (l.hits ?? 0) + d; l.t = Date.now();
+    if (l.hits < -1) { this.dropLearned(intent, utter); } else this.model.adjust(intent, utter, d);
+    this.save();
+  }
+
+  private unlearn(intent: string, utter: string) { if (this.dropLearned(intent, utter)) this.save(); }
+  private dropLearned(intent: string, utter: string): boolean {
+    const i = this.learned.findIndex(l => l.intent === intent && l.text === utter);
+    if (i < 0) return false;
+    this.learned.splice(i, 1); this.model.forget(intent, utter);
+    return true;
+  }
+  private save() { clearTimeout(this.saveT); this.saveT = setTimeout(() => this.host.kvSet('learned', this.learned).catch(() => undefined), 1500); }
+
+  /** Everything learned, as portable JSON (backup). */
+  exportLearned(): string { return JSON.stringify({ v: 1, learned: this.learned }); }
+  /** Merges a backup; returns how many phrases were new. */
+  importLearned(json: string): number {
+    let n = 0;
+    try {
+      const d = JSON.parse(json) as { learned?: Learned[] };
+      for (const l of d.learned ?? []) {
+        if (typeof l?.intent !== 'string' || typeof l.text !== 'string' || !this.model.spec(l.intent) || this.learned.some(x => x.intent === l.intent && x.text === l.text)) continue;
+        this.learned.push({ intent: l.intent, text: l.text, hits: l.hits ?? 0, t: l.t ?? Date.now() });
+        this.model.learn(l.intent, l.text, l.hits ?? 0); n++;
+      }
+    } catch { return 0; }
+    if (n) this.save();
+    return n;
   }
 
   /** "add milk and remind me at 5 to call mom" → two commands. */

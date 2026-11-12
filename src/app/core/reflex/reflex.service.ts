@@ -64,8 +64,17 @@ export class ReflexService {
     online: () => typeof navigator === 'undefined' || navigator.onLine,
     http: url => this.tools.fetchText(url),
     status: t => this.onStatus(t),
-    kvGet: async <T>(k: string) => (await this.db.kv.get(k))?.v as T | undefined,
-    kvSet: async (k, v) => { await this.db.kv.put({ k, v }); },
+    // learned phrasings are mirrored to localStorage too: if the database is evicted or wiped, they come back
+    kvGet: async <T>(k: string) => {
+      const v = (await this.db.kv.get(k).catch(() => undefined))?.v as T | undefined;
+      if (k !== 'learned') return v;
+      if (Array.isArray(v) && v.length) return v;
+      try { return (JSON.parse(localStorage.getItem('jarvis-learned') ?? 'null') as T | null) ?? v; } catch { return v; }
+    },
+    kvSet: async (k, v) => {
+      if (k === 'learned') { try { localStorage.setItem('jarvis-learned', JSON.stringify(v)); } catch { /* quota */ } }
+      await this.db.kv.put({ k, v });
+    },
     now: () => new Date(),
     country: () => countryCode(),
     senseDays: () => this.sense.days(),
@@ -79,6 +88,7 @@ export class ReflexService {
 
   init(): Promise<void> {
     this.initP ??= (async () => {
+      try { await navigator.storage?.persist?.(); } catch { /* best effort: ask the browser not to evict what Jarvis learned */ }
       await this.engine.init();
       await this.loadPack();
       this.ready.set(true);

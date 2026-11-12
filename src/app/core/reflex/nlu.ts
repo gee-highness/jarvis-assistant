@@ -5,9 +5,9 @@
 import { IntentSpec } from './types';
 import { SparseVec, Vectorizer, denseCos, sparseCos } from './text';
 
-export interface Ranked { id: string; score: number; lex: number; sem: number; pattern: boolean; }
+export interface Ranked { id: string; score: number; lex: number; sem: number; pattern: boolean; /** best-matching learned phrase, when one drove this score */ ex?: string; }
 
-interface Ex { intent: string; text: string; vec: SparseVec; emb?: number[]; learned?: boolean; }
+interface Ex { intent: string; text: string; vec: SparseVec; emb?: number[]; learned?: boolean; hits?: number; }
 
 export class IntentModel {
   private vz = new Vectorizer();
@@ -16,9 +16,9 @@ export class IntentModel {
   private embedFn?: (t: string[]) => Promise<number[][] | null>;
   semanticReady = false;
 
-  constructor(intents: IntentSpec[], learned: { intent: string; text: string }[] = []) {
+  constructor(intents: IntentSpec[], learned: { intent: string; text: string; hits?: number }[] = []) {
     for (const s of intents) this.specs.set(s.id, s);
-    const all: { intent: string; text: string; learned?: boolean }[] = [];
+    const all: { intent: string; text: string; learned?: boolean; hits?: number }[] = [];
     for (const s of intents) for (const e of s.examples) all.push({ intent: s.id, text: e });
     for (const l of learned) if (this.specs.has(l.intent)) all.push({ ...l, learned: true });
     this.vz.fit(all.map(a => a.text));
@@ -30,12 +30,16 @@ export class IntentModel {
   get size() { return this.ex.length; }
 
   /** Adds a user-taught example immediately (no refit needed for scoring). */
-  learn(intent: string, text: string) {
+  learn(intent: string, text: string, hits = 0) {
     if (!this.specs.has(intent) || this.ex.some(e => e.intent === intent && e.text === text)) return;
-    const e: Ex = { intent, text, vec: this.vz.vec(text), learned: true };
+    const e: Ex = { intent, text, vec: this.vz.vec(text), learned: true, hits };
     this.ex.push(e);
     if (this.embedFn) this.embedFn([text]).then(v => { if (v?.[0]) e.emb = v[0]; }).catch(() => undefined);
   }
+
+  /** Learned phrases earn trust each time they work and lose it when corrected. */
+  adjust(intent: string, text: string, d: number) { const e = this.ex.find(x => x.learned && x.intent === intent && x.text === text); if (e) e.hits = (e.hits ?? 0) + d; }
+  forget(intent: string, text: string) { const i = this.ex.findIndex(x => x.learned && x.intent === intent && x.text === text); if (i >= 0) this.ex.splice(i, 1); }
 
   /** Enables semantic matching; embeds all exemplars in the background (cached by caller). */
   async enableSemantic(fn: (t: string[]) => Promise<number[][] | null>, cache?: Map<string, number[]>): Promise<boolean> {
@@ -59,12 +63,13 @@ export class IntentModel {
     if (opts.embed !== false && this.semanticReady && this.embedFn && text.split(' ').length > 1) {
       qe = (await this.embedFn([text]).catch(() => null))?.[0];
     }
-    const best = new Map<string, { lex: number[]; sem: number }>();
+    const best = new Map<string, { lex: number[]; sem: number; ex?: Ex; exLex: number }>();
     for (const e of this.ex) {
-      const lex = sparseCos(q, e.vec) * (e.learned ? 1.08 : 1);
+      const lex = sparseCos(q, e.vec) * (e.learned ? 1.04 + 0.03 * Math.max(-1, Math.min(4, e.hits ?? 0)) : 1);
       const sem = qe && e.emb ? denseCos(qe, e.emb) : 0;
-      const b = best.get(e.intent) ?? { lex: [], sem: 0 };
+      const b = best.get(e.intent) ?? { lex: [], sem: 0, exLex: 0 };
       b.lex.push(lex);
+      if (e.learned && lex > b.exLex) { b.exLex = lex; b.ex = e; }
       if (sem > b.sem) b.sem = sem;
       best.set(e.intent, b);
     }
@@ -81,7 +86,7 @@ export class IntentModel {
       let score = qe ? lex * 0.45 + sem * 0.55 : lex;
       if (pattern) score = Math.min(1, score + 0.32 + (1 - score) * 0.15);
       if (blocked) score *= 0.35;
-      out.push({ id, score, lex, sem, pattern });
+      out.push({ id, score, lex, sem, pattern, ex: b.ex && b.exLex >= lx[0] * 0.97 ? b.ex.text : undefined });
     }
     return out.sort((a, b) => b.score - a.score);
   }
