@@ -87,6 +87,8 @@ export class ReflexEngine {
   private intents: IntentSpec[] = [];
   private learned: { intent: string; text: string }[] = [];
   private ds: DialogueState = { turn: 0, recentIntents: [] };
+  /** Last confident, unchallenged match: becomes a learned example if the user does not push back. */
+  private prov?: { intent: string; text: string };
   /** A question of Reflex's own is waiting for an answer (safety check, screener, confirmation). */
   hasPending(): boolean { return !!this.ds.pending; }
   inner!: InnerState;
@@ -172,6 +174,12 @@ export class ReflexEngine {
       else text = text.replace(new RegExp(`\\b${esc}\\b`, 'g'), 'the dog');
     }
     const now = this.host.now();
+    // self-learning: last turn's confident match stands unless this turn corrects it
+    if (this.prov) {
+      if (!/^(no|nope|wrong|not that|that is not|that was not|i did not|i do not mean|i meant|undo|cancel|stop|never ?mind|why did you)\b/.test(text)) this.learn(this.prov.intent, this.prov.text);
+      this.prov = undefined;
+    }
+    let prov: { intent: string; text: string } | undefined;
     const tools: ToolTrace[] = [];
     this.tools = tools;
     this.ds.turn++;
@@ -272,6 +280,13 @@ export class ReflexEngine {
         intent = top.id; conf = top.score;
         if (facts.length) this.storeFacts(facts).catch(() => undefined);
         out = await this.run({ n, text, raw, ent, emo, ranked, intent });
+        const tk = this.model.spec(top.id)?.kind;
+        if (top.score >= BANDS.high && (tk === 'action' || tk === 'info') && !follow && !habitHit && text.split(' ').length >= 2) {
+          // just rephrased something I did not understand: learn the earlier wording too, no "learn" needed
+          if (pend?.kind === 'teach' && pend.utter && this.ds.turn - pend.turn <= 3) this.learn(top.id, pend.utter);
+          // novel wording (not a near-copy of a known example) is worth remembering once unchallenged
+          if (top.lex < 0.9) prov = { intent: top.id, text };
+        }
       } else {
         if (facts.length) { out = await this.onFacts(facts, raw); intent = 'learn.fact'; conf = 0.7; }
         else { out = await this.fallback({ n, text, raw, ent, emo, ranked, intent: 'fallback' }); intent = out.intent ?? 'fallback'; conf = top.score; }
@@ -337,6 +352,7 @@ export class ReflexEngine {
     this.ds.recentIntents = [...this.ds.recentIntents.slice(-9), intent];
     this.ds.emotion = emo;
     this.lastUser = text;
+    this.prov = prov;
     if (text && spec && intent !== 'fallback' && !/^(meta\.|chat\.(yes|no|ack|laugh|insult|thanks|sorry|test|repeat))/.test(intent) || (intent === 'fallback' && text)) this.lastActionable = { text, raw, intent };
     this.persist();
     return { text: reply, intent, confidence: conf, tools, deferred: intent === 'fallback' && conf < BANDS.mid, ms: Date.now() - t0 };
@@ -707,6 +723,7 @@ export class ReflexEngine {
   private learn(intent: string, utter: string) {
     if (!utter || this.learned.some(l => l.intent === intent && l.text === utter)) return;
     this.learned.push({ intent, text: utter });
+    if (this.learned.length > 2000) this.learned.shift();
     this.model.learn(intent, utter);
     this.host.kvSet('learned', this.learned.slice(-2000)).catch(() => undefined);
   }
